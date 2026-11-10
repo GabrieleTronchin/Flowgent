@@ -11,9 +11,9 @@ These are the spike follow-ups and must-answer items before real migration.
 - [ ] 0.5 Decide definition-distribution mechanism (D5) for the stock engine image.
 
 ## Phase 1 — Format mapping (no deletions yet)
-- [ ] 1.1 Rewrite `jokes` as a MAF declarative YAML workflow; run it through a MAF-based path (extend the spike) to confirm parity with today's output.
-- [ ] 1.2 Rewrite `support` likewise; map every step: classification (llm), team routing (`rule`), agent assignment (`map`), component lookup (`tool`→MCP), resolution (llm), **human approval (HITL)**, code generation (llm), terminals. Confirm each maps to a MAF action/PowerFx/MCP (D3).
-- [ ] 1.3 Produce a written "our step → MAF" mapping table in `design.md`. If anything does NOT map, stop and decide before proceeding.
+- [x] 1.3 **Mapping pass DONE** — written step-by-step mapping of `support` (all step kinds) and `jokes` in `step-mapping.md`. **Gate PASSED: every step maps**, no blocker. Found 5 frictions F1–F5 (demo leaves YAML; rule fail-paths; assignAgent run state; tool→MCP; HITL review shape). F4 (McpToolHandler) and F5 (HITL shape) still need mini-spike validation before deleting engine code.
+- [ ] 1.1 Rewrite `jokes` as MAF declarative YAML and run through a MAF path to confirm parity (do together with the Phase 0 mini-spikes).
+- [ ] 1.2 Rewrite `support` likewise once F4/F5 mini-spikes pass; use the mapping table as the checklist.
 
 ## Phase 2 — Engine core migration
 - [ ] 2.1 Add `Microsoft.Agents.AI.Workflows.Declarative` (pinned) to the engine; add a thin adapter seam around MAF declarative types (D6).
