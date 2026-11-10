@@ -18,9 +18,18 @@ A reusable, open-source **engine as a product**: pull the engine/dashboard image
 - ✅ Spike (`spike/Spike.MafDeclarative`, branch `spike/maf-declarative-mcp`): all 4 goals pass — YAML loaded from file, our fake `IChatClient` as the LLM, a real MCP tool invoked, run streamed. Build + run green. Full findings in `spike/README.md`.
 - ✅ Direction chosen: Via 2 (MCP) + Docker images + pipelines.
 
-## What is NOT done / open
-- Nothing migrated in the real engine yet — the spike is throwaway, isolated, not committed.
-- Several design decisions are still open (see `design.md` → "Open decisions").
+## Decisions — ALL RESOLVED ✅ (see `design.md` for each)
+- D1 MCP wiring: support both; declarative `McpToolHandler` is primary; mini-spike on it in Phase 0.
+- D2 `/_module/*` SDK: deprecate; MCP is the one extension path.
+- D3 `rule`/`map`: PowerFx where simple, deterministic MCP tool where not; verify mapping before deleting engine code.
+- D4 conversation store: a pluggable provider (default backed by our persistence); detailed design in Phase 2.
+- D5 definitions: mounted volume is primary; catalog polling secondary.
+- D6 MAF version: pin + thin adapter seam (lean; confirm in Phase 2).
+- D7 NuGet hygiene: DONE — repo-root `nuget.config`.
+
+## What is NOT done
+- Nothing migrated in the real engine yet — the spike is throwaway, isolated.
+- Next: execute `tasks.md` from Phase 0 (0.1 is now done via the decisions above; D7/0.4 done).
 
 ## Where things live
 - Spike code + findings: `spike/` (branch `spike/maf-declarative-mcp`, uncommitted).

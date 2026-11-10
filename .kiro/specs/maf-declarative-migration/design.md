@@ -41,37 +41,34 @@ A new app = a folder of MAF-declarative YAML definitions (mounted) + optionally 
 - MCP integration point for modules (replace/augment the `/_module/tools` SDK path).
 - Dockerfiles (engine, gateway, dashboard) + reference `docker-compose` + CI image-publish pipelines.
 
-## OPEN DECISIONS (resolve these first when resuming)
+## DECISIONS (reviewed with owner — see status on each)
 
-### D1. MCP wiring: agent-level vs declarative `McpToolHandler`
-The spike wired MCP at the **agent level** (tools handed to the `ChatClientAgent` via `Functions`), NOT via `DeclarativeWorkflowOptions.McpToolHandler`. Two options:
-- **(a) Agent-level** (spike-proven): tools attached to the agent; the LLM decides to call them. Simple, works, but tool use is LLM-driven, not an explicit workflow step.
+### D1. MCP wiring: agent-level vs declarative `McpToolHandler` — DECIDED
+- **(a) Agent-level** (spike-proven): tools attached to the agent; the LLM decides to call them.
 - **(b) Declarative `McpToolHandler`**: MCP tool calls as explicit YAML actions (deterministic, not LLM-mediated). Not yet validated.
-- **Recommendation:** validate (b) in a short follow-up spike; likely we want BOTH (explicit MCP steps for deterministic calls, agent-level for LLM-driven tool use). **Needs your call + a mini-spike.**
+- **DECISION:** support BOTH; **(b) is the primary path** for deterministic domain tools. Validate (b) with a mini-spike **before** the real migration, but **not now** (Phase 0, when we get there).
 
-### D2. Fate of the existing `/_module/*` SDK (Via 3)
-- Keep as a legacy path, or replace module tools with MCP servers?
-- **Recommendation:** new modules use MCP; migrate `support`'s `locateComponent` tool to an MCP server as the reference; keep the SDK until parity, then deprecate. **Needs your call on timing.**
+### D2. Fate of the existing `/_module/*` SDK (Via 3) — DECIDED
+- **DECISION:** **deprecate the SDK.** New modules use MCP. Migrate `support`'s `locateComponent` to an MCP server as the reference, reach parity, then remove the SDK. MCP is the one supported extension path going forward.
 
-### D3. `rule` / `map` deterministic steps
-- Our engine has non-LLM deterministic steps (`rule`, `map`). MAF declarative has `If`/`ConditionGroup`/`Foreach`/PowerFx and `InvokeFunctionTool`/MCP.
-- **Recommendation:** express simple branching as PowerFx conditions/actions; express lookups/mappings as PowerFx or a tiny deterministic MCP tool. Confirm each `support`/`jokes` step maps cleanly before committing. **Needs a mapping pass (task in Phase 1).**
+### D3. `rule` / `map` deterministic steps — DECIDED
+- Our engine has non-LLM deterministic steps: `rule` (branching, e.g. support team routing by text match) and `map` (key→value, e.g. IssueCategory→AgentRole). MAF declarative has `If`/`ConditionGroup`/`Foreach`/PowerFx and MCP tools instead.
+- **DECISION:** simple branching → **PowerFx**; lookups/mappings → PowerFx where simple, a small deterministic **MCP tool** where the logic is non-trivial. **Hard gate:** verify every `support`/`jokes` step maps cleanly to PowerFx/MCP BEFORE deleting any of our engine code (mapping pass in Phase 1).
 
-### D4. ResponseAgentProvider conversation store
-- Spike used in-memory. Real engine should back conversations with our persistence/run model so events/telemetry/HITL line up.
-- **Recommendation:** design this against the existing `RunStore`/event-log. **Design task in Phase 2.**
+### D4. ResponseAgentProvider conversation store — DECIDED
+- Spike used in-memory. Real engine must back conversations so events/telemetry/HITL line up.
+- **DECISION:** model it as a **pluggable provider** (an abstraction the host supplies), NOT baked into the engine. Ships with a default implementation backed by our persistence/run model; can be swapped. Detailed design in Phase 2. This remains the heaviest real integration point.
 
-### D5. Definition distribution to a stock engine image
-- How does the engine image receive the YAML defs: mounted volume, config path, or pulled from a module endpoint (current `ModuleCatalog` polling)?
-- **Recommendation:** support a mounted volume/path as primary for the "copy-config-and-go" model; keep catalog polling as an option. **Needs your call on the primary mechanism.**
+### D5. Definition distribution to a stock engine image — DECIDED
+- **DECISION:** **mounted volume / path is the primary mechanism** ("mount the folder and go"). Keep `ModuleCatalog` polling as a secondary option for service-style modules.
 
-### D6. MAF version pinning / churn
-- Declarative surfaces carry "evaluation only" flags; MAF moves fast (1.9.0..1.28.0). Pin a stable version and isolate MAF types behind our own seam so upgrades are contained.
-- **Recommendation:** pin one version repo-wide; wrap MAF declarative usage in a thin adapter. **Design constraint, not a blocker.**
+### D6. MAF version pinning / churn — LEAN, revisit later
+- Declarative surfaces carry "evaluation only" flags; MAF moves fast (1.9.0..1.28.0).
+- **LEAN:** owner likes "pin one stable version repo-wide + isolate MAF declarative behind a thin adapter seam", but wants to **revisit later** (not finalized). Treat as a design constraint to confirm in Phase 2.
 
-### D7. NuGet config hygiene
-- The user-level NuGet.Config has an authenticated private Azure DevOps feed that hangs restores for projects outside `backend/` (bit us in the spike).
-- **Recommendation:** every project gets a local `nuget.config` (nuget.org only), or disable that user feed. **Low effort, do in Phase 0.**
+### D7. NuGet config hygiene — DONE ✅
+- The user-level NuGet.Config enables an authenticated private Azure DevOps feed (TecCom) that hangs restores for projects not covered by a closer config.
+- **DONE:** added a **repo-root `nuget.config`** (clears sources, nuget.org only) covering the whole repo incl. future top-level folders. Verified: `dotnet nuget list source` from root shows only nuget.org; spike restore resolves without hanging. The existing `backend/`, `modules/`, `spike/` configs remain (redundant but harmless).
 
 ## Risks
 - MAF declarative API churn (D6).
