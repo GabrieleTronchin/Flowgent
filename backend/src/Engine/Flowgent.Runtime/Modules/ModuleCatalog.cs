@@ -5,6 +5,7 @@ using Flowgent.Contracts.Modules;
 using Flowgent.Definitions;
 using Flowgent.Definitions.Model;
 using Flowgent.Runtime.Configuration;
+using Flowgent.Runtime.Maf;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -56,12 +57,20 @@ public sealed class ModuleCatalog : IModuleCatalog
 {
     private readonly Lock _lock = new();
     private readonly ILogger<ModuleCatalog> _logger;
+    private readonly IWorkflowGraphProjector _projector;
+    private readonly IDeclarativeDefinitionValidator _validator;
     private readonly List<string> _order = [];
     private Dictionary<string, ModuleState> _states = new(StringComparer.Ordinal);
 
-    public ModuleCatalog(IOptions<EngineOptions> options, ILogger<ModuleCatalog> logger)
+    public ModuleCatalog(
+        IOptions<EngineOptions> options,
+        IWorkflowGraphProjector projector,
+        IDeclarativeDefinitionValidator validator,
+        ILogger<ModuleCatalog> logger)
     {
         _logger = logger;
+        _projector = projector;
+        _validator = validator;
         foreach (var module in options.Value.Modules.Where(m => m.Enabled))
         {
             if (_states.ContainsKey(module.Id))
@@ -102,7 +111,7 @@ public sealed class ModuleCatalog : IModuleCatalog
     /// <summary>Applies a fetched package: loads, validates and checks conflicts with other modules.</summary>
     public ModuleState ApplyPackage(string moduleId, ModulePackage package)
     {
-        var result = ModuleLoader.Load(package);
+        var result = ModuleLoader.Load(package, _projector);
 
         lock (_lock)
         {
@@ -115,6 +124,15 @@ public sealed class ModuleCatalog : IModuleCatalog
             }
 
             var definition = result.Module!;
+
+            // Trial-build each declarative workflow (design §4.3); a malformed document marks the module Invalid.
+            var buildErrors = _validator.Validate(moduleId, definition.Workflows);
+            if (buildErrors.Count > 0)
+            {
+                var merged = result.Errors.Concat(buildErrors).ToList();
+                return Set(current with { Status = ModuleStatus.Invalid, Definition = null, Errors = merged, LastLoadedAt = now, LastError = "The module definition is invalid." });
+            }
+
             var conflict = FindConflict(moduleId, definition);
             if (conflict is not null)
             {

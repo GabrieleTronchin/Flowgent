@@ -1,10 +1,12 @@
 namespace Flowgent.Runtime.Execution;
 
+using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Definitions.Model;
+using Flowgent.Runtime.HumanInput;
+using Flowgent.Runtime.Maf;
 using Flowgent.Runtime.Modules;
 using Flowgent.Runtime.Runs;
-using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.Logging;
 using RunStatus = Flowgent.Contracts.Runs.RunStatus;
 
@@ -19,13 +21,19 @@ public interface IRunExecutor
 }
 
 /// <summary>
-/// Executes queued runs on Agent Framework: compiles the workflow for the run, streams its events and records
-/// exactly one terminal transition (Completed, Failed or Cancelled).
+/// Executes queued runs on MAF declarative workflows: builds the workflow for the run via
+/// <see cref="MafWorkflowFactory"/>, drives it through the neutral <see cref="MafRunDriver"/> seam, records per-step
+/// transitions through <see cref="RunRecorder"/> and exactly one terminal transition (Completed, Failed or Cancelled)
+/// via the dual-write <see cref="IRunStore"/>. The gRPC RunMonitor shape, RunStatus set and current-step-id are
+/// preserved because the orchestrator still drives RunRecorder/RunStore.
 /// </summary>
 public sealed class RunOrchestrator(
     IModuleCatalog catalog,
     IRunStore store,
-    WorkflowCompiler compiler,
+    MafWorkflowFactory factory,
+    MafRunDriver driver,
+    RunRecorder recorder,
+    HumanInputRegistry humanInput,
     RunRegistry registry,
     ILogger<RunOrchestrator> logger) : IRunExecutor
 {
@@ -73,42 +81,22 @@ public sealed class RunOrchestrator(
         }
         finally
         {
+            humanInput.Remove(runId);
             registry.Unregister(runId);
         }
     }
 
     private async Task<RunExecutionResult> RunWorkflowAsync(RunContext run, CancellationToken runToken, CancellationToken hostToken)
     {
-        // A fresh workflow per run: the framework requires exclusive ownership and executors hold run state.
-        var workflow = compiler.Build(run);
-        await using var execution = await InProcessExecution.RunStreamingAsync(workflow, new StepMessage(run.Workflow.Graph.Start), $"run-{run.RunId}", runToken);
+        // A fresh declarative workflow per run: the framework requires exclusive ownership and executors hold run state.
+        var built = factory.Build(run);
 
-        // Executors receive the framework's own token: propagate abort/shutdown to the run explicitly.
-        await using var cancelRegistration = runToken.Register(() => _ = execution.CancelRunAsync());
-
-        await execution.TrySendMessageAsync(new TurnToken(emitEvents: true));
-
-        RunOutcome? outcome = null;
-        (string? StepId, string Reason)? failure = null;
-
-        await foreach (var evt in execution.WatchStreamAsync(runToken))
-        {
-            switch (evt)
-            {
-                case WorkflowOutputEvent { Data: RunOutcome result }:
-                    outcome = result;
-                    break;
-                case ExecutorFailedEvent failed:
-                    failure ??= (failed.ExecutorId, failed.Data?.Message ?? $"Step '{failed.ExecutorId}' failed.");
-                    logger.LogWarning(failed.Data, "Step {StepId} failed in run {RunId}", failed.ExecutorId, run.RunId);
-                    break;
-                case WorkflowErrorEvent error:
-                    var exception = error.Data as Exception;
-                    failure ??= (exception is StepFailedException sf ? sf.StepId : run.CurrentStepId, exception?.Message ?? "Workflow error.");
-                    logger.LogWarning(exception, "Workflow error in run {RunId}", run.RunId);
-                    break;
-            }
-        }
+        var terminal = await driver.RunAsync(
+            run,
+            built,
+            evt => OnEventAsync(run, evt),
+            (stepId, prompt, ct) => ResolveDecisionAsync(run, stepId, prompt, ct),
+            runToken);
 
         // A cancelled step surfaces as a failure event: report it as abort/cancellation instead.
         if (runToken.IsCancellationRequested)
@@ -116,28 +104,67 @@ public sealed class RunOrchestrator(
             return await CancelledAsync(run, hostToken);
         }
 
-        if (outcome is not null)
+        return terminal switch
         {
-            return await CompleteAsync(run, outcome);
-        }
-
-        return await FailAsync(run, failure?.StepId ?? run.CurrentStepId, failure?.Reason ?? "Workflow completed without producing a result.");
+            MafRunEvent.Completed completed => await CompleteAsync(run, completed),
+            MafRunEvent.Failed failed => await FailAsync(run, failed.StepId ?? run.CurrentStepId, failed.Reason),
+            _ => await FailAsync(run, run.CurrentStepId, "Workflow completed without producing a result."),
+        };
     }
 
-    private async Task<RunExecutionResult> CompleteAsync(RunContext run, RunOutcome outcome)
+    private async Task OnEventAsync(RunContext run, MafRunEvent evt)
+    {
+        switch (evt)
+        {
+            case MafRunEvent.StepStarted started:
+                run.EnterStep(started.StepId);
+                await recorder.StepStartedAsync(run, started.StepId);
+                break;
+            case MafRunEvent.StepCompleted completed:
+                await recorder.StepCompletedAsync(run, completed.StepId, completed.Detail);
+                break;
+            case MafRunEvent.AwaitingInput awaiting:
+                run.EnterStep(awaiting.StepId);
+                await recorder.AwaitingInputAsync(run, awaiting.StepId, awaiting.Prompt);
+                break;
+        }
+    }
+
+    private async Task<MafHumanDecision> ResolveDecisionAsync(RunContext run, string stepId, string? prompt, CancellationToken ct)
+    {
+        var review = new ReviewPayload(prompt ?? $"Approve step '{stepId}'?", []);
+        var completion = new TaskCompletionSource<HumanDecision>(TaskCreationOptions.RunContinuationsAsynchronously);
+        humanInput.Register(new PendingHumanInput(run.RunId, run.Module.Id, run.Workflow.Id, stepId, run.Title, review, DateTimeOffset.UtcNow, completion));
+
+        HumanDecision decision;
+        try
+        {
+            decision = await completion.Task.WaitAsync(ct);
+        }
+        finally
+        {
+            humanInput.Remove(run.RunId);
+        }
+
+        await recorder.InputReceivedAsync(run, stepId, decision.Reason is null ? decision.Value : $"{decision.Value}: {decision.Reason}");
+        return new MafHumanDecision(decision.Approved, decision.Reason);
+    }
+
+    private async Task<RunExecutionResult> CompleteAsync(RunContext run, MafRunEvent.Completed outcome)
     {
         var status = outcome.Outcome == WorkflowOutcome.Success ? RunStatus.Completed : RunStatus.Failed;
+        run.EnterStep(outcome.TerminalId);
         await store.RecordAsync(new RunTransition(
             run.RunId,
             status == RunStatus.Completed ? RunEventKind.Completed : RunEventKind.Failed,
             status,
-            outcome.StepId,
+            outcome.TerminalId,
             outcome.Message,
             run.AssignedAgentId,
             run.SnapshotOutputs(),
             outcome.Output));
 
-        logger.LogInformation("Run {RunId} ended at {StepId} ({Status})", run.RunId, outcome.StepId, status);
+        logger.LogInformation("Run {RunId} ended at {StepId} ({Status})", run.RunId, outcome.TerminalId, status);
         return new RunExecutionResult(status);
     }
 

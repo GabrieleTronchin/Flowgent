@@ -4,15 +4,16 @@
 
 namespace Flowgent.Runtime;
 
+using Flowgent.Definitions;
 using Flowgent.Runtime.Agents;
 using Flowgent.Runtime.Configuration;
 using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.HumanInput;
 using Flowgent.Runtime.Intake;
 using Flowgent.Runtime.Llm;
+using Flowgent.Runtime.Maf;
 using Flowgent.Runtime.Modules;
 using Flowgent.Runtime.Runs;
-using Flowgent.Runtime.Steps;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -45,15 +46,23 @@ public static class RuntimeServiceExtensions
         services.AddSingleton<HumanInputRegistry>();
         services.AddSingleton<HumanInputService>();
 
+        // MAF declarative seam (design §15): tool invoker, agent provider (per-run via the factory), MCP tool handler,
+        // Demo response provider, conversation store, trial-build validator, graph projector, workflow factory and run
+        // driver. The old IStepHandler/WorkflowCompiler registrations are dropped so the MAF path drives runs; the
+        // step-handler/compiler files are deleted in FEAT-005.
         services.AddSingleton<ModuleToolInvoker>();
-        services.AddSingleton<ToolStepHandler>();
-        services.AddSingleton<IStepHandler>(sp => sp.GetRequiredService<ToolStepHandler>());
-        services.AddSingleton<IStepHandler, LlmStepHandler>();
-        services.AddSingleton<IStepHandler, RuleStepHandler>();
-        services.AddSingleton<IStepHandler, MapStepHandler>();
-        services.AddSingleton<IStepHandler, HumanInputStepHandler>();
-        services.AddSingleton<IStepHandler, HttpStepHandler>();
-        services.AddSingleton<WorkflowCompiler>();
+        services.AddSingleton<DemoResponseProvider>();
+        services.AddSingleton<IConversationStore, RunConversationStore>();
+        services.AddTransient<Func<IConversationStore>>(sp => () => new RunConversationStore());
+        services.AddSingleton<IWorkflowGraphProjector, WorkflowProjector>();
+        services.AddSingleton<IDeclarativeDefinitionValidator, DeclarativeValidation>();
+        services.AddSingleton<MafWorkflowFactory>();
+        services.AddSingleton<MafRunDriver>();
+
+        services.AddSingleton<VolumeDefinitionSource>();
+        services.AddSingleton<IDefinitionSource>(sp => sp.GetRequiredService<VolumeDefinitionSource>());
+        services.AddSingleton<HttpDefinitionSource>();
+        services.AddSingleton<IDefinitionSource>(sp => sp.GetRequiredService<HttpDefinitionSource>());
 
         services.AddSingleton<RunOrchestrator>();
         services.TryAddSingleton<IRunExecutor>(sp => sp.GetRequiredService<RunOrchestrator>());
@@ -66,9 +75,6 @@ public static class RuntimeServiceExtensions
         {
             AddModuleHttpClient(services, module);
         }
-
-        services.AddHttpClient(HttpStepHandler.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
-            .RemoveAllResilienceHandlers();
 
         return services;
     }

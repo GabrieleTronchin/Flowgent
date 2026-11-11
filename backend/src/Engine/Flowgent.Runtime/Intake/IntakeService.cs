@@ -1,9 +1,8 @@
 namespace Flowgent.Runtime.Intake;
 
 using System.Text.Json.Nodes;
-using Flowgent.Definitions.Expressions;
+using System.Text.RegularExpressions;
 using Flowgent.Definitions.Schemas;
-using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.Modules;
 using Flowgent.Runtime.Runs;
 
@@ -23,7 +22,7 @@ public abstract record IntakeResult
 /// Generic intake: validates the input against the workflow input schema, then stores the inbox message and the
 /// queued run together. The inbox processor starts the run asynchronously.
 /// </summary>
-public sealed class IntakeService(IModuleCatalog catalog, IRunStore store)
+public sealed partial class IntakeService(IModuleCatalog catalog, IRunStore store)
 {
     public const string DefaultInvalidMessage = "The input does not match the workflow input schema.";
 
@@ -54,27 +53,32 @@ public sealed class IntakeService(IModuleCatalog catalog, IRunStore store)
 
         var runId = Guid.NewGuid();
         var messageId = Guid.NewGuid();
-        var title = RenderTitle(handle, inputObject, runId);
+        var title = RenderTitle(handle.Workflow.TitleTemplate, inputObject);
 
         await store.CreateQueuedAsync(new NewRun(runId, messageId, handle.Module.Id, workflowId, handle.Workflow.Version, title, inputObject.DeepClone().AsObject()), ct);
         return new IntakeResult.Accepted(messageId, runId);
     }
 
-    private static string? RenderTitle(MafWorkflowHandle handle, JsonObject input, Guid runId)
+    /// <summary>
+    /// Renders the run title from a simple <c>{field}</c> template over the top-level input object (no Scriban). An
+    /// unknown placeholder becomes empty; the title is null when no template is configured.
+    /// </summary>
+    internal static string? RenderTitle(string? template, JsonObject input)
     {
-        if (handle.Workflow.TitleTemplate is null)
+        if (template is null)
         {
             return null;
         }
 
-        try
+        return FieldPlaceholder().Replace(template, match =>
         {
-            var scope = RunContext.CreateIntakeScope(handle.Definition, handle.Workflow, input, runId);
-            return TemplateEngine.Shared.Render(handle.Workflow.TitleTemplate, scope);
-        }
-        catch (ExpressionException)
-        {
-            return null;
-        }
+            var field = match.Groups[1].Value.Trim();
+            return input.TryGetPropertyValue(field, out var value) && value is not null
+                ? (value is JsonValue v && v.TryGetValue<string>(out var text) ? text : value.ToJsonString())
+                : "";
+        });
     }
+
+    [GeneratedRegex(@"\{([^{}]+)\}")]
+    private static partial Regex FieldPlaceholder();
 }
