@@ -49,8 +49,43 @@ public sealed partial class DemoResponseProvider
             ("support-email", "resolve") => Resolve(renderedPrompt),
             ("support-email", "generate_code") => GenerateCode(renderedPrompt),
             ("template-hello", "summarize") => Summarize(renderedPrompt),
+            ("fixture-flow", "draft") => FixtureDraft(renderedPrompt),
+            ("hello", "summarize") => HelloSummarize(renderedPrompt),
+            ("review", "write") => ReviewWrite(renderedPrompt),
             _ => throw new StepFailedException(stepId, $"No demo response is defined for step '{stepId}' of workflow '{workflowId}'."),
         };
+
+    // Engine.Tests TestModules.hello: demo summary "[Demo] <text>" from prompt "Summarise <text>".
+    private static JsonObject HelloSummarize(string renderedPrompt)
+    {
+        var match = Regex.Match(renderedPrompt, @"Summarise\s*(.+)", RegexOptions.Singleline);
+        var text = match.Success ? match.Groups[1].Value.Trim() : renderedPrompt.Trim();
+        return new JsonObject { ["summary"] = $"[Demo] {text}" };
+    }
+
+    // Engine.Tests TestModules.review: demo write rule — "urgent" -> "URGENT <team>", else "normal <team>".
+    // The migrated prompt renders "Write for <team>" (Subject carried for the urgent keyword).
+    private static JsonObject ReviewWrite(string renderedPrompt)
+    {
+        var team = Field(renderedPrompt, "Team");
+        if (string.IsNullOrEmpty(team))
+        {
+            var forMatch = Regex.Match(renderedPrompt, @"Write for\s*(\S+)", RegexOptions.Singleline);
+            team = forMatch.Success ? forMatch.Groups[1].Value.Trim() : "";
+        }
+
+        var urgent = renderedPrompt.Contains("urgent", StringComparison.OrdinalIgnoreCase);
+        return new JsonObject { ["summary"] = urgent ? $"URGENT {team}" : $"normal {team}" };
+    }
+
+    // Test-only fixtures module (backend/tests/Fixtures): the pre-migration demo output was { text: "draft <text>" };
+    // the migrated prompt renders "Write a draft for: <text>".
+    private static JsonObject FixtureDraft(string renderedPrompt)
+    {
+        var match = Regex.Match(renderedPrompt, @"Write a draft for:\s*(.+)", RegexOptions.Singleline);
+        var text = match.Success ? match.Groups[1].Value.Trim() : renderedPrompt.Trim();
+        return new JsonObject { ["text"] = $"draft {text}" };
+    }
 
     private static JsonObject JokeTell(string renderedPrompt)
     {

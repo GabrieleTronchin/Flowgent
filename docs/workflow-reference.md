@@ -2,29 +2,19 @@
 
 [← README](../README.md) · [Expressions](expressions.md) · [Module authoring](module-authoring.md) · [Demo mode](demo-mode.md)
 
-A module definition is a folder of YAML, Markdown and JSON files (`modules/<id>/definition/`) published by the module service. Three YAML formats exist, each with a JSON Schema in `backend/schemas/` (also served by `GET /api/engine/schemas/{module|workflow|samples}`):
+A module definition is a folder of YAML, Markdown and JSON files (`modules/<id>/definition/`) published by the module service. Workflows are **Microsoft Agent Framework (MAF) declarative workflows**: the engine feeds each workflow's YAML to the declarative workflow builder and runs it, so the workflow format is MAF's, not a Flowgent-specific one. Flowgent owns only the **module envelope** (the manifest and samples) and the **run contract** the workflow follows (how it reads intake input, snapshots step outputs, and marks terminals).
+
+Two envelope formats have a JSON Schema in `backend/schemas/` (served by `GET /api/engine/schemas/{module|samples}`):
 
 | File | Schema | Content |
 |------|--------|---------|
-| `module.yaml` | `module.schema.json` | Module id, config, agents, tools, list of workflow and sample files |
-| `workflows/*.yaml` | `workflow.schema.json` | One workflow: input schema, steps, transitions |
+| `module.yaml` | `module.schema.json` | Module id, config, agents, tools, workflow **descriptors** and sample files |
 | `samples/*.yaml` | `samples.schema.json` | Example inputs shown by the dashboard |
+| `workflows/*.yaml` | (none) | One MAF declarative workflow. Not step-validated at load; the engine **trial-builds** it with the declarative builder and reports a build failure as a module error. |
 
-Start each file with a schema comment so editors with the YAML language server validate and autocomplete it:
+> The old custom workflow format (`workflow.schema.json`, `kind: llm/rule/map/tool/http/human-input/terminal`, Scriban `{{ … }}` templates) was removed when the engine moved to MAF declarative. `/api/engine/schemas/workflow` no longer exists.
 
-```yaml
-# yaml-language-server: $schema=../../../../backend/schemas/workflow.schema.json
-```
-
-The complete, runnable example is the template module: [`modules/_template/definition`](../modules/_template/definition).
-
-## Conventions
-
-- **Inline or file**: prompts accept a string or `{ file: prompts/x.md }`; schemas accept an inline JSON Schema or `{ file: schemas/x.schema.json }`. Paths are relative to `definition/`; paths leaving the folder are rejected.
-- **Templates**: any string containing `{{ ... }}` is a Scriban template. A string that is exactly one `{{ expr }}` returns the typed value (number, boolean, object, array, null); other strings render to text. Strings without `{{` are literals. See [Expressions](expressions.md).
-- **Conditions**: `when:` values are Scriban expressions without braces, e.g. `steps.check.score > 0.5`.
-- **Identifiers**: module and workflow ids match `^[a-z][a-z0-9_-]*$`; step ids match `^[a-z][a-z0-9_]*$` (usable as `steps.<id>`); tool names are `<moduleId>.<name>`; agent ids contain no whitespace. Workflow ids are unique across all modules.
-- JSON Schemas use draft 2020-12.
+The complete, runnable example is the template module: [`modules/_template/definition`](../modules/_template/definition). The support module ([`modules/support/definition`](../modules/support/definition)) exercises every action kind.
 
 ## Module manifest (`module.yaml`)
 
@@ -35,227 +25,94 @@ name: Notes
 description: Summarises notes.
 config:                       # free-form, available as config.* in templates; never secrets
   maxSummaryWords: 30
-agents:                       # used for attribution, status and prompts
+agents:                       # used for attribution, status and the agent the workflow addresses
   - id: notes_writer
     name: Writer
     group: Writers            # optional grouping shown by the dashboard
     role: Writer              # optional
     persona: A concise technical writer.
-tools:                        # operations implemented by the module service
+tools:                        # operations implemented by the module service, reached via InvokeMcpTool
   - name: notes.wordCount
     description: Counts the words of a text.
     input:  { schema: { file: schemas/word-count.input.schema.json } }
     output: { schema: { file: schemas/word-count.output.schema.json } }
     timeoutSeconds: 10        # optional
-workflows:
-  - workflows/notes-summary.yaml
+workflows:                    # descriptor list (the dashboard/intake metadata lives here, not in the workflow YAML)
+  - id: notes-summary
+    file: workflows/notes-summary.yaml
+    version: 1                # integer; bump when the workflow changes
+    name: Notes summary
+    description: Summarises a note and counts its words.
+    title: "{text}"           # run title; a simple {field} interpolation over the input object
+    input:
+      schema: { file: schemas/notes-summary.input.schema.json }
+    errorMessage: Text is required.          # detail of the 400 response (optional)
+    terminals:                # every terminal the workflow can reach, with its outcome
+      - { id: done, outcome: success }
+      - { id: rejected, outcome: failure }
 samples:
   - samples/notes-summary.samples.yaml
 ```
 
-Required: `id`, `name`, `workflows`. Tool names must start with the module id.
+Required: `id`, `name`, `workflows`. Tool names must start with the module id. Each `workflows[]` entry is a **descriptor**: id, file, integer `version`, name, optional `description`/`title`, the input `schema`, optional `errorMessage`, and `terminals[]` (`{ id, outcome }` with outcome `success` or `failure`). The engine reads graph/terminal metadata from here — the workflow YAML is opaque to the loader.
 
-## Workflow definition
+## Workflow definition (MAF declarative)
 
-```yaml
-# yaml-language-server: $schema=../../../../backend/schemas/workflow.schema.json
-id: notes-summary
-version: 1                    # bump when the workflow changes
-name: Notes summary
-description: Summarises a note and counts its words.
-title: "{{ input.text | string.truncate 60 }}"   # run title shown in listings (optional)
-input:
-  schema: { file: schemas/notes-summary.input.schema.json }
-  errorMessage: Text is required.               # detail of the 400 response (optional)
-maxSteps: 100                 # optional, default 100
-start: summarize
-steps:
-  - id: summarize
-    kind: llm
-    # ...
-```
+A workflow is a MAF declarative document: a `Workflow` with an `OnConversationStart` trigger whose `actions` list runs top to bottom. The run's intake input arrives as the trigger message text (a JSON string). Authoring conventions the engine relies on:
 
-Required: `id`, `version`, `name`, `input.schema`, `start`, `steps`.
-
-### Common step fields
-
-| Field | Description |
-|-------|-------------|
-| `id`, `kind`, `name` | Required. `kind` is one of `llm`, `rule`, `map`, `human-input`, `tool`, `http`, `terminal`. |
-| `description` | Optional text. |
-| `detail` | Template rendered after the step; becomes the detail of the step-completed event and of the run. |
-| `assignAgent` | Template; after the step, sets the run's assigned agent. The result must be a declared agent, otherwise the step fails. |
-| `next` | Id of the next step. |
-| `transitions` | Ordered list of `{ when?, to }`. The first transition whose `when` is true is followed; a transition without `when` is the default and should be last. |
-
-Every non-terminal step declares either `next` or `transitions` (not both). When no transition matches, the step fails with `No transition matched after step '<id>'.`
+- **Read intake input**: PowerFx has no `ParseJSON`, so a workflow reads its input through the seam's built-in MCP tool `flowgent.input` (serverLabel `flowgent`), whose JSON-object-string result is read as `First(Local.x).<field>`. Use `flowgent.parse` the same way to turn any JSON string (e.g. an agent's structured answer) into a record.
+- **Step output snapshot**: each logical step writes its output to `Global.<stepId>` via a trailing `SetVariable` named `<stepId>_snapshot`. The seam reads these from run state and surfaces them as `steps.<stepId>` and as StepCompleted events (the dashboard graph shows exactly these snapshot steps). An optional sibling `Global.<stepId>__detail` string becomes the step's detail.
+- **Assigned agent**: writing `Global.assignedAgentId` sets the run's assigned agent (telemetry, dashboard badge).
+- **Terminals**: a terminal writes the reserved globals `Global.__terminalId` (the terminal id, matching a manifest `terminals[]` entry), `Global.__message` (the run detail), and, for a success output, `Global.__finalOutput` (the structured JSON exposed as the run's final output). Follow it with `EndConversation` so the action list does not fall through into the next terminal.
 
 ```yaml
-transitions:
-  - when: steps.check.score >= 0.8
-    to: publish
-  - when: steps.check.score >= 0.5
-    to: review
-  - to: rejected
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: notes-summary
+  actions:
+    - kind: InvokeMcpTool          # read intake input as a record
+      id: read_input
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.input
+      requireApproval: false
+      arguments: { payload: =System.LastMessage.Text }
+      output: { result: Local.intake }
+    # … agent / tool / branch / terminal actions …
 ```
 
-The output of each completed step is available to later steps as `steps.<id>`.
+### Action kinds
 
-## Step kinds
+| MAF action | Role (old step kind) |
+|------------|----------------------|
+| `InvokeAzureAgent` | LLM call (`llm`). Resolved by the engine's agent provider over its `IChatClient`, not Azure. `agent.name` carries `"<stepId>\|<agentId>"` so the provider keys Demo responses/telemetry by step id and resolves the agent by id. The user prompt is authored; there is no per-step system prompt / temperature / output-schema on the call — validate the returned JSON downstream (e.g. read `First(parse(...)).field`). |
+| `InvokeMcpTool` | Module tool call (`tool`), the built-in `flowgent.input`/`flowgent.parse`, and — since the declarative HTTP action is not yet used — any external-API bridge exposed as a module tool. `serverLabel` → module id, `toolName` → tool. The result crosses as one non-numeric JSON string (a bare top-level number is wrapped). |
+| `SetVariable` | Computed values and lookups (`map`), plus the snapshot/detail/terminal plumbing. Uses PowerFx (`=Expr`). |
+| `ConditionGroup` | Branching and rule routing (`rule`). Ordered `conditions[]` (first true wins) + `elseActions`; branches use `GotoAction` to jump to an action id. |
+| `Question` | Human-input gate (`human-input`). Pairs with a `ConditionGroup` on the resumed answer. See [Human input](human-input.md). |
+| `SendActivity` | Terminal activity (`terminal`); the terminal's outcome/message/output come from the manifest + reserved globals above. |
 
-### `llm`
+`GotoAction { actionId }` targets an exact action id (e.g. a terminal's first `SetVariable`). A `GotoAction` to a non-existent id makes the trial build fail, which marks the module invalid.
 
-Sends an optional system prompt and a user prompt to the engine's `IChatClient`, requests structured output matching `output.schema`, validates the response and stores it.
+### Routing without regex (PowerFx)
+
+PowerFx `IsMatch` is recognised but not supported in this builder, so keyword routing uses `Lower(...)` + `Find(...)`, with every literal lower-cased:
 
 ```yaml
-- id: summarize
-  kind: llm
-  name: Summary
-  agent: notes_writer          # optional: attribution; default is the run's assigned agent
-  temperature: 0.2             # optional, 0-2
-  systemPrompt: { file: prompts/summarize.system.md }
-  prompt: "Summarise in at most {{ config.maxSummaryWords }} words: {{ input.text }}"
-  output:
-    schema:
-      type: object
-      additionalProperties: false
-      required: [summary]
-      properties:
-        summary: { type: string }
-  demo:                        # response used in Demo mode
-    output: { summary: "[Demo] {{ input.text | string.truncate 80 }}" }
-  next: count_words
+- kind: SetVariable
+  id: rt_text
+  variable: Local.rtText
+  value: =Lower(Concatenate(First(Local.intake).subject, " ", First(Local.intake).body))
+- kind: SetVariable
+  id: rt_a
+  variable: Local.matchA
+  value: =Or(Find("application a", Local.rtText) > 0, Find("applicationa", Local.rtText) > 0)
 ```
 
-- The output schema root must be `type: object` with `additionalProperties: false` (structured output).
-- Prompts see the agent of the call as `agent` (`id`, `name`, `group`, `role`, `persona`).
-- Failures: `LLM call failed for step '<id>': …`, `LLM response for step '<id>' is not valid JSON.`, `LLM response for step '<id>' does not match its schema: …`.
-- In Demo mode the step needs a `demo:` block; see [Demo mode](demo-mode.md).
+## Demo mode
 
-### `rule`
-
-Matches a rendered value against ordered rules and outputs the matching rule's `output`.
-
-```yaml
-- id: route
-  kind: rule
-  name: Routing
-  value: "{{ input.subject }} {{ input.body }}"
-  ignoreCase: true                       # default true
-  rules:
-    - match: '\binvoice\b'               # regular expression, or
-      output: { queue: billing }
-    - when: input.priority == "high"     # expression
-      output: { queue: urgent }
-  onMultipleMatches: first               # default; or { fail: "message" }
-  onNoMatch:                             # default: fail with "No rule matched in step '<id>'."
-    output: { queue: general }           # or { fail: "message" }
-  next: assign
-```
-
-Rule outputs and `fail` messages are templates.
-
-### `map`
-
-Computes named outputs from templates and lookup tables, in order. Earlier outputs are available as `output.<name>`.
-
-```yaml
-- id: assign
-  kind: map
-  name: Assignment
-  lookups:
-    ownerByQueue: { billing: notes_billing, urgent: notes_oncall, general: notes_writer }
-  outputs:
-    - name: owner
-      lookup: ownerByQueue
-      key: "{{ steps.route.queue }}"
-      onMissing: "No owner for queue '{{ steps.route.queue }}'."   # optional failure message
-    - name: label
-      value: "{{ steps.route.queue }}:{{ output.owner }}"
-  assignAgent: "{{ steps.assign.owner }}"
-  next: review
-```
-
-### `human-input`
-
-Publishes a review payload, pauses the run in `AwaitingInput` and continues when someone approves or rejects it. Output: `{ decision: "approved" | "rejected", reason: string | null }`. See [Human input](human-input.md).
-
-```yaml
-- id: review
-  kind: human-input
-  name: Review
-  review:
-    title: "Publish summary of {{ run.title }}?"
-    fields:
-      - { label: Summary, value: "{{ steps.summarize.summary }}" }
-      - { label: Owner, value: "{{ steps.assign.owner }}" }
-  transitions:
-    - when: steps.review.decision == "approved"
-      to: done
-    - to: declined
-```
-
-### `tool`
-
-Calls a tool of the owning module service (declared in `module.yaml`). `input` is an object of templates. The input and the result are validated against the tool's schemas.
-
-```yaml
-- id: count_words
-  kind: tool
-  name: Word count
-  tool: notes.wordCount
-  input:
-    text: "{{ steps.summarize.summary }}"
-  timeoutSeconds: 10           # optional
-  next: done
-```
-
-Timeout precedence: the tool's `timeoutSeconds` in `module.yaml`, then the step's `timeoutSeconds`, then the module's `TimeoutSeconds` in the engine configuration, then `Flowgent:DefaultToolTimeoutSeconds` (30). Failures: `Tool '<name>' failed: …`, `Tool '<name>' timed out after Ns.`, `Module '<id>' is unavailable: …`.
-
-### `http`
-
-Calls an external HTTP API and stores the parsed JSON response.
-
-```yaml
-- id: enrich
-  kind: http
-  name: Enrichment
-  method: POST                               # GET, POST, PUT, PATCH, DELETE
-  url: "{{ config.enrichBaseUrl }}/api/enrich"
-  headers:
-    X-Run-Id: "{{ run.id }}"                 # literal or template
-    Authorization: { secret: enrichToken }   # read from Flowgent:Secrets:<moduleId>:enrichToken
-  body:
-    text: "{{ steps.summarize.summary }}"
-  timeoutSeconds: 30                         # default 30
-  output:                                    # optional response schema
-    schema: { type: object, required: [tags], properties: { tags: { type: array } } }
-  next: done
-```
-
-Non-2xx status codes, non-JSON responses, timeouts and schema mismatches fail the step (`HTTP step '<id>' failed: …`); calls are not retried. Secret header values come from engine configuration and never appear in API responses.
-
-### `terminal`
-
-Ends the run. `outcome: success` ends it as `Completed`, `outcome: failure` as `Failed`. `message` (template) becomes the run detail; `output` (template, optional) becomes the final output.
-
-```yaml
-- id: done
-  kind: terminal
-  name: Done
-  outcome: success
-  message: "{{ steps.summarize.summary }} ({{ steps.count_words.words }} words)"
-  output:
-    summary: "{{ steps.summarize.summary }}"
-    words: "{{ steps.count_words.words }}"
-- id: declined
-  kind: terminal
-  name: Declined
-  outcome: failure
-  message: "{{ steps.review.reason | object.default 'Declined' }}"
-```
-
-Terminal steps cannot declare `next` or `transitions`.
+Workflows carry **no** `demo:` block. In Demo mode the engine's `DemoResponseProvider` supplies each agent step's response, keyed by `(workflowId, stepId)`. Add a key there when you add an agent step. See [Demo mode](demo-mode.md).
 
 ## Samples
 
@@ -283,16 +140,9 @@ The dashboard builds the submission form from the workflow input schema: `string
 
 ## Validation
 
-The engine validates a module when it loads it, and the Module SDK runs the same validation at module startup and in tests (`ModuleDefinitionAssert.IsValid`). Errors carry file, step and line number and are shown by `GET /api/engine/modules` and the dashboard. An invalid module is not loaded; other modules are unaffected.
+The engine validates a module when it loads it, and the Module SDK runs the same checks at module startup and in tests (`ModuleDefinitionAssert.IsValid`). Validation now has two layers:
 
-Errors:
+- **Envelope** (the manifest and samples): YAML syntax and format-schema violations; duplicate workflow/agent/tool/sample ids; tool names without the module prefix; missing or invalid referenced schema files; samples referencing an unknown workflow or not matching the input schema.
+- **Trial build** (the declarative workflow): the engine builds each workflow's YAML with a no-op provider/handler; a build failure (malformed document, a `GotoAction` to a non-existent action, etc.) is reported as a module error naming the workflow file. The declarative builder gives no step id or line, so those are not reported (a change from the old custom step-graph validator).
 
-- YAML syntax or format schema violations.
-- Duplicate ids (steps, workflows, agents, tools, samples, map outputs); unknown `start` step or transition target.
-- Steps not reachable from `start`; no reachable terminal step; `next` and `transitions` both declared; non-terminal step without either.
-- Missing or invalid prompt/schema files; LLM output schema not a strict object.
-- Agents (literal `agent` / `assignAgent`) or tools not declared in `module.yaml`; tool names without the module prefix.
-- Invalid templates, expressions or regular expressions; `steps.<id>` references to unknown steps.
-- Samples referencing unknown workflows or not matching the input schema.
-
-Warnings (the module still loads): `llm` step without `demo:` (it fails in Demo mode), a transition without condition that is not the last one, a sample marked `expectInvalid` that is valid.
+An invalid module is not loaded; other modules are unaffected. Errors are shown by `GET /api/engine/modules` and the dashboard.

@@ -22,7 +22,7 @@ Requests go through the gateway (`http://localhost:5080`). Open them in Visual S
 | `400` from the intake | `errors[]` lists the JSON pointers that do not match the input schema. |
 | A run failed | `GET /api/engine/runs/{id}`: `currentStepId` is the failing step and `detail` the reason; `stepOutputs` shows what earlier steps produced. `GET /api/engine/events?runId={id}` gives the full transition history. |
 | A run never starts | `GET /api/engine/inbox?status=queued`; with `SequentialProcessing` on, another run may be running or awaiting input. |
-| `Step '<id>' has no demo response` | Demo mode is on and the `llm` step has no `demo:` block. |
+| `No demo response is defined for step '<id>'` | Demo mode is on and the agent step has no `DemoResponseProvider` key for `(workflowId, stepId)`. |
 | LLM errors with a real provider | `Flowgent:Llm` settings (`ApiKey`, `ModelName`, `Endpoint`); `GET /api/engine/agents/{agentId}/telemetry` shows the last call and its error. |
 
 ## Traces and logs

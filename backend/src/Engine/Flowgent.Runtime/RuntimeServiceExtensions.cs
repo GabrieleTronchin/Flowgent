@@ -23,7 +23,7 @@ using Polly;
 public static class RuntimeServiceExtensions
 {
     /// <summary>
-    /// Registers the engine runtime: module catalog, compiler, step kinds, orchestrator, human input, intake,
+    /// Registers the engine runtime: module catalog, the MAF declarative seam, orchestrator, human input, intake,
     /// inbox processor, LLM client and telemetry. Persistence (<see cref="IRunStore"/>, <see cref="IInboxStore"/>) is registered separately.
     /// </summary>
     public static IServiceCollection AddFlowgentRuntime(this IServiceCollection services, IConfiguration configuration)
@@ -48,8 +48,7 @@ public static class RuntimeServiceExtensions
 
         // MAF declarative seam (design §15): tool invoker, agent provider (per-run via the factory), MCP tool handler,
         // Demo response provider, conversation store, trial-build validator, graph projector, workflow factory and run
-        // driver. The old IStepHandler/WorkflowCompiler registrations are dropped so the MAF path drives runs; the
-        // step-handler/compiler files are deleted in FEAT-005.
+        // driver. The MAF path drives runs; the custom-format step handlers and compiler have been removed.
         services.AddSingleton<ModuleToolInvoker>();
         services.AddSingleton<DemoResponseProvider>();
         services.AddSingleton<IConversationStore, RunConversationStore>();

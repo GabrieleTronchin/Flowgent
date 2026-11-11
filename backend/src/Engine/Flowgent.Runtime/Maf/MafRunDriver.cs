@@ -85,11 +85,11 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
                     break;
 
                 case ExecutorFailedEvent failed:
-                    terminal ??= new MafRunEvent.Failed(failed.ExecutorId, failed.Data?.Message ?? $"Step '{failed.ExecutorId}' failed.");
+                    terminal ??= new MafRunEvent.Failed(failed.ExecutorId, DescribeError(failed.Data) ?? $"Step '{failed.ExecutorId}' failed.");
                     break;
 
                 case WorkflowErrorEvent error:
-                    terminal ??= new MafRunEvent.Failed(run.CurrentStepId, DescribeError(error.Data));
+                    terminal ??= new MafRunEvent.Failed(run.CurrentStepId, DescribeError(error.Data) ?? "Workflow error.");
                     break;
             }
         }
@@ -333,20 +333,31 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         }
     }
 
-    private static string DescribeError(object? data)
+    /// <summary>
+    /// Describes a workflow/executor failure for the run's <c>Detail</c>. The declarative builder wraps an action's
+    /// exception in a generic "Unhandled workflow failure" message, so the descriptive reason an expected failure
+    /// carries (e.g. a module tool's <see cref="Flowgent.Runtime.Execution.StepFailedException"/> "Module '...' is
+    /// unavailable") lives in an inner exception. This prefers the innermost <see cref="Flowgent.Runtime.Execution.StepFailedException"/>
+    /// message when present, otherwise the deepest exception message; non-exception data falls back to its string.
+    /// </summary>
+    private static string? DescribeError(object? data)
     {
-        if (data is Exception ex)
+        if (data is not Exception ex)
         {
-            var reason = ex.Message;
-            for (var inner = ex.InnerException; inner is not null; inner = inner.InnerException)
-            {
-                reason += $" -> {inner.Message}";
-            }
-
-            return reason;
+            return data?.ToString();
         }
 
-        return data?.ToString() ?? "Workflow error.";
+        Exception? deepest = ex;
+        for (var inner = ex; inner is not null; inner = inner.InnerException)
+        {
+            deepest = inner;
+            if (inner is Flowgent.Runtime.Execution.StepFailedException stepFailure)
+            {
+                return stepFailure.Message;
+            }
+        }
+
+        return deepest?.Message ?? ex.Message;
     }
 
     private static (string StepId, string? Prompt) DescribeRequest(ExternalRequest request)

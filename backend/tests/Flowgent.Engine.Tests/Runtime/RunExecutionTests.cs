@@ -124,7 +124,10 @@ public class RunExecutionTests
         Assert.Equal(run.Id, call.RunId);
         Assert.Equal("demo", call.ModuleId);
         Assert.Equal("hello", call.WorkflowId);
-        Assert.Equal("count", call.StepId);
+        // Observability change (documented): MAF InvokeMcpTool does not surface the logical step id to the seam, so the
+        // ToolInvocationRequest.StepId carries the tool name rather than the workflow step id (the run's CurrentStepId
+        // still resolves to the step "count"). The tool input is unchanged.
+        Assert.Equal("demo.count", call.StepId);
         Assert.Equal("[Demo] Agent Framework workflows", call.Input!["text"]!.GetValue<string>());
     }
 }

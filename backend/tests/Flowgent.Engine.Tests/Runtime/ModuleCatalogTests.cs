@@ -31,12 +31,15 @@ public class ModuleCatalogTests
     [Fact]
     public async Task InvalidPackage_IsReportedWithErrorsAndWorkflowsAreNotExposed()
     {
-        await using var engine = await TestEngine.StartAsync(f => f.Replace("workflows/hello.yaml", "to: short", "to: ghost"));
+        // A malformed declarative workflow is reported by the MAF trial-build validator wired into the catalog
+        // (design §4.3): point a GotoAction at a non-existent action id so DeclarativeWorkflowBuilder.Build throws
+        // resolving the edge. The workflow is not exposed.
+        await using var engine = await TestEngine.StartAsync(f => f.Replace("workflows/hello.yaml", "actionId: long_final", "actionId: no_such_action"));
         var catalog = engine.Services.GetRequiredService<IModuleCatalog>();
 
         var module = Assert.Single(catalog.Modules);
         Assert.Equal(ModuleStatus.Invalid, module.Status);
-        Assert.Contains(module.Errors, e => e.StepId == "count" && e.Message.Contains("ghost"));
+        Assert.Contains(module.Errors, e => e.File == "workflows/hello.yaml");
         Assert.Null(catalog.FindWorkflow("hello"));
     }
 
@@ -79,7 +82,7 @@ public class ModuleCatalogTests
         {
             f.Replace("module.yaml", "id: demo\nname: Demo", "id: impostor\nname: Demo");
             f.Replace("module.yaml", "name: demo.count", "name: impostor.count");
-            f.Replace("workflows/hello.yaml", "tool: demo.count", "tool: impostor.count");
+            f.Replace("workflows/hello.yaml", "toolName: demo.count", "toolName: impostor.count");
         }));
 
         await engine.Services.GetRequiredService<ModuleCatalogService>().RefreshAllAsync(TestContext.Current.CancellationToken);
@@ -97,7 +100,7 @@ public class ModuleCatalogTests
         {
             f.Replace("module.yaml", "id: demo\nname: Demo", "id: other\nname: Demo");
             f.Replace("module.yaml", "name: demo.count", "name: other.count");
-            f.Replace("workflows/hello.yaml", "tool: demo.count", "tool: other.count");
+            f.Replace("workflows/hello.yaml", "toolName: demo.count", "toolName: other.count");
         }));
 
         await engine.Services.GetRequiredService<ModuleCatalogService>().RefreshAllAsync(TestContext.Current.CancellationToken);
@@ -120,7 +123,7 @@ public class ModuleCatalogTests
         engine.Modules.SetPackage("demo", TestModules.Package(f =>
         {
             TestModules.AddReviewWorkflow(f);
-            f.Replace("workflows/review.yaml", "message: \"{{ steps.write.summary }}\"", "message: \"v2 {{ steps.write.summary }}\"");
+            f.Replace("workflows/review.yaml", "value: =First(Local.writeObj).summary", "value: =Concatenate(\"v2 \", First(Local.writeObj).summary)");
         }));
         await engine.Services.GetRequiredService<ModuleCatalogService>().RefreshAllAsync(TestContext.Current.CancellationToken);
         var catalog = engine.Services.GetRequiredService<IModuleCatalog>();

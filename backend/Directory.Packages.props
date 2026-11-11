@@ -70,7 +70,6 @@
        ═══════════════════════════════════════════════════════════════════ -->
   <ItemGroup Label="Definitions">
     <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
-    <PackageVersion Include="Scriban" Version="7.5.3" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 

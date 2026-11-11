@@ -79,7 +79,7 @@ public sealed class EngineTestHost : IAsyncDisposable
     public async Task<RunDetail> GetRunAsync(Guid runId) =>
         (await Client.GetFromJsonAsync<RunDetail>(EngineRoutes.Run(runId), Json))!;
 
-    public async Task<RunDetail> WaitForRunAsync(Guid runId, Func<RunDetail, bool> condition, int timeoutMs = 10_000)
+    public async Task<RunDetail> WaitForRunAsync(Guid runId, Func<RunDetail, bool> condition, int timeoutMs = 60_000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)

@@ -59,7 +59,7 @@ public static class EngineEndpoints
             FormatSchemas.GetText(name) is { } text
                 ? Results.Text(text, "application/schema+json")
                 : NotFound($"Schema '{name}' not found. Available: {string.Join(", ", FormatSchemas.Names)}."))
-            .WithSummary("JSON Schemas of the YAML formats (module, workflow, samples)");
+            .WithSummary("JSON Schemas of the module envelope formats (module, samples)");
     }
 
     private static void MapRuns(RouteGroupBuilder group)

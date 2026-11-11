@@ -2,34 +2,46 @@
 
 [← README](../README.md) · [Workflow reference](workflow-reference.md#human-input) · [Engine API](engine-api.md#human-input)
 
-A `human-input` step pauses a run until someone approves or rejects it. The engine handles it generically, so every workflow uses the same endpoints and the same dashboard page.
+A human-input gate pauses a run until someone approves or rejects it. The engine handles it generically, so every workflow uses the same endpoints and the same dashboard page.
 
 ## In the workflow
 
+A gate is a MAF `Question` action followed by a `ConditionGroup` on the resumed answer (the declarative `RequestExternalInput`/`If` pair stalls after resume in this builder version, so `Question`/`ConditionGroup` are used instead). The `Question` prompt is a JSON review payload the engine turns into the dashboard review (title + ordered fields); the resume carries JSON `{decision, reason}`, read back with the built-in `flowgent.parse` tool.
+
 ```yaml
-- id: review
-  kind: human-input
-  name: Review
-  review:
-    title: "Publish summary of {{ run.title }}?"
-    fields:
-      - { label: Summary, value: "{{ steps.summarize.summary }}" }
-      - { label: Words, value: "{{ steps.count_words.words }}" }
-  detail: Waiting for review           # optional, detail of the AwaitingInput event
-  transitions:
-    - when: steps.review.decision == "approved"
-      to: publish
-    - to: declined
+- kind: SetVariable
+  id: review_json
+  variable: Local.reviewJson
+  value: =Concatenate("{""title"":""Publish summary?"",""fields"":[{""label"":""Summary"",""value"":""", Local.summary, """}]}")
+- kind: Question
+  id: review
+  property: Local.approvalRaw
+  prompt: { kind: Message, text: [ "{Local.reviewJson}" ] }
+  entity: { kind: StringPrebuiltEntity }
+- kind: InvokeMcpTool
+  id: parse_review
+  serverUrl: inproc://flowgent
+  serverLabel: flowgent
+  toolName: flowgent.parse
+  requireApproval: false
+  arguments: { payload: =Local.approvalRaw }
+  output: { result: Local.approvalObj }
+- kind: ConditionGroup
+  id: after_review
+  conditions:
+    - condition: =Find("approved", Local.approvalRaw) > 0
+      id: approved
+      actions: [ { kind: GotoAction, id: goto_publish, actionId: publish } ]
+  elseActions: [ { kind: GotoAction, id: goto_declined, actionId: declined_message } ]
 ```
 
-The step:
+The engine:
 
-1. Renders the review payload (title and ordered fields) from the templates.
-2. Records an `AwaitingInput` transition; the run status becomes `AwaitingInput`.
-3. Waits for a decision, then records `InputReceived` (detail `approved` or `rejected: <reason>`).
-4. Stores `{ decision: "approved" | "rejected", reason: string | null }` as `steps.<id>` and follows its transitions.
+1. Builds the review payload (title + ordered fields) from the `Question` prompt JSON.
+2. Records an `AwaitingInput` transition; the run status becomes `AwaitingInput`. Its detail is the prompt payload.
+3. Waits for a decision, then records `InputReceived` (detail `approved` or `rejected: <reason>`) and resumes the workflow with the `{decision, reason}` JSON.
 
-What happens after a rejection is up to the workflow: typically a `failure` terminal step whose message uses the reason, e.g. `"{{ steps.review.reason | object.default 'Declined' }}"`.
+What happens after a rejection is up to the workflow: typically a `failure` terminal whose message uses the reason, e.g. `=Coalesce(First(Local.approvalObj).reason, "Rejected")`.
 
 ## API
 

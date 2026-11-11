@@ -231,9 +231,6 @@ public static class ModuleLoader
 
 internal sealed record SampleDocument(SampleDefinition Sample, string File, LineMap Lines, int Index);
 
-// Retained for the (now unused) DefinitionValidator until FEAT-005 deletes the custom step-format code.
-internal sealed record WorkflowDocument(WorkflowDefinition Definition, LineMap Lines);
-
 /// <summary>Collects definition errors and warnings for one module.</summary>
 internal sealed class DefinitionErrors(string moduleId)
 {

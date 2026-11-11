@@ -175,9 +175,17 @@ public class IntakeAndInboxTests
 
         _ = await engine.HumanInput.ApproveAsync(first);
         await Task.WhenAll(cycle1);
-        await Task.WhenAll(await engine.Inbox.DispatchPendingMessagesAsync(TestContext.Current.CancellationToken));
 
-        Assert.Equal(RunStatus.Completed, (await engine.Store.GetAsync(second))!.Status);
+        // Once the first run releases the sequential slot the second starts on the next poll. Dispatch until it leaves
+        // the queue (the slot release and the manual dispatch can race under load), then wait for it to finish.
+        var deadline = DateTime.UtcNow.AddSeconds(60);
+        while ((await engine.Store.GetAsync(second))!.Status == RunStatus.Queued && DateTime.UtcNow < deadline)
+        {
+            await Task.WhenAll(await engine.Inbox.DispatchPendingMessagesAsync(TestContext.Current.CancellationToken));
+            await Task.Delay(20);
+        }
+
+        Assert.Equal(RunStatus.Completed, (await engine.WaitForStatusAsync(second, RunStatus.Completed)).Status);
     }
 
     // Runs are started in the order the messages were received (FIFO), whatever their number.

@@ -2,7 +2,6 @@ namespace Flowgent.Runtime.Execution;
 
 using System.Text.Json.Nodes;
 using Flowgent.Definitions;
-using Flowgent.Definitions.Expressions;
 using Flowgent.Definitions.Model;
 
 /// <summary>
@@ -82,56 +81,7 @@ public sealed class RunContext
             AssignedAgentId = agentId;
         }
     }
-
-    // --- Transitional (FEAT-002): template/scope helpers kept so the custom-format Steps/* handlers compile
-    // unchanged until FEAT-003 replaces the run path with the MAF seam and FEAT-005 deletes them. ---
-
-    public TemplateEngine Templates => TemplateEngine.Shared;
-
-    /// <summary>Data visible to templates: input, steps, config and run metadata.</summary>
-    public EvaluationScope CreateScope()
-    {
-        lock (_lock)
-        {
-            var agent = AssignedAgentId is null ? null : Module.FindAgent(AssignedAgentId);
-            return new EvaluationScope(new JsonObject
-            {
-                ["input"] = Input.DeepClone(),
-                ["steps"] = _stepOutputs.DeepClone(),
-                ["config"] = Module.Config.DeepClone(),
-                ["run"] = new JsonObject
-                {
-                    ["id"] = RunId.ToString(),
-                    ["moduleId"] = Module.Id,
-                    ["workflowId"] = Workflow.Id,
-                    ["title"] = Title,
-                    ["agentId"] = AssignedAgentId,
-                    ["agent"] = agent is null ? null : new JsonObject
-                    {
-                        ["id"] = agent.Id,
-                        ["name"] = agent.Name,
-                        ["group"] = agent.Group,
-                        ["role"] = agent.Role,
-                        ["persona"] = agent.Persona,
-                    },
-                },
-            });
-        }
-    }
-
-    /// <summary>Scope used before a run exists (intake: run title).</summary>
-    public static EvaluationScope CreateIntakeScope(ModuleDefinition module, WorkflowDescriptor workflow, JsonObject input, Guid runId) =>
-        new(new JsonObject
-        {
-            ["input"] = input.DeepClone(),
-            ["steps"] = new JsonObject(),
-            ["config"] = module.Config.DeepClone(),
-            ["run"] = new JsonObject { ["id"] = runId.ToString(), ["moduleId"] = module.Id, ["workflowId"] = workflow.Id },
-        });
 }
-
-/// <summary>The only message exchanged by step executors: which step runs next.</summary>
-public sealed record StepMessage(string NextStepId);
 
 /// <summary>Output yielded by terminal steps.</summary>
 public sealed record RunOutcome(string StepId, WorkflowOutcome Outcome, string? Message, JsonNode? Output);

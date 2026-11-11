@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
-using Flowgent.Definitions.Model;
 using Flowgent.Fixtures.Module;
 using Flowgent.Module.Sdk;
 using Flowgent.Testing;
@@ -19,15 +18,18 @@ public sealed class FixtureModuleTests : IAsyncLifetime
     public async ValueTask DisposeAsync() => await _platform.DisposeAsync();
 
     [Fact]
-    public void Definition_IsValidAndCoversEveryStepKind()
+    public void Definition_IsValidAndCoversEveryActionKind()
     {
         var module = ModuleDefinitionAssert.IsValid(IntegrationPlatform.FixtureDefinitionFolder);
 
         Assert.Empty(module.Warnings);
-        // The declarative workflow document is carried as raw YAML; assert step-kind coverage over the text.
+        // The workflows are MAF declarative YAML, carried as raw text. Assert coverage over the declarative action kinds
+        // (the old "kind: http/llm/map/rule/tool/human-input/terminal" strings no longer exist): InvokeAzureAgent (llm),
+        // InvokeMcpTool (tool, incl. the fixture.echo bridge that replaced the http step), ConditionGroup (rule branch),
+        // SetVariable (map), Question (human-input) and SendActivity (terminal).
         var yaml = string.Concat(module.Workflows.Select(w => w.Yaml));
         Assert.All(
-            new[] { StepKinds.Http, StepKinds.HumanInput, StepKinds.Llm, StepKinds.Map, StepKinds.Rule, StepKinds.Terminal, StepKinds.Tool },
+            new[] { "InvokeAzureAgent", "InvokeMcpTool", "ConditionGroup", "SetVariable", "Question", "SendActivity" },
             kind => Assert.Contains($"kind: {kind}", yaml));
         // Both terminal outcomes are declared in the manifest (projected onto the graph nodes).
         Assert.Equal(
@@ -110,7 +112,11 @@ public sealed class FixtureModuleTests : IAsyncLifetime
         var run = await _platform.WaitForTerminalAsync(await _platform.SubmitFixtureAsync(FixtureHost.RulesWorkflowId, new { text = "alpha and beta" }));
 
         Assert.Equal(RunStatus.Failed, run.Status);
-        Assert.Equal("classify", run.CurrentStepId);
+        // Observability-contract change (same Gap-3 class as support's RoutingFailures; see
+        // FEAT-004-observability-gap-analysis.md Gap 3): under MAF an ambiguous rule match is a GotoAction to an
+        // explicit failure terminal, so CurrentStepId is that terminal ("ambiguous"), not the rule step ("classify").
+        // The business outcome is preserved: Failed with the verbatim declared message.
+        Assert.Equal("ambiguous", run.CurrentStepId);
         Assert.Equal("Ambiguous: 'alpha and beta' matches several groups.", run.Detail);
     }
 }

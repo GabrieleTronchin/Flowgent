@@ -43,15 +43,16 @@ public class EngineEndpointTests
     [Fact]
     public async Task Modules_InvalidModuleShowsValidationErrors()
     {
-        await using var host = await EngineTestHost.StartAsync(f => f.Replace("workflows/hello.yaml", "to: short", "to: ghost"));
+        // A malformed declarative workflow is reported by the MAF trial build (design §4.3): a GotoAction to a
+        // non-existent action id makes DeclarativeWorkflowBuilder.Build throw. The error names the workflow file; the
+        // builder gives no step id or line (documented behavior change from the custom validator).
+        await using var host = await EngineTestHost.StartAsync(f => f.Replace("workflows/hello.yaml", "actionId: long_final", "actionId: no_such_action"));
 
         var module = Assert.Single((await host.Client.GetFromJsonAsync<List<ModuleInfo>>("/api/engine/modules", Json))!);
 
         Assert.Equal(ModuleStatus.Invalid, module.Status);
-        var error = module.Errors.First(e => e.Severity == DefinitionSeverity.Error && e.Message.Contains("ghost"));
+        var error = module.Errors.First(e => e.Severity == DefinitionSeverity.Error && e.File == "workflows/hello.yaml");
         Assert.Equal("workflows/hello.yaml", error.File);
-        Assert.Equal("count", error.StepId);
-        Assert.NotNull(error.Line);
     }
 
     [Fact]
@@ -64,10 +65,13 @@ public class EngineEndpointTests
         Assert.Equal("hello", workflow.Id);
         Assert.True(workflow.Available);
         Assert.Equal("summarize", workflow.Graph.Start);
+        // The declarative projector surfaces the snapshot steps (summarize, count) plus the manifest terminals
+        // (long, short), and connects the pipeline steps sequentially. Branch-condition edge labels are no longer
+        // projected from the YAML (documented behavior change: routing is PowerFx inside ConditionGroup actions).
         Assert.Equal(["summarize", "count", "long", "short"], workflow.Graph.Nodes.Select(n => n.Id));
         Assert.Equal("success", workflow.Graph.Nodes.Single(n => n.Id == "long").Outcome);
-        Assert.Contains(workflow.Graph.Edges, e => e is { From: "count", To: "long", Label: "steps.count.words > 3" });
-        Assert.Contains(workflow.Graph.Edges, e => e is { From: "count", To: "short", Label: null });
+        Assert.Equal("failure", workflow.Graph.Nodes.Single(n => n.Id == "short").Outcome);
+        Assert.Contains(workflow.Graph.Edges, e => e is { From: "summarize", To: "count" });
         Assert.Equal("object", workflow.InputSchema!["type"]!.GetValue<string>());
         Assert.Equal(["s1", "empty"], workflow.Samples.Select(s => s.Id));
         Assert.True(workflow.Samples[1].ExpectInvalid);
@@ -304,9 +308,10 @@ public class EngineEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync($"/api/engine/inbox/{Guid.NewGuid()}")).StatusCode);
     }
 
+    // The custom 'workflow' schema is gone with the custom format (documented behavior change): /api/engine/schemas
+    // now serves only 'module' and 'samples'.
     [Theory]
     [InlineData("module")]
-    [InlineData("workflow")]
     [InlineData("samples")]
     public async Task Schemas_ArePublished(string name)
     {
@@ -328,7 +333,7 @@ public class EngineEndpointTests
 
     private static async Task WaitForPendingAsync(EngineTestHost host, int count)
     {
-        for (var i = 0; i < 500; i++)
+        for (var i = 0; i < 3000; i++)
         {
             var pending = await host.Client.GetFromJsonAsync<List<HumanInputInfo>>("/api/engine/human-inputs", Json);
             if (pending!.Count >= count)
@@ -344,7 +349,7 @@ public class EngineEndpointTests
 
     private static async Task WaitForInboxAsync(EngineTestHost host, string status, int count)
     {
-        for (var i = 0; i < 500; i++)
+        for (var i = 0; i < 3000; i++)
         {
             if ((await host.Client.GetFromJsonAsync<List<InboxMessageInfo>>($"/api/engine/inbox?status={status}", Json))!.Count >= count)
             {

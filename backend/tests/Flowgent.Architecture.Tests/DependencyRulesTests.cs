@@ -121,6 +121,33 @@ public class DependencyRulesTests
         Assert.DoesNotContain(assembly.GetReferencedAssemblies(), r => r.Name!.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Definitions_DoesNotReferenceTheDeclarativePackage()
+    {
+        var assembly = Assembly.Load("Flowgent.Definitions");
+
+        var result = Types.InAssembly(assembly).ShouldNot().HaveDependencyOn("Microsoft.Agents.AI.Workflows.Declarative").GetResult();
+
+        Assert.True(result.IsSuccessful, $"Definitions types depending on the declarative package: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        Assert.DoesNotContain(assembly.GetReferencedAssemblies(), r => r.Name!.StartsWith("Microsoft.Agents.AI.Workflows.Declarative", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OnlyTheMafSeam_ReferencesTheDeclarativePackage()
+    {
+        var assembly = Assembly.Load("Flowgent.Runtime");
+
+        // Only types in Flowgent.Runtime.Maf may depend on Microsoft.Agents.AI.Workflows.Declarative; every other
+        // namespace exchanges plain .NET types with the seam (AC-4, design §13).
+        var result = Types.InAssembly(assembly)
+            .That().ResideInNamespace("Flowgent.Runtime")
+            .And().DoNotResideInNamespace("Flowgent.Runtime.Maf")
+            .ShouldNot().HaveDependencyOn("Microsoft.Agents.AI.Workflows.Declarative")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, $"Types outside Flowgent.Runtime.Maf depending on the declarative package: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
     // ── Source files ───────────────────────────────────────────────────
 
     [Fact]

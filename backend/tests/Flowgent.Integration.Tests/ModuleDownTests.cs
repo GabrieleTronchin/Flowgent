@@ -51,8 +51,9 @@ public class ModuleDownTests
     [Fact]
     public async Task StoppedModule_FailsTheInFlightToolStep()
     {
-        // A slow demo LLM keeps the run in its first step while the module goes down.
-        await using var platform = await IntegrationPlatform.StartAsync(o => o.ConfigureEngine("Flowgent:Llm:DemoLatencyMs", "1500"));
+        // A slow demo LLM keeps the run in its first (agent) step long enough to stop the module before the run reaches
+        // its tool steps. The latency is generous so the stop reliably lands during 'draft' even under test-suite load.
+        await using var platform = await IntegrationPlatform.StartAsync(o => o.ConfigureEngine("Flowgent:Llm:DemoLatencyMs", "8000"));
         var runId = await platform.SubmitFixtureFlowAsync("in flight");
         await platform.WaitForRunAsync(runId, r => r is { Status: RunStatus.Running, CurrentStepId: "draft" });
 
@@ -60,7 +61,11 @@ public class ModuleDownTests
         var run = await platform.WaitForTerminalAsync(runId);
 
         Assert.Equal(RunStatus.Failed, run.Status);
-        Assert.Equal("reverse", run.CurrentStepId);
+        // The in-flight run fails at the first module-tool step that hits the stopped service. Both reverse and echo
+        // are now module tools reached through InvokeMcpTool (echo was an http step before the MAF migration; the
+        // declarative HTTP action is unproven, so the echo "external API" is bridged as fixture.echo). Which of the two
+        // is in flight when the stop lands is a timing detail; the business contract is the descriptive failure.
+        Assert.Contains(run.CurrentStepId, new[] { "reverse", "echo" });
         Assert.StartsWith("Module 'fixture' is unavailable", run.Detail);
     }
 

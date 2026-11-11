@@ -223,7 +223,9 @@ public sealed class PlatformHarness : IAsyncDisposable
     public async Task<RunDetail> GetRunAsync(Guid runId) =>
         (await EngineClient.GetFromJsonAsync<RunDetail>(EngineRoutes.Run(runId), Json))!;
 
-    public async Task<RunDetail> WaitForRunAsync(Guid runId, Func<RunDetail, bool> condition, int timeoutMs = 15_000)
+    // Waits are generous: a MAF declarative run carries per-run JSON checkpoint I/O, so under the load of the whole
+    // test solution running in parallel a run can take noticeably longer than on a quiet machine to reach HITL/terminal.
+    public async Task<RunDetail> WaitForRunAsync(Guid runId, Func<RunDetail, bool> condition, int timeoutMs = 60_000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)
@@ -246,7 +248,7 @@ public sealed class PlatformHarness : IAsyncDisposable
     public Task<RunDetail> WaitForTerminalAsync(Guid runId) => WaitForRunAsync(runId, r => r.Status.IsTerminal());
 
     /// <summary>Waits until the run's human input can be approved or rejected.</summary>
-    public async Task<HumanInputInfo> WaitForHumanInputAsync(Guid runId, int timeoutMs = 15_000)
+    public async Task<HumanInputInfo> WaitForHumanInputAsync(Guid runId, int timeoutMs = 60_000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)

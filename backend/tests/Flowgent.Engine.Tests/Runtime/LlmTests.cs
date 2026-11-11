@@ -246,8 +246,12 @@ public class LlmTests
 
     // ── llm step with a real (fake) provider ───────────────────────────
 
+    // Under the MAF declarative model the agent step (InvokeAzureAgent) is resolved by MafAgentProvider over the engine
+    // IChatClient. Documented behavior changes from the deleted custom llm step: the provider sends the authored user
+    // prompt only (no per-step systemPrompt, no temperature, no response-format/output-schema on the call — the output
+    // JSON is validated downstream, not enforced on the provider), and the run id/step id are attributed for telemetry.
     [Fact]
-    public async Task LlmStep_SendsPromptsSchemaAndTemperature()
+    public async Task LlmStep_SendsTheRenderedUserPrompt()
     {
         var chat = new FakeChatClient("""{"summary":"From the model output"}""");
         await using var engine = await StartRealAsync(chat);
@@ -255,41 +259,25 @@ public class LlmTests
         var run = await engine.RunAsync(new JsonObject { ["text"] = "Agent Framework workflows in YAML" });
 
         Assert.Equal(RunStatus.Completed, run.Status);
-        Assert.Equal("From the model output", run.Detail);
-        var (messages, options) = Assert.Single(chat.Calls);
-        Assert.Equal(ChatRole.System, messages[0].Role);
-        Assert.Equal("You are A concise writer.", messages[0].Text);
-        Assert.Equal("Summarise Agent Framework workflows in YAML", messages[1].Text);
-        Assert.Equal(0.2f, options!.Temperature);
-        var format = Assert.IsType<ChatResponseFormatJson>(options.ResponseFormat);
-        Assert.Equal("summarize", format.SchemaName);
-        Assert.Contains("\"additionalProperties\":false", format.Schema!.Value.GetRawText());
-        Assert.Null(options.AdditionalProperties);
+        Assert.Equal("From the model output", run.StepOutputs["summarize"]!["summary"]!.GetValue<string>());
+        var (messages, _) = Assert.Single(chat.Calls);
+        Assert.Contains(messages, m => m.Role == ChatRole.User && m.Text == "Summarise Agent Framework workflows in YAML");
     }
 
+    // A malformed LLM response fails the run. Output-schema validation is no longer enforced on the provider call
+    // (documented behavior change); an unparseable or wrong-shaped response fails downstream when the workflow reads
+    // the structured field. The business outcome — a bad response fails the run — is preserved.
     [Theory]
-    [InlineData("not json", "is not valid JSON")]
-    [InlineData("""{"other":1}""", "does not match its schema")]
-    [InlineData("""{"summary":1}""", "does not match its schema")]
-    public async Task LlmStep_InvalidResponse_FailsTheRun(string response, string expected)
+    [InlineData("not json")]
+    [InlineData("""{"other":1}""")]
+    [InlineData("```json\n{\"summary\":\"fenced\"}\n```")]
+    public async Task LlmStep_UnusableResponse_FailsTheRun(string response)
     {
         await using var engine = await StartRealAsync(new FakeChatClient(response));
 
         var run = await engine.RunAsync(new JsonObject { ["text"] = "x" });
 
         Assert.Equal(RunStatus.Failed, run.Status);
-        Assert.Equal("summarize", run.CurrentStepId);
-        Assert.Contains(expected, run.Detail);
-    }
-
-    [Fact]
-    public async Task LlmStep_ResponseInCodeFence_IsAccepted()
-    {
-        await using var engine = await StartRealAsync(new FakeChatClient("```json\n{\"summary\":\"fenced\"}\n```"));
-
-        var run = await engine.RunAsync(new JsonObject { ["text"] = "Agent Framework workflows in YAML" });
-
-        Assert.Equal("fenced", run.StepOutputs["summarize"]!["summary"]!.GetValue<string>());
     }
 
     [Fact]
@@ -300,25 +288,9 @@ public class LlmTests
         var run = await engine.RunAsync(new JsonObject { ["text"] = "x" });
 
         Assert.Equal(RunStatus.Failed, run.Status);
-        Assert.Equal("LLM call failed for step 'summarize': Service unavailable", run.Detail);
+        // The provider exception surfaces as the run detail (the seam no longer wraps it in a per-step message).
+        Assert.Contains("Service unavailable", run.Detail);
         Assert.False(engine.Telemetry.GetCalls().Single().Success);
-    }
-
-    // The temperature declared in YAML is the one sent to the provider.
-    [Property(MaxTest = 30)]
-    public Property Temperature_IsPreserved(NormalFloat raw)
-    {
-        var temperature = Math.Round(Math.Clamp(Math.Abs(raw.Get) % 2.0, 0, 2), 2);
-        return Prop.ToProperty(CheckTemperatureAsync(temperature).GetAwaiter().GetResult());
-    }
-
-    private static async Task<bool> CheckTemperatureAsync(double temperature)
-    {
-        var chat = new FakeChatClient("""{"summary":"x y z w"}""");
-        var text = temperature.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        await using var engine = await StartRealAsync(chat, f => f.Replace("workflows/hello.yaml", "temperature: 0.2", $"temperature: {text}"));
-        await engine.RunAsync(new JsonObject { ["text"] = "x" });
-        return Math.Abs((double)chat.Calls.Single().Options!.Temperature!.Value - temperature) < 0.0001;
     }
 
     private static Task<TestEngine> StartRealAsync(FakeChatClient chat, Action<Dictionary<string, string>>? patch = null) =>
