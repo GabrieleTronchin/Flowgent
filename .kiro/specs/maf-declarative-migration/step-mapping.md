@@ -39,6 +39,19 @@ Gate for D3: confirm every step of `support` and `jokes` maps to MAF (declarativ
 - **F5 — human review shape.** Our rich review payload (title + labeled fields) must map onto MAF's question/approval mechanism while keeping the dashboard Approvals UX. Likely the biggest adapter piece besides the conversation-store provider (D4).
 
 ## Verdict
-**Every step maps.** No blocker found. Five frictions (F1–F5), all expressible; F4/F5 are the ones that need hands-on validation (Phase 0 mini-spikes for McpToolHandler and the question/HITL shape). The custom `rule`/`map`/Scriban can be retired; their behavior re-expressed in PowerFx + MCP + our Demo provider.
+**Every step maps.** No blocker found. Five frictions (F1–F5), all expressible. F4 and F5 are now **VALIDATED by the Phase 0 mini-spikes** (see below). The custom `rule`/`map`/Scriban can be retired; their behavior re-expressed in PowerFx + MCP + our Demo provider.
 
-**Gate status: PASSED — safe to proceed, provided F4 (McpToolHandler) and F5 (HITL shape) are validated by mini-spikes before deleting engine code.**
+**Gate status: FULLY PASSED ✅ — F4 and F5 validated end-to-end. Safe to proceed to engine migration (Phase 2).**
+
+## F4 / F5 validation results (Phase 0 mini-spikes, run green)
+
+### F4 — deterministic MCP via declarative `McpToolHandler` — PASS
+- Declarative action **`InvokeMcpTool`** (`Microsoft.Agents.ObjectModel.InvokeMcpTool`): explicit, **no agent/LLM**. Carries `serverUrl`, `serverLabel`, `toolName`, `arguments`, `output.result`.
+- Routed through a **custom `IMcpToolHandler`** on `DeclarativeWorkflowOptions.McpToolHandler`. Built-in `DefaultMcpToolHandler` needs a real HTTP(S) MCP endpoint → for our module-as-MCP-server model over HTTP that is actually fine; for in-process we implement the interface. **Implication for migration: the engine sets a `McpToolHandler` that reaches module MCP servers.**
+- **GOTCHA (carry into Phase 2):** `InvokeMcpTool` binds the result through PowerFx; a bare numeric JSON result becomes a `Double` and throws `Unsupported element type: Double`. Return non-numeric strings from MCP tools, or wrap results in an object. `SendActivity` text needs `{expr}` interpolation, not bare `=expr`.
+
+### F5 — human-in-the-loop via declarative action — PASS (two required substitutions)
+- Use **`Question`** (NOT `RequestExternalInput`) for the gate: `RequestExternalInput` stalls after the gate (never calls `SendResultMessageAsync`) and surfaces no prompt. `Question` advances and carries the prompt.
+- Use **`ConditionGroup`** (NOT `If`) for the post-resume branch: a plain `If` is not scheduled after a HITL resume (run stalls Idle); `ConditionGroup` works.
+- Host drives it: `InProcessExecution.RunStreamingAsync` + `WatchStreamAsync`; on `RequestInfoEvent`, resume with `run.SendResponseAsync(request.CreateResponse(new ExternalInputResponse(new ChatMessage(User, answer))))`. Both approved and rejected branches verified.
+- **Implication for migration (F5 / our `human-input`):** our rich review payload maps to a `Question` prompt; the dashboard Approvals UX drives resume via `SendResponseAsync`. The run must be resumable (checkpoint) across the gate — ties into D4 (conversation/run store provider).

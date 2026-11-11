@@ -27,9 +27,17 @@ A reusable, open-source **engine as a product**: pull the engine/dashboard image
 - D6 MAF version: pin + thin adapter seam (lean; confirm in Phase 2).
 - D7 NuGet hygiene: DONE — repo-root `nuget.config`.
 
-## What is NOT done
-- Nothing migrated in the real engine yet — the spike is throwaway, isolated.
-- Next: execute `tasks.md` from Phase 0 (0.1 is now done via the decisions above; D7/0.4 done).
+## Analysis phase COMPLETE ✅
+- All decisions D1–D7 resolved.
+- Phase 1 step-mapping done: every `support`/`jokes` step maps to MAF (`step-mapping.md`). Gate D3 passed.
+- Phase 0 mini-spikes done & GREEN: **F4** deterministic MCP via declarative `InvokeMcpTool` + custom `IMcpToolHandler`; **F5** HITL via `Question` + `ConditionGroup` with host-driven `SendResponseAsync` resume (approved + rejected branches). Spike `dotnet run` ends `A=True F4=True F5=True`.
+- All 5 frictions F1–F5 now validated. **No blockers remain to start the real migration.**
+
+## What is NOT done — next up is Phase 2 (real engine migration)
+- Nothing migrated in the real engine yet — spike is throwaway/isolated.
+- Remaining before coding: 0.3 (MCP-over-HTTP mini-spike, low-risk, can pair with Phase 3).
+- Then Phase 2: add MAF declarative behind an adapter seam; production `ResponseAgentProvider` (+ pluggable conversation/run store, D4); re-wire `RunOrchestrator` to run MAF workflows and map events→our event-log/gRPC/HITL; load defs from mounted volume (D5); then delete the replaced `Definitions`/`WorkflowCompiler`/Scriban; port tests.
+- Carry these GOTCHAS into Phase 2: MCP tools must not return bare numbers (PowerFx `Double` crash); use `Question` not `RequestExternalInput`; use `ConditionGroup` not `If` after a HITL resume; `SendActivity` uses `{expr}` interpolation.
 
 ## Where things live
 - Spike code + findings: `spike/` (branch `spike/maf-declarative-mcp`, uncommitted).

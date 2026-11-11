@@ -5,8 +5,9 @@ Execute in order. Each phase ends with a green build + relevant tests. Do NOT de
 ## Phase 0 — Preliminary (close spike gaps + decisions)
 These are the spike follow-ups and must-answer items before real migration.
 - [x] 0.1 Resolve open decisions D1–D7 in `design.md` — DONE. All resolved: D1 both/`McpToolHandler` primary, D2 deprecate SDK, D3 PowerFx+MCP with mapping gate, D4 pluggable provider, D5 mounted volume primary, D6 pin+adapter (confirm Phase 2), D7 done.
-- [ ] 0.2 **Mini-spike: declarative `McpToolHandler`** (D1b). Prove an explicit MCP tool *action* in YAML (deterministic, not LLM-mediated), not just agent-level tools. Extend `spike/` or a sibling. Record result in `spike/README.md`.
-- [ ] 0.3 **Mini-spike: MCP over HTTP** (not in-memory pipes). Prove `McpClient` against a real Streamable-HTTP MCP server in its own container/process — this is the production transport for Via 2. Record result.
+- [x] 0.2 **Mini-spike: declarative `McpToolHandler`** (D1b) — DONE, PASS. `InvokeMcpTool` action → custom `IMcpToolHandler` → tool runs with no LLM. Gotchas recorded (numeric-result crash; `{expr}` interpolation). See `step-mapping.md` + `spike/README.md`.
+- [x] 0.2b **Mini-spike: HITL** (F5) — DONE, PASS. `Question` + `ConditionGroup` gate with scripted resume via `SendResponseAsync`; approved + rejected branches verified. Substitutions required: `Question` not `RequestExternalInput`, `ConditionGroup` not `If`.
+- [ ] 0.3 **Mini-spike: MCP over HTTP** (not in-memory pipes). Prove `McpClient` against a real Streamable-HTTP MCP server in its own process/container — the production transport for Via 2. (Not yet done; lower risk since `DefaultMcpToolHandler` targets HTTP natively. Do alongside Phase 3.)
 - [x] 0.4 **NuGet hygiene** (D7): DONE — added repo-root `nuget.config` (nuget.org only) covering the whole repo and any future top-level folders. Verified restore no longer hangs on the private feed.
 - [ ] 0.5 Decide definition-distribution mechanism (D5) for the stock engine image.
 

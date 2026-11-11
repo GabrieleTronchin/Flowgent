@@ -1,0 +1,51 @@
+# GOAL F5: human-in-the-loop via the declarative Question action + ConditionGroup branch.
+#
+# Mirrors the support "human-input" approval gate. Two deliberate choices (both forced
+# by MAF 1.27.0 behaviour, see README finding F5):
+#   - Question (NOT RequestExternalInput): Question's executor calls SendResultMessageAsync
+#     after capturing the response, so the workflow advances to the next action.
+#     RequestExternalInput only raises a completion event and the run stalls after the gate.
+#   - ConditionGroup (NOT `If`): after a HITL resume the declarative `If` action is not
+#     scheduled (run stalls Idle); ConditionGroup is scheduled and branches correctly.
+#
+# The host answers the surfaced ExternalInputRequest with a scripted ExternalInputResponse
+# (StreamingRun.SendResponseAsync). The answer is stored in Local.approval and the branch
+# chooses the approved vs rejected activity.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: spike_f5_hitl_question
+  actions:
+
+    - kind: Question
+      id: ask_approval
+      displayName: Approval gate (Question)
+      property: Local.approval
+      prompt:
+        kind: Message
+        text:
+          - "Approve this request? Reply 'approved' or 'rejected'."
+      entity:
+        kind: StringPrebuiltEntity
+
+    # Branch on the human's answer, mirroring the support approval gate.
+    # NOTE: ConditionGroup is used here, NOT `If`. After a HITL (Question) resume the
+    # declarative `If` action is not scheduled (the run stalls Idle); ConditionGroup is.
+    # See README finding F5.
+    - kind: ConditionGroup
+      id: branch_on_approval
+      conditions:
+        - condition: =Local.approval = "approved"
+          id: approved_branch
+          actions:
+            - kind: SendActivity
+              id: on_approved
+              activity:
+                text:
+                  - "APPROVED branch taken. Decision = {Local.approval}. Proceeding with the request."
+      elseActions:
+        - kind: SendActivity
+          id: on_rejected
+          activity:
+            text:
+              - "REJECTED branch taken. Decision = {Local.approval}. Request will not proceed."

@@ -1,0 +1,49 @@
+# GOAL F4: deterministic MCP tool via the DECLARATIVE InvokeMcpTool action.
+#
+# There is NO agent and NO LLM anywhere in this workflow. The InvokeMcpTool action
+# (BotElementKind.InvokeMcpTool) is an explicit, deterministic step: at runtime the
+# declarative engine calls DeclarativeWorkflowOptions.McpToolHandler.InvokeToolAsync(...)
+# with the serverUrl / serverLabel / toolName / arguments taken straight from this YAML,
+# and binds the returned McpServerToolResultContent into the output.result variable.
+#
+# Our SpikeMcpToolHandler routes that call to the in-process MCP wordCount server
+# (in-memory pipe transport). The serverUrl below is a label only -- no HTTP is made.
+#
+# Flow:
+#   1. SetVariable: fix a deterministic input text (no agent decides it).
+#   2. InvokeMcpTool: call wordCount(text=Local.textToCount) -> Local.mcpResult.
+#   3. SendActivity: emit the deterministic tool result as the final activity.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: spike_f4_declarative_mcp
+  actions:
+
+    # 1. Deterministic, fixed input. No LLM chooses this.
+    - kind: SetVariable
+      id: set_input
+      variable: Local.textToCount
+      value: one two three four five
+
+    # 2. Call the MCP wordCount tool as an EXPLICIT declarative action.
+    #    This routes to IMcpToolHandler.InvokeToolAsync in SpikeMcpToolHandler.
+    - kind: InvokeMcpTool
+      id: invoke_word_count
+      displayName: Count words via MCP (deterministic, no LLM)
+      serverUrl: inproc://spike-wordcount
+      serverLabel: spike_wordcount
+      toolName: wordCount
+      requireApproval: false
+      arguments:
+        text: =Local.textToCount
+      output:
+        result: Local.mcpResult
+
+    # 3. Emit the deterministic result.
+    #    The InvokeMcpTool executor stores the tool's text outputs as a single-column
+    #    PowerFx table (column "Value"), so we pull the one cell with First(...).Value.
+    - kind: SendActivity
+      id: send_mcp_result
+      activity:
+        text:
+          - "MCP wordCount({Local.textToCount}) = {First(Local.mcpResult).Value}"
