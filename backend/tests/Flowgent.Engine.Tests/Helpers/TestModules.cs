@@ -25,7 +25,20 @@ public static class TestModules
             output:
               schema: { type: object, required: [words], properties: { words: { type: integer } } }
         workflows:
-          - workflows/hello.yaml
+          - id: hello
+            file: workflows/hello.yaml
+            version: 1
+            name: Hello
+            title: "{{ input.text }}"
+            input:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string, minLength: 1 }
+            terminals:
+              - { id: long, outcome: success }
+              - { id: short, outcome: failure }
         samples:
           - samples/hello.yaml
         """;
@@ -180,11 +193,33 @@ public static class TestModules
             message: "{{ steps.approval.reason | object.default 'Rejected' }}"
         """;
 
+    /// <summary>Manifest descriptor entry for <see cref="ReviewWorkflow"/> (a <c>workflows[]</c> list item).</summary>
+    public const string ReviewWorkflowRef = """
+          - id: review
+            file: workflows/review.yaml
+            version: 1
+            name: Review
+            title: "{{ input.subject }}"
+            input:
+              schema:
+                type: object
+                required: [subject]
+                properties:
+                  subject: { type: string, minLength: 1 }
+            terminals:
+              - { id: done, outcome: success }
+              - { id: declined, outcome: failure }
+        """;
+
     /// <summary>Adds <see cref="ReviewWorkflow"/> to the module.</summary>
     public static void AddReviewWorkflow(Dictionary<string, string> files)
     {
         files["workflows/review.yaml"] = ReviewWorkflow;
-        files.Replace("module.yaml", "  - workflows/hello.yaml", "  - workflows/hello.yaml\n  - workflows/review.yaml");
+        // Insert the review descriptor as the last workflows[] item, just before the samples: key.
+        // Newline-agnostic: the fixture source may be stored with CRLF.
+        var manifest = files["module.yaml"].Replace("\r\n", "\n");
+        var reviewRef = ReviewWorkflowRef.Replace("\r\n", "\n");
+        files["module.yaml"] = manifest.Replace("samples:\n  - samples/hello.yaml", reviewRef + "\nsamples:\n  - samples/hello.yaml");
     }
 
     public static Dictionary<string, string> Files() => new()

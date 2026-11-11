@@ -32,8 +32,8 @@ public sealed record ModuleState(
         LastError);
 }
 
-/// <summary>A workflow and the module definition (version) it belongs to.</summary>
-public sealed record WorkflowHandle(ModuleState Module, ModuleDefinition Definition, WorkflowDefinition Workflow)
+/// <summary>A workflow descriptor and the module definition (version) it belongs to.</summary>
+public sealed record MafWorkflowHandle(ModuleState Module, ModuleDefinition Definition, WorkflowDescriptor Workflow)
 {
     public bool IsAvailable => Module.IsAvailable;
 }
@@ -45,7 +45,7 @@ public interface IModuleCatalog
 
     ModuleState? FindModule(string moduleId);
 
-    WorkflowHandle? FindWorkflow(string workflowId);
+    MafWorkflowHandle? FindWorkflow(string workflowId);
 }
 
 /// <summary>
@@ -86,13 +86,13 @@ public sealed class ModuleCatalog : IModuleCatalog
 
     public ModuleState? FindModule(string moduleId) => _states.GetValueOrDefault(moduleId);
 
-    public WorkflowHandle? FindWorkflow(string workflowId)
+    public MafWorkflowHandle? FindWorkflow(string workflowId)
     {
         foreach (var state in Modules)
         {
             if (state.Definition?.FindWorkflow(workflowId) is { } workflow && state.Status is ModuleStatus.Available or ModuleStatus.Unavailable)
             {
-                return new WorkflowHandle(state, state.Definition, workflow);
+                return new MafWorkflowHandle(state, state.Definition, workflow);
             }
         }
 

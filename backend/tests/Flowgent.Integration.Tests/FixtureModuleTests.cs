@@ -24,12 +24,18 @@ public sealed class FixtureModuleTests : IAsyncLifetime
         var module = ModuleDefinitionAssert.IsValid(IntegrationPlatform.FixtureDefinitionFolder);
 
         Assert.Empty(module.Warnings);
+        // The declarative workflow document is carried as raw YAML; assert step-kind coverage over the text.
+        var yaml = string.Concat(module.Workflows.Select(w => w.Yaml));
+        Assert.All(
+            new[] { StepKinds.Http, StepKinds.HumanInput, StepKinds.Llm, StepKinds.Map, StepKinds.Rule, StepKinds.Terminal, StepKinds.Tool },
+            kind => Assert.Contains($"kind: {kind}", yaml));
+        // Both terminal outcomes are declared in the manifest (projected onto the graph nodes).
         Assert.Equal(
-            [StepKinds.Http, StepKinds.HumanInput, StepKinds.Llm, StepKinds.Map, StepKinds.Rule, StepKinds.Terminal, StepKinds.Tool],
-            module.Workflows.SelectMany(w => w.Steps).Select(s => s.Kind).Distinct().Order(StringComparer.Ordinal));
-        Assert.Equal(
-            [TerminalOutcome.Success, TerminalOutcome.Failure],
-            module.FindWorkflow(FixtureHost.FlowWorkflowId)!.Steps.OfType<TerminalStep>().Select(t => t.Outcome));
+            ["success", "failure"],
+            module.FindWorkflow(FixtureHost.FlowWorkflowId)!.Graph.Nodes
+                .Where(n => n.Outcome is not null)
+                .Select(n => n.Outcome)
+                .Distinct());
     }
 
     [Fact]

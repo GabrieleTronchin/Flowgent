@@ -40,13 +40,13 @@ public sealed class IntakeService(IModuleCatalog catalog, IRunStore store)
             return new IntakeResult.Unavailable($"Module '{handle.Module.Id}' is unavailable; workflow '{workflowId}' cannot accept new inputs.");
         }
 
-        var message = handle.Workflow.Input.ErrorMessage ?? DefaultInvalidMessage;
+        var message = DefaultInvalidMessage;
         if (input is not JsonObject inputObject)
         {
             return new IntakeResult.Invalid(message, [new SchemaError("", "The input must be a JSON object.")]);
         }
 
-        var errors = JsonSchemaValidator.Validate(handle.Definition.GetSchema(handle.Workflow.Input.Schema), inputObject);
+        var errors = JsonSchemaValidator.Validate(handle.Definition.GetSchema(handle.Workflow.InputSchema), inputObject);
         if (errors.Count > 0)
         {
             return new IntakeResult.Invalid(message, errors);
@@ -60,9 +60,9 @@ public sealed class IntakeService(IModuleCatalog catalog, IRunStore store)
         return new IntakeResult.Accepted(messageId, runId);
     }
 
-    private static string? RenderTitle(WorkflowHandle handle, JsonObject input, Guid runId)
+    private static string? RenderTitle(MafWorkflowHandle handle, JsonObject input, Guid runId)
     {
-        if (handle.Workflow.Title is null)
+        if (handle.Workflow.TitleTemplate is null)
         {
             return null;
         }
@@ -70,7 +70,7 @@ public sealed class IntakeService(IModuleCatalog catalog, IRunStore store)
         try
         {
             var scope = RunContext.CreateIntakeScope(handle.Definition, handle.Workflow, input, runId);
-            return handle.Definition.Templates.Render(handle.Workflow.Title, scope);
+            return TemplateEngine.Shared.Render(handle.Workflow.TitleTemplate, scope);
         }
         catch (ExpressionException)
         {

@@ -3,7 +3,6 @@ namespace Flowgent.Definitions;
 using System.Text.Json.Nodes;
 using Json.Schema;
 using Flowgent.Contracts.Api;
-using Flowgent.Definitions.Expressions;
 using Flowgent.Definitions.Model;
 
 /// <summary>
@@ -17,7 +16,7 @@ public sealed class ModuleDefinition
     internal ModuleDefinition(
         ModuleManifest manifest,
         string version,
-        IReadOnlyList<WorkflowDefinition> workflows,
+        IReadOnlyList<WorkflowDescriptor> workflows,
         IReadOnlyList<SampleDefinition> samples,
         IReadOnlyDictionary<string, string> files,
         IReadOnlyDictionary<string, (JsonObject Node, JsonSchema Schema)> schemas,
@@ -38,7 +37,7 @@ public sealed class ModuleDefinition
 
     public string Version { get; }
 
-    public IReadOnlyList<WorkflowDefinition> Workflows { get; }
+    public IReadOnlyList<WorkflowDescriptor> Workflows { get; }
 
     public IReadOnlyList<SampleDefinition> Samples { get; }
 
@@ -46,12 +45,10 @@ public sealed class ModuleDefinition
 
     public IReadOnlyList<DefinitionErrorInfo> Warnings { get; }
 
-    public TemplateEngine Templates => TemplateEngine.Shared;
-
-    /// <summary>Module configuration exposed to templates as <c>config.*</c>.</summary>
+    /// <summary>Module configuration exposed to the workflow as <c>config.*</c>.</summary>
     public JsonObject Config => Manifest.Config ?? [];
 
-    public WorkflowDefinition? FindWorkflow(string id) => Workflows.FirstOrDefault(w => w.Id == id);
+    public WorkflowDescriptor? FindWorkflow(string id) => Workflows.FirstOrDefault(w => w.Id == id);
 
     public AgentDefinition? FindAgent(string id) => Manifest.Agents.FirstOrDefault(a => a.Id == id);
 

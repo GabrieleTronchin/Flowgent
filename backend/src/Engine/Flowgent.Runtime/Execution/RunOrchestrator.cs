@@ -81,7 +81,7 @@ public sealed class RunOrchestrator(
     {
         // A fresh workflow per run: the framework requires exclusive ownership and executors hold run state.
         var workflow = compiler.Build(run);
-        await using var execution = await InProcessExecution.RunStreamingAsync(workflow, new StepMessage(run.Workflow.Start), $"run-{run.RunId}", runToken);
+        await using var execution = await InProcessExecution.RunStreamingAsync(workflow, new StepMessage(run.Workflow.Graph.Start), $"run-{run.RunId}", runToken);
 
         // Executors receive the framework's own token: propagate abort/shutdown to the run explicitly.
         await using var cancelRegistration = runToken.Register(() => _ = execution.CancelRunAsync());
@@ -126,7 +126,7 @@ public sealed class RunOrchestrator(
 
     private async Task<RunExecutionResult> CompleteAsync(RunContext run, RunOutcome outcome)
     {
-        var status = outcome.Outcome == TerminalOutcome.Success ? RunStatus.Completed : RunStatus.Failed;
+        var status = outcome.Outcome == WorkflowOutcome.Success ? RunStatus.Completed : RunStatus.Failed;
         await store.RecordAsync(new RunTransition(
             run.RunId,
             status == RunStatus.Completed ? RunEventKind.Completed : RunEventKind.Failed,

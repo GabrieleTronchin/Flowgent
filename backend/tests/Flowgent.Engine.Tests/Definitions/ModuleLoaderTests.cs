@@ -19,10 +19,10 @@ public class ModuleLoaderTests
         var workflow = Assert.Single(module.Workflows);
         Assert.Equal("hello", workflow.Id);
         Assert.Equal(WorkflowFile, workflow.File);
-        Assert.Equal(["summarize", "count", "long", "short"], workflow.Steps.Select(s => s.Id));
-        Assert.IsType<LlmStep>(workflow.Steps[0]);
-        Assert.IsType<ToolStep>(workflow.Steps[1]);
-        Assert.Equal(TerminalOutcome.Failure, Assert.IsType<TerminalStep>(workflow.Steps[3]).Outcome);
+        Assert.Equal(1, workflow.Version);
+        Assert.Equal("Hello", workflow.Name);
+        // The raw declarative YAML is carried verbatim; the step model is no longer parsed at load time.
+        Assert.Contains("start: summarize", workflow.Yaml);
         Assert.Equal(2, module.Samples.Count);
         Assert.Equal("Hello", module.Config["greeting"]!.GetValue<string>());
     }
@@ -31,11 +31,12 @@ public class ModuleLoaderTests
     public void ValidModule_ResolvesFilesAndSchemas()
     {
         var module = TestModules.LoadValid();
-        var llm = (LlmStep)module.Workflows[0].Steps[0];
 
-        Assert.Equal("You are {{ agent.persona }}", module.ResolveText(llm.SystemPrompt!));
-        Assert.Equal("object", module.GetSchemaNode(llm.Output.Schema)["type"]!.GetValue<string>());
-        Assert.NotNull(module.GetSchema(module.Workflows[0].Input.Schema));
+        // Prompt files are still available via ResolveText.
+        Assert.Equal("You are {{ agent.persona }}", module.ResolveText(TextSource.FromFile("prompts/summarize.md")));
+        // The workflow input schema (manifest-side) and the tool schemas are compiled and cached.
+        Assert.Equal("object", module.GetSchemaNode(module.Workflows[0].InputSchema)["type"]!.GetValue<string>());
+        Assert.NotNull(module.GetSchema(module.Workflows[0].InputSchema));
         Assert.NotNull(module.GetSchema(module.FindTool("demo.count")!.Output!.Schema));
     }
 
@@ -302,12 +303,22 @@ public class ModuleLoaderTests
     [Fact]
     public void InlineSchemas_AreSupported()
     {
-        var module = TestModules.LoadValid(f => f.Replace(WorkflowFile, "schema: { file: schemas/summary.schema.json }",
-            "schema: { type: object, additionalProperties: false, required: [summary], properties: { summary: { type: string } } }"));
+        // An inline workflow input schema (in the manifest) is compiled and cached like a file reference.
+        // Newline-agnostic (the fixture source may be stored with CRLF): normalise, then collapse the workflow
+        // input `schema:` multi-line block onto a single inline line.
+        const string block =
+            "      schema:\n" +
+            "        type: object\n" +
+            "        required: [text]\n" +
+            "        properties:\n" +
+            "          text: { type: string, minLength: 1 }";
+        const string inline =
+            "      schema: { type: object, additionalProperties: false, required: [text], properties: { text: { type: string } } }";
+        var module = TestModules.LoadValid(f => f["module.yaml"] = f["module.yaml"].Replace("\r\n", "\n").Replace(block, inline));
 
-        var llm = (LlmStep)module.Workflows[0].Steps[0];
-        Assert.Null(llm.Output.Schema.File);
-        Assert.Equal(JsonValue.Create(false)!.ToJsonString(), module.GetSchemaNode(llm.Output.Schema)["additionalProperties"]!.ToJsonString());
+        var input = module.Workflows[0].InputSchema;
+        Assert.Null(input.File);
+        Assert.Equal(JsonValue.Create(false)!.ToJsonString(), module.GetSchemaNode(input)["additionalProperties"]!.ToJsonString());
     }
 
     private static DefinitionErrorInfo AssertError(LoadResult result, string file, string? stepId, string messagePart)
