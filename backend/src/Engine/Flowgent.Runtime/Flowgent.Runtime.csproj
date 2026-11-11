@@ -4,9 +4,19 @@
     <Description>Flowgent engine runtime: workflow compilation and execution, step kinds, LLM access, module catalog, inbox.</Description>
   </PropertyGroup>
 
+  <!-- MAF declarative APIs are marked "evaluation only" and emit experimental diagnostics.
+       Suppressed here (scoped to THIS project only, never global): MEAI001 (Microsoft.Extensions.AI),
+       MAAI001 (Microsoft.Agents.AI), OPENAI001 (OpenAI, via Microsoft.Agents.AI.OpenAI).
+       IDs confirmed by FEAT-001 setup gate (restore+build) and the spike reflection probe. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);MEAI001;MAAI001;OPENAI001</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
     <PackageReference Include="Microsoft.Agents.AI.Workflows" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows.Declarative" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />

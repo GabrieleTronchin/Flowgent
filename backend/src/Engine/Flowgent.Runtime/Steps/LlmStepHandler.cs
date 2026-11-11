@@ -2,7 +2,6 @@ namespace Flowgent.Runtime.Steps;
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Flowgent.Contracts.Modules;
 using Flowgent.Definitions.Model;
 using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.Llm;
@@ -88,7 +87,7 @@ internal sealed class LlmStepHandler(IChatClient chatClient, IOptions<LlmOptions
             throw new StepFailedException(step.Id, $"LLM response for step '{step.Id}' is not valid JSON.");
         }
 
-        StepSchemas.Validate(run, llm.Output.Schema, output, step.Id, $"LLM response for step '{step.Id}'");
+        StepSchemas.Validate(run.Module, llm.Output.Schema, output, step.Id, $"LLM response for step '{step.Id}'");
         return output;
     }
 
@@ -142,8 +141,12 @@ internal sealed class LlmStepHandler(IChatClient chatClient, IOptions<LlmOptions
     }
 }
 
-/// <summary><c>tool</c> steps: call a Tool of the owning module service and validate its output.</summary>
-internal sealed class ToolStepHandler(IModuleClient moduleClient, IOptions<Configuration.EngineOptions> engineOptions) : IStepHandler
+/// <summary>
+/// <c>tool</c> steps: call a Tool of the owning module service and validate its output.
+/// The invocation logic lives in the retained <see cref="ModuleToolInvoker"/>; this handler only
+/// shapes the step input and forwards to it, so deleting <c>Steps/*</c> later keeps tool parity.
+/// </summary>
+internal sealed class ToolStepHandler(ModuleToolInvoker invoker) : IStepHandler
 {
     public string Kind => StepKinds.Tool;
 
@@ -156,38 +159,6 @@ internal sealed class ToolStepHandler(IModuleClient moduleClient, IOptions<Confi
         return InvokeAsync(run, step.Id, tool.Tool, input, tool.TimeoutSeconds, ct);
     }
 
-    public async Task<JsonNode?> InvokeAsync(RunContext run, string stepId, string toolName, JsonNode? input, int? stepTimeoutSeconds, CancellationToken ct)
-    {
-        var tool = run.Module.FindTool(toolName) ?? throw new StepFailedException(stepId, $"Tool '{toolName}' is not declared.");
-        if (tool.Input is not null)
-        {
-            StepSchemas.Validate(run, tool.Input.Schema, input, stepId, $"Input of tool '{toolName}'");
-        }
-
-        var timeoutSeconds = tool.TimeoutSeconds ?? stepTimeoutSeconds
-            ?? engineOptions.Value.Modules.FirstOrDefault(m => m.Id == run.Module.Id)?.TimeoutSeconds
-            ?? engineOptions.Value.DefaultToolTimeoutSeconds;
-
-        JsonNode? output;
-        try
-        {
-            output = await moduleClient.InvokeToolAsync(
-                run.Module.Id,
-                toolName,
-                new ToolInvocationRequest(run.RunId, run.Module.Id, run.Workflow.Id, stepId, input),
-                TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds)),
-                ct);
-        }
-        catch (ToolInvocationException ex)
-        {
-            throw new StepFailedException(stepId, ex.Message, ex);
-        }
-
-        if (tool.Output is not null)
-        {
-            StepSchemas.Validate(run, tool.Output.Schema, output, stepId, $"Output of tool '{toolName}'");
-        }
-
-        return output;
-    }
+    public Task<JsonNode?> InvokeAsync(RunContext run, string stepId, string toolName, JsonNode? input, int? stepTimeoutSeconds, CancellationToken ct) =>
+        invoker.InvokeAsync(run.Module, run.RunId, run.Workflow.Id, stepId, toolName, input, stepTimeoutSeconds, ct);
 }

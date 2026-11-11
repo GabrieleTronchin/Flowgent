@@ -9,6 +9,7 @@ using Flowgent.Definitions.Expressions;
 using Flowgent.Definitions.Model;
 using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.HumanInput;
+using Flowgent.Runtime.Modules;
 using Microsoft.Extensions.Configuration;
 
 /// <summary>
@@ -126,7 +127,7 @@ internal sealed class HttpStepHandler(IHttpClientFactory httpClientFactory, ICon
 
         if (http.Output is not null)
         {
-            StepSchemas.Validate(run, http.Output.Schema, output, step.Id, $"Response of HTTP step '{step.Id}'");
+            StepSchemas.Validate(run.Module, http.Output.Schema, output, step.Id, $"Response of HTTP step '{step.Id}'");
         }
 
         return output;

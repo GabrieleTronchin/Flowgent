@@ -23,6 +23,12 @@ Console.WriteLine();
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
 var ct = cts.Token;
 
+// FEAT-001 behavioral probes (design §2.2): `dotnet run -- probes`.
+if (args.Contains("probes", StringComparer.OrdinalIgnoreCase))
+{
+    return await Probes.RunAsync(ct);
+}
+
 // One in-process MCP server shared by demo A (agent-level) and F4 (declarative-level).
 Console.WriteLine("[setup] starting in-process MCP server (offline, in-memory pipe transport)...");
 await using var mcp = await McpWordCountServer.StartAsync(ct);

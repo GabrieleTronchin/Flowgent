@@ -5,7 +5,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Flowgent.Definitions.Expressions;
 using Flowgent.Definitions.Model;
-using Flowgent.Definitions.Schemas;
 using Flowgent.Runtime.Execution;
 
 /// <summary>Executes one step kind and returns the step output (stored as <c>steps.&lt;id&gt;</c>).</summary>
@@ -19,7 +18,13 @@ public interface IStepHandler
     Task<JsonNode?> ExecuteAsync(StepDefinition step, RunContext run, CancellationToken ct);
 }
 
-/// <summary>Ordered rule matching shared by <c>rule</c> steps and llm <c>demo.rules</c>.</summary>
+/// <summary>
+/// Ordered rule matching for the custom-format step handlers (<see cref="RuleStepHandler"/> and llm
+/// <c>demo.rules</c>), preserved verbatim (incl. the Scriban <c>When</c> branch) until those handlers
+/// are deleted in a later feature. The retained, regex-only replacement that survives that deletion is
+/// <see cref="Flowgent.Runtime.Matching.RuleMatcher"/> (works against <c>MatchRule</c>, a different
+/// namespace). This one stays in <c>Flowgent.Runtime.Steps</c> so existing tests compile unchanged.
+/// </summary>
 public static class RuleMatcher
 {
     private static readonly ConcurrentDictionary<(string, bool), Regex> Regexes = new();
@@ -120,18 +125,5 @@ internal sealed class MapStepHandler : IStepHandler
         }
 
         return Task.FromResult<JsonNode?>(output);
-    }
-}
-
-/// <summary>Validates step inputs/outputs against JSON Schemas with consistent failure messages.</summary>
-internal static class StepSchemas
-{
-    public static void Validate(RunContext run, SchemaSource source, JsonNode? value, string stepId, string what)
-    {
-        var errors = JsonSchemaValidator.Validate(run.Module.GetSchema(source), value);
-        if (errors.Count > 0)
-        {
-            throw new StepFailedException(stepId, $"{what} does not match its schema: {string.Join("; ", errors.Take(5))}");
-        }
     }
 }

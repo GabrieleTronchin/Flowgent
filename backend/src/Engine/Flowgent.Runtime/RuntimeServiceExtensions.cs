@@ -45,6 +45,7 @@ public static class RuntimeServiceExtensions
         services.AddSingleton<HumanInputRegistry>();
         services.AddSingleton<HumanInputService>();
 
+        services.AddSingleton<ModuleToolInvoker>();
         services.AddSingleton<ToolStepHandler>();
         services.AddSingleton<IStepHandler>(sp => sp.GetRequiredService<ToolStepHandler>());
         services.AddSingleton<IStepHandler, LlmStepHandler>();
