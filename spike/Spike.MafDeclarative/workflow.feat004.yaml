@@ -1,0 +1,113 @@
+# FEAT-004 syntax probe (reference-only, throwaway). Proves the exact declarative action
+# syntax the migrated support workflow needs BEFORE it is committed to the module YAMLs:
+#   - reading the structured intake input (subject/body) in PowerFx WITHOUT ParseJSON,
+#     by echoing the input JSON string through an InvokeMcpTool whose result parses to a
+#     record (PROBE-A mechanism): First(Local.intake).subject;
+#   - a Switch expression for the category->role map;
+#   - a ConditionGroup with GotoAction branching to labelled targets;
+#   - Text(x, "0") number formatting for the "92%" detail;
+#   - Global.<step> snapshot + Global.<step>__detail convention the seam reads.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: feat004_probe
+  actions:
+
+    # Read the intake input: echo the raw input JSON string back through the MCP handler,
+    # which returns it verbatim as a JSON-object string -> parses to a one-row record.
+    - kind: InvokeMcpTool
+      id: read_input
+      serverUrl: inproc://feat004
+      serverLabel: feat004
+      toolName: echoInput
+      requireApproval: false
+      arguments:
+        payload: =System.LastMessage.Text
+      output:
+        result: Local.intake
+
+    - kind: SetVariable
+      id: rt_text
+      variable: Local.rtText
+      value: =Lower(First(Local.intake).subject & " " & First(Local.intake).body)
+
+    - kind: SetVariable
+      id: rt_a
+      variable: Local.matchA
+      value: =Or(Find("application a", Local.rtText) > 0, Find("applicationa", Local.rtText) > 0)
+
+    - kind: SetVariable
+      id: rt_b
+      variable: Local.matchB
+      value: =Or(Find("application b", Local.rtText) > 0, Find("applicationb", Local.rtText) > 0)
+
+    - kind: ConditionGroup
+      id: rt_branch
+      conditions:
+        - condition: =Local.matchA And Local.matchB
+          id: both
+          actions:
+            - kind: SendActivity
+              id: fail_ambiguous
+              activity:
+                text:
+                  - "AMBIGUOUS"
+        - condition: =Not(Local.matchA) And Not(Local.matchB)
+          id: none
+          actions:
+            - kind: SendActivity
+              id: fail_no_app
+              activity:
+                text:
+                  - "NOAPP"
+        - condition: =Local.matchA
+          id: isa
+          actions:
+            - kind: SetVariable
+              id: rt_set_a
+              variable: Local.route
+              value: ={ teamName: "TeamA", applicationName: "ApplicationA", applicationFolder: "application-a" }
+            - kind: GotoAction
+              id: goto_assign_a
+              actionId: assign_role
+      elseActions:
+        - kind: SetVariable
+          id: rt_set_b
+          variable: Local.route
+          value: ={ teamName: "TeamB", applicationName: "ApplicationB", applicationFolder: "application-b" }
+        - kind: GotoAction
+          id: goto_assign_b
+          actionId: assign_role
+
+    - kind: SetVariable
+      id: route_team_snapshot
+      variable: Global.route_team
+      value: =Local.route
+    - kind: SetVariable
+      id: route_team_detail
+      variable: Global.route_team__detail
+      value: =Local.route.teamName
+
+    - kind: SetVariable
+      id: assign_role
+      variable: Local.role
+      value: =Switch("BackendBug", "BackendBug", "BackendDeveloper", "FrontendBug", "FrontendDeveloper", "QualityTestIssue", "QAEngineer")
+    - kind: SetVariable
+      id: assign_id
+      variable: Local.agentId
+      value: =Local.route.teamName & "_" & Local.role
+    - kind: SetVariable
+      id: assign_agent
+      variable: Global.assign_agent
+      value: ={ role: Local.role, agentId: Local.agentId }
+
+    - kind: SetVariable
+      id: classify_detail
+      variable: Global.classify__detail
+      value: =Concatenate("BackendBug (", Text(92, "0"), "%)")
+
+    - kind: SendActivity
+      id: done
+      activity:
+        text:
+          - "route={Local.route.teamName} agent={Local.agentId} detail={Global.classify__detail}"

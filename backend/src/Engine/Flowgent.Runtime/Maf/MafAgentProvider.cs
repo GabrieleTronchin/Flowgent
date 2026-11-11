@@ -18,10 +18,14 @@ using Flowgent.Runtime.Llm;
 public sealed class MafAgentProvider : ResponseAgentProvider
 {
     /// <summary>
-    /// Input-argument key the workflow YAML passes to <c>InvokeAzureAgent</c> so the provider can key the output
-    /// schema and the Demo response by step id (the declarative action does not surface the action id to the provider).
+    /// Separator in the declarative <c>agent.name</c> that carries both the logical step id and the static agent id as
+    /// <c>"&lt;stepId&gt;|&lt;agentId&gt;"</c>. In MAF 1.27.0 <c>InvokeAzureAgent</c> does not surface the action id or any
+    /// custom <c>inputs</c> to the provider (confirmed empirically), so <c>agent.name</c> is the only channel: the
+    /// provider keys the Demo response and telemetry step id off the left part and resolves the agent off the right
+    /// part (or, when absent, off the run's dynamically-assigned agent). A name with no separator is both the step id
+    /// and the agent id.
     /// </summary>
-    public const string StepIdArgument = "stepId";
+    public const char NameSeparator = '|';
 
     private readonly RunContext _run;
     private readonly IChatClient _chatClient;
@@ -52,10 +56,13 @@ public sealed class MafAgentProvider : ResponseAgentProvider
         IDictionary<string, object?>? inputArguments,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var stepId = ResolveStepId(inputArguments) ?? agentId;
+        var separator = agentId.IndexOf(NameSeparator, StringComparison.Ordinal);
+        var stepId = separator >= 0 ? agentId[..separator] : agentId;
+        var staticAgentId = separator >= 0 ? agentId[(separator + 1)..] : agentId;
 
-        // Resolve the agent (persona/role for telemetry); a dynamically assigned agent is recorded on the run.
-        var resolvedAgentId = ResolveAgentId(agentId, inputArguments);
+        // Resolve the agent for telemetry: a static/assigned agent named in the YAML (the support workflow passes the
+        // dynamically-assigned id via the name), else the run's already-assigned agent.
+        var resolvedAgentId = _run.Module.FindAgent(staticAgentId) is not null ? staticAgentId : _run.AssignedAgentId;
         if (resolvedAgentId is not null)
         {
             _run.AssignAgent(resolvedAgentId);
@@ -73,11 +80,14 @@ public sealed class MafAgentProvider : ResponseAgentProvider
 
         var agent = _chatClient.AsAIAgent(new ChatClientAgentOptions
         {
-            Name = resolvedAgentId ?? agentId,
+            Name = resolvedAgentId ?? staticAgentId,
             ChatOptions = chatOptions,
         });
 
-        await foreach (var update in agent.RunStreamingAsync(inputMessages, cancellationToken: cancellationToken).ConfigureAwait(false))
+        // Use the non-streaming path so the call goes through IChatClient.GetResponseAsync, where LlmTelemetryMiddleware
+        // records it (streaming would bypass telemetry). The single response is surfaced as one update.
+        var response = await agent.RunAsync(inputMessages, cancellationToken: cancellationToken).ConfigureAwait(false);
+        foreach (var update in response.ToAgentResponseUpdates())
         {
             yield return update;
         }
@@ -98,21 +108,6 @@ public sealed class MafAgentProvider : ResponseAgentProvider
 
         return options;
     }
-
-    private string? ResolveAgentId(string agentId, IDictionary<string, object?>? inputArguments)
-    {
-        if (inputArguments is not null && inputArguments.TryGetValue("agentId", out var value) && value is string dynamic && !string.IsNullOrWhiteSpace(dynamic))
-        {
-            return dynamic;
-        }
-
-        return _run.Module.FindAgent(agentId) is not null ? agentId : _run.AssignedAgentId;
-    }
-
-    private static string? ResolveStepId(IDictionary<string, object?>? inputArguments) =>
-        inputArguments is not null && inputArguments.TryGetValue(StepIdArgument, out var value) && value is string s && !string.IsNullOrWhiteSpace(s)
-            ? s
-            : null;
 
     public override async Task<string> CreateConversationAsync(CancellationToken cancellationToken = default) =>
         await _conversations.CreateConversationAsync(cancellationToken).ConfigureAwait(false);

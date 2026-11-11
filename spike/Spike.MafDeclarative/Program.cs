@@ -29,6 +29,24 @@ if (args.Contains("probes", StringComparer.OrdinalIgnoreCase))
     return await Probes.RunAsync(ct);
 }
 
+// FEAT-004 syntax probe (reference-only): `dotnet run -- feat004`.
+if (args.Contains("feat004", StringComparer.OrdinalIgnoreCase))
+{
+    return await Feat004Probe.RunAsync(ct);
+}
+
+// FEAT-004 agent probe (reference-only): `dotnet run -- agentprobe`.
+if (args.Contains("agentprobe", StringComparer.OrdinalIgnoreCase))
+{
+    return await AgentProbe.RunAsync(ct);
+}
+
+// FEAT-004 end probe (reference-only): `dotnet run -- endprobe`.
+if (args.Contains("endprobe", StringComparer.OrdinalIgnoreCase))
+{
+    return await EndProbe.RunAsync(ct);
+}
+
 // One in-process MCP server shared by demo A (agent-level) and F4 (declarative-level).
 Console.WriteLine("[setup] starting in-process MCP server (offline, in-memory pipe transport)...");
 await using var mcp = await McpWordCountServer.StartAsync(ct);

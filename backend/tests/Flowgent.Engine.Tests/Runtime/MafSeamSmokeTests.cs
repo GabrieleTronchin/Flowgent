@@ -28,9 +28,13 @@ public sealed class MafSeamSmokeTests
               id: smoke_basic
               actions:
                 - kind: SetVariable
-                  id: produce
+                  id: produce_snapshot
                   variable: Global.produce
                   value: "{\"ok\":true}"
+                - kind: SetVariable
+                  id: done_id
+                  variable: Global.__terminalId
+                  value: ="done"
                 - kind: SendActivity
                   id: done
                   activity:
@@ -71,6 +75,10 @@ public sealed class MafSeamSmokeTests
                     text: ="one two three"
                   output:
                     result: Local.count
+                - kind: SetVariable
+                  id: done_id
+                  variable: Global.__terminalId
+                  value: ="done"
                 - kind: SendActivity
                   id: done
                   activity:
@@ -112,12 +120,20 @@ public sealed class MafSeamSmokeTests
                     - condition: =Find("approved", Local.answer) > 0
                       id: approved
                       actions:
+                        - kind: SetVariable
+                          id: approved_id
+                          variable: Global.__terminalId
+                          value: ="on_approved"
                         - kind: SendActivity
                           id: on_approved
                           activity:
                             text:
                               - "APPROVED {Local.answer}"
                   elseActions:
+                    - kind: SetVariable
+                      id: rejected_id
+                      variable: Global.__terminalId
+                      value: ="on_rejected"
                     - kind: SendActivity
                       id: on_rejected
                       activity:

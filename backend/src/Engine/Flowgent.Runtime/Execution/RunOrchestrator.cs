@@ -132,7 +132,7 @@ public sealed class RunOrchestrator(
 
     private async Task<MafHumanDecision> ResolveDecisionAsync(RunContext run, string stepId, string? prompt, CancellationToken ct)
     {
-        var review = new ReviewPayload(prompt ?? $"Approve step '{stepId}'?", []);
+        var review = ReviewFromPrompt(prompt, stepId);
         var completion = new TaskCompletionSource<HumanDecision>(TaskCreationOptions.RunContinuationsAsynchronously);
         humanInput.Register(new PendingHumanInput(run.RunId, run.Module.Id, run.Workflow.Id, stepId, run.Title, review, DateTimeOffset.UtcNow, completion));
 
@@ -148,6 +148,39 @@ public sealed class RunOrchestrator(
 
         await recorder.InputReceivedAsync(run, stepId, decision.Reason is null ? decision.Value : $"{decision.Value}: {decision.Reason}");
         return new MafHumanDecision(decision.Approved, decision.Reason);
+    }
+
+    /// <summary>
+    /// Builds the human-input review from the declarative <c>Question</c> prompt. The migrated workflow renders the
+    /// review as a JSON object (<c>{ "title", "fields": [ { "label", "value" } ] }</c>) so the dashboard shows the same
+    /// title and labelled fields the old <c>human-input</c> step did; a plain (non-JSON) prompt becomes a title-only review.
+    /// </summary>
+    private static ReviewPayload ReviewFromPrompt(string? prompt, string stepId)
+    {
+        if (!string.IsNullOrWhiteSpace(prompt))
+        {
+            try
+            {
+                if (System.Text.Json.Nodes.JsonNode.Parse(prompt) is System.Text.Json.Nodes.JsonObject obj)
+                {
+                    var title = obj.TryGetPropertyValue("title", out var t) && t is not null ? t.GetValue<string>() : $"Approve step '{stepId}'?";
+                    var fields = obj.TryGetPropertyValue("fields", out var f) && f is System.Text.Json.Nodes.JsonArray array
+                        ? array.OfType<System.Text.Json.Nodes.JsonObject>()
+                            .Select(field => new ReviewField(
+                                field.TryGetPropertyValue("label", out var l) && l is not null ? l.GetValue<string>() : "",
+                                field.TryGetPropertyValue("value", out var v) && v is not null ? v.GetValue<string>() : null))
+                            .ToList()
+                        : [];
+                    return new ReviewPayload(title, fields);
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Not a structured review; fall through to the plain-prompt title.
+            }
+        }
+
+        return new ReviewPayload(prompt ?? $"Approve step '{stepId}'?", []);
     }
 
     private async Task<RunExecutionResult> CompleteAsync(RunContext run, MafRunEvent.Completed outcome)

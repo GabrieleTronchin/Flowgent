@@ -39,7 +39,7 @@ public sealed partial class IntakeService(IModuleCatalog catalog, IRunStore stor
             return new IntakeResult.Unavailable($"Module '{handle.Module.Id}' is unavailable; workflow '{workflowId}' cannot accept new inputs.");
         }
 
-        var message = DefaultInvalidMessage;
+        var message = handle.Workflow.InputErrorMessage ?? DefaultInvalidMessage;
         if (input is not JsonObject inputObject)
         {
             return new IntakeResult.Invalid(message, [new SchemaError("", "The input must be a JSON object.")]);

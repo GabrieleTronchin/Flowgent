@@ -84,10 +84,6 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
                     await SurfaceOutputsAsync(run, checkpointDir, reportedOutputs, onEvent, ct).ConfigureAwait(false);
                     break;
 
-                case WorkflowOutputEvent output:
-                    terminal ??= ToCompleted(run, output);
-                    break;
-
                 case ExecutorFailedEvent failed:
                     terminal ??= new MafRunEvent.Failed(failed.ExecutorId, failed.Data?.Message ?? $"Step '{failed.ExecutorId}' failed.");
                     break;
@@ -98,31 +94,46 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
             }
         }
 
-        // Surface any final-step outputs produced in the last super-step.
+        // Surface any final-step outputs produced in the last super-step, then read the terminal from run state.
         await SurfaceOutputsAsync(run, checkpointDir, reportedOutputs, onEvent, ct).ConfigureAwait(false);
 
-        return terminal ?? new MafRunEvent.Failed(run.CurrentStepId, "Workflow completed without producing a result.");
+        if (terminal is not null)
+        {
+            return terminal;
+        }
+
+        MafRunEvent? completed = ToCompleted(run, await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false));
+        return completed ?? new MafRunEvent.Failed(run.CurrentStepId, "Workflow completed without producing a result.");
     }
 
-    private MafRunEvent.Completed ToCompleted(RunContext run, WorkflowOutputEvent output)
+    /// <summary>
+    /// Builds the terminal event from the run-state <c>Global.*</c> variables (design §8). A migrated terminal writes
+    /// three reserved globals via trailing <c>SetVariable</c>: <c>Global.__terminalId</c> (the reached terminal action
+    /// id), <c>Global.__message</c> (the terminal message/detail, verbatim) and optionally <c>Global.__finalOutput</c>
+    /// (the structured JSON a success terminal exposes as <c>FinalOutput</c>). The success/failure outcome is taken from
+    /// the descriptor manifest <c>terminals[]</c> for that id, never inferred from the YAML.
+    /// </summary>
+    private static MafRunEvent.Completed? ToCompleted(RunContext run, IReadOnlyDictionary<string, string> globals)
     {
-        var data = output.Data;
-        var node = data switch
+        if (!globals.TryGetValue("__terminalId", out var rawId))
         {
-            null => null,
-            JsonNode n => n,
-            string s => PowerFxConversion.FromJsonString(s),
-            _ => JsonValue.Create(data.ToString()),
-        };
+            return null;
+        }
 
-        // The reached terminal id and its success/failure outcome come from the manifest terminals[] on the descriptor.
-        var terminalId = node is JsonObject obj && obj.TryGetPropertyValue("terminalId", out var tid) && tid is not null
-            ? tid.GetValue<string>()
-            : run.Workflow.Graph.Nodes.FirstOrDefault(n2 => n2.Kind == "terminal")?.Id ?? run.CurrentStepId ?? run.Workflow.Id;
+        var terminalId = PowerFxConversion.FromJsonString(rawId) is JsonValue idv && idv.TryGetValue<string>(out var id) && !string.IsNullOrWhiteSpace(id)
+            ? id
+            : run.Workflow.Graph.Nodes.FirstOrDefault(n => n.Kind == "terminal")?.Id ?? run.CurrentStepId ?? run.Workflow.Id;
 
         var outcome = ResolveOutcome(run.Workflow, terminalId);
-        var message = node is JsonObject o2 && o2.TryGetPropertyValue("message", out var m) ? m?.GetValue<string>() : node?.ToString();
-        return new MafRunEvent.Completed(terminalId, outcome, message, node);
+
+        string? message = null;
+        if (globals.TryGetValue("__message", out var rawMessage) && PowerFxConversion.FromJsonString(rawMessage) is JsonValue mv && mv.TryGetValue<string>(out var m))
+        {
+            message = m;
+        }
+
+        var finalOutput = globals.TryGetValue("__finalOutput", out var rawOut) ? PowerFxConversion.FromJsonString(rawOut) : null;
+        return new MafRunEvent.Completed(terminalId, outcome, message, finalOutput);
     }
 
     private static DefModel.WorkflowOutcome ResolveOutcome(DefModel.WorkflowDescriptor workflow, string terminalId)
@@ -133,6 +144,14 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
             : DefModel.WorkflowOutcome.Success;
     }
 
+    /// <summary>
+    /// Surfaces newly-produced step outputs from run state as <c>StepStarted</c>+<c>StepCompleted</c> events, in
+    /// deterministic workflow order (design §8, Gap 2): step-output globals (<c>Global.&lt;stepId&gt;</c>) are ordered by
+    /// the descriptor graph node sequence so the event log follows the pipeline regardless of checkpoint-file order.
+    /// A sibling <c>Global.&lt;stepId&gt;__detail</c> string supplies the step's detail (Gap 1); <c>Global.assignedAgentId</c>
+    /// records the dynamically assigned agent (F3); reserved terminal globals (<c>__terminalId</c>/<c>__message</c>/
+    /// <c>__finalOutput</c>) are consumed by <see cref="ToCompleted"/> and never surfaced as steps.
+    /// </summary>
     private async Task SurfaceOutputsAsync(
         RunContext run,
         DirectoryInfo checkpointDir,
@@ -140,30 +159,49 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         Func<MafRunEvent, Task> onEvent,
         CancellationToken ct)
     {
-        foreach (var (name, value) in await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false))
+        var globals = await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false);
+
+        // Assigned agent first so StepCompleted snapshots carry it.
+        if (globals.TryGetValue("assignedAgentId", out var rawAgent) && reported.Add("assignedAgentId")
+            && PowerFxConversion.FromJsonString(rawAgent) is JsonValue v && v.TryGetValue<string>(out var agentId) && !string.IsNullOrWhiteSpace(agentId))
+        {
+            run.AssignAgent(agentId);
+        }
+
+        var order = run.Workflow.Graph.Nodes.Select(n => n.Id).ToList();
+        var stepNames = globals.Keys
+            .Where(IsStepOutput)
+            .OrderBy(name => OrderIndex(order, name));
+
+        foreach (var name in stepNames)
         {
             if (!reported.Add(name))
             {
                 continue;
             }
 
-            var node = PowerFxConversion.FromJsonString(value);
-
-            // Global.assignedAgentId carries the dynamically assigned agent, not a step output.
-            if (name == "assignedAgentId")
-            {
-                if (node is JsonValue v && v.TryGetValue<string>(out var agentId) && !string.IsNullOrWhiteSpace(agentId))
-                {
-                    run.AssignAgent(agentId);
-                }
-
-                continue;
-            }
+            var node = PowerFxConversion.FromJsonString(globals[name]);
+            var detail = globals.TryGetValue($"{name}__detail", out var rawDetail)
+                && PowerFxConversion.FromJsonString(rawDetail) is JsonValue dv && dv.TryGetValue<string>(out var d)
+                ? d
+                : null;
 
             run.SetOutput(name, node);
             await onEvent(new MafRunEvent.StepStarted(name)).ConfigureAwait(false);
-            await onEvent(new MafRunEvent.StepCompleted(name, node, null)).ConfigureAwait(false);
+            await onEvent(new MafRunEvent.StepCompleted(name, node, detail)).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>True for a step-output global (not a reserved terminal global, a <c>__detail</c> sibling or the agent id).</summary>
+    private static bool IsStepOutput(string name) =>
+        name != "assignedAgentId"
+        && !name.StartsWith("__", StringComparison.Ordinal)
+        && !name.EndsWith("__detail", StringComparison.Ordinal);
+
+    private static int OrderIndex(List<string> order, string name)
+    {
+        var i = order.IndexOf(name);
+        return i < 0 ? int.MaxValue : i;
     }
 
     /// <summary>
@@ -251,19 +289,48 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
     }
 
     /// <summary>
-    /// Reads the stored value of a checkpointed <c>@Global</c> variable. The persisted form is
-    /// <c>{ "typeId": {...}, "value": &lt;serialized value&gt; }</c>; the <c>value</c> cell is returned as a JSON string
-    /// (a string cell verbatim, anything else serialized) so <see cref="PowerFxConversion.FromJsonString"/> can parse it.
+    /// Reads the stored value of a checkpointed <c>@Global</c> variable. PowerFx persists every value (records and
+    /// their fields, tables and their cells) as a <c>{ "typeId": {...}, "value": &lt;serialized value&gt; }</c> envelope,
+    /// recursively. This strips the envelopes at every level and returns the plain value as a JSON string (a string
+    /// cell verbatim, anything else serialized) so <see cref="PowerFxConversion.FromJsonString"/> yields the plain node.
     /// </summary>
     internal static string ReadValueCell(JsonNode stored)
     {
-        var cell = stored is JsonObject obj && obj.TryGetPropertyValue("value", out var v) ? v : stored;
-        return cell switch
+        var unwrapped = Unwrap(stored);
+        return unwrapped switch
         {
             null => "null",
             JsonValue jv when jv.TryGetValue<string>(out var s) => s,
-            _ => cell.ToJsonString(),
+            _ => unwrapped.ToJsonString(),
         };
+    }
+
+    /// <summary>Recursively removes the PowerFx <c>{ typeId, value }</c> envelopes so only plain JSON data remains.</summary>
+    private static JsonNode? Unwrap(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject obj when obj.Count == 2 && obj.ContainsKey("typeId") && obj.ContainsKey("value"):
+                return Unwrap(obj["value"]);
+            case JsonObject obj:
+                var result = new JsonObject();
+                foreach (var (key, value) in obj)
+                {
+                    result[key] = Unwrap(value);
+                }
+
+                return result;
+            case JsonArray array:
+                var items = new JsonArray();
+                foreach (var item in array)
+                {
+                    items.Add(Unwrap(item));
+                }
+
+                return items;
+            default:
+                return node?.DeepClone();
+        }
     }
 
     private static string DescribeError(object? data)
@@ -284,13 +351,21 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
 
     private static (string StepId, string? Prompt) DescribeRequest(ExternalRequest request)
     {
+        // The declarative Question action's port id is "<actionId>_Input"; the logical step is the action id, so the
+        // "_Input" suffix is stripped to keep StepStarted/AwaitingInput/InputReceived on the authored step id.
+        var stepId = NormalizeStepId(request.PortInfo?.PortId) ?? "approval";
         if (request.Data.Is<DeclEvents.ExternalInputRequest>(out var input) && input is not null)
         {
-            return (request.PortInfo?.PortId ?? "approval", input.AgentResponse?.Text);
+            return (stepId, input.AgentResponse?.Text);
         }
 
-        return (request.PortInfo?.PortId ?? "approval", null);
+        return (stepId, null);
     }
+
+    private static string? NormalizeStepId(string? portId) =>
+        portId is not null && portId.EndsWith("_Input", StringComparison.Ordinal)
+            ? portId[..^"_Input".Length]
+            : portId;
 
     private static void TryDelete(DirectoryInfo dir)
     {

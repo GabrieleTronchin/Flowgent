@@ -28,6 +28,8 @@ public sealed class ProbeMcpToolHandler : IMcpToolHandler
             "locateComponent" =>
                 "{\"found\":true,\"component\":\"Checkout\",\"path\":\"src/Checkout.cs\",\"language\":\"csharp\"}",
             "malformed" => "not-json-at-all",
+            // FEAT-004 probe: echo the 'payload' argument verbatim (the intake JSON string).
+            "echoInput" => arguments is not null && arguments.TryGetValue("payload", out var p) ? p?.ToString() ?? "{}" : "{}",
             _ => "{}",
         };
 

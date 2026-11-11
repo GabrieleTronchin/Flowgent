@@ -45,6 +45,10 @@ public sealed class WorkflowRef
 
     public required SchemaRef Input { get; init; }
 
+    /// <summary>Optional message returned by the intake when the input fails schema validation (ported from the old
+    /// workflow <c>input.errorMessage</c>; preserves the module's verbatim validation message).</summary>
+    public string? ErrorMessage { get; init; }
+
     /// <summary>Terminal steps with their success/failure outcome, used by the graph projector.</summary>
     public List<TerminalRef> Terminals { get; init; } = [];
 }

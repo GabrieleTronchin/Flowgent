@@ -58,26 +58,27 @@ public sealed class MafSeamUnitTests
     }
 
     [Fact]
-    public void WorkflowProjector_ProjectsActionsToDashboardNodesAndConditionEdges()
+    public void WorkflowProjector_ProjectsSnapshotStepsAndManifestTerminals()
     {
+        // FEAT-004: the graph's logical steps are the actions that snapshot their output via a trailing
+        // "<stepId>_snapshot" SetVariable (kind taken from the action with id <stepId>); terminals come from the
+        // manifest. Plumbing actions (input/parse tools, detail/terminal SetVariables, ConditionGroups) are excluded.
         const string yaml = """
             kind: Workflow
             trigger:
               kind: OnConversationStart
               id: proj
               actions:
-                - { kind: InvokeAzureAgent, id: classify, displayName: Classify }
-                - kind: ConditionGroup
-                  id: branch
-                  conditions:
-                    - condition: =Global.ok
-                      id: yes
-                      actions:
-                        - { kind: GotoAction, id: g1, actionId: approved }
-                  elseActions:
-                    - { kind: GotoAction, id: g2, actionId: rejected }
-                - { kind: SendActivity, id: approved }
-                - { kind: SendActivity, id: rejected }
+                - kind: InvokeAzureAgent
+                  id: classify
+                - kind: SetVariable
+                  id: classify_snapshot
+                  variable: Global.classify
+                  value: =x
+                - kind: SendActivity
+                  id: approved
+                - kind: SendActivity
+                  id: rejected
             """;
         var reference = new WorkflowRef
         {
@@ -91,12 +92,12 @@ public sealed class MafSeamUnitTests
 
         var graph = new WorkflowProjector().Project(reference, yaml);
 
+        Assert.Equal("classify", graph.Start);
         Assert.Equal("llm", graph.Nodes.Single(n => n.Id == "classify").Kind);
-        Assert.Equal("rule", graph.Nodes.Single(n => n.Id == "branch").Kind);
         Assert.Equal("success", graph.Nodes.Single(n => n.Id == "approved").Outcome);
         Assert.Equal("failure", graph.Nodes.Single(n => n.Id == "rejected").Outcome);
-        Assert.Contains(graph.Edges, e => e is { From: "branch", To: "approved", Label: "Global.ok" });
-        Assert.Contains(graph.Edges, e => e is { From: "branch", To: "rejected", Label: null });
+        // One step node (classify) plus the two manifest terminals; plumbing and the branch are excluded.
+        Assert.Equal(3, graph.Nodes.Count);
     }
 
     [Fact]

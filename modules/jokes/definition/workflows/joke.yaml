@@ -1,37 +1,70 @@
-# yaml-language-server: $schema=../../../../backend/schemas/workflow.schema.json
-id: joke
-version: 1
-name: Tell a joke
-description: Turns a topic into a short joke with a single LLM step and ends.
-title: "Joke about {{ input.topic }}"
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: joke
+  actions:
 
-input:
-  schema: { file: schemas/joke.input.schema.json }
-  errorMessage: A topic is required.
-
-start: tell
-
-steps:
-  - id: tell
-    kind: llm
-    name: Tell the joke
-    agent: comedian
-    temperature: 0.8
-    systemPrompt: { file: prompts/joke.system.md }
-    prompt: { file: prompts/joke.user.md }
-    output:
-      schema: { file: schemas/joke.output.schema.json }
-    # Used in Demo mode (no API key needed): the engine returns this output instead of calling a model.
-    demo:
+    # Read the intake input (topic) as a record via the seam's built-in input tool: PowerFx has no ParseJSON, so the
+    # input JSON string is echoed back as a JSON-object string and parsed to a one-row record (PROBE-A).
+    - kind: InvokeMcpTool
+      id: read_input
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.input
+      requireApproval: false
+      arguments:
+        payload: =System.LastMessage.Text
       output:
-        joke: "[Demo] Why did the {{ input.topic }} cross the road? To get to the other side."
-    detail: "{{ steps.tell.joke }}"
-    next: done
+        result: Local.intake
 
-  - id: done
-    kind: terminal
-    name: Done
-    outcome: success
-    message: "{{ steps.tell.joke }}"
-    output:
-      joke: "{{ steps.tell.joke }}"
+    # Tell the joke. agent.name carries "<stepId>|<agentId>" so the provider keys the Demo response by (joke, tell) and
+    # attributes telemetry to the comedian agent. The rendered prompt matches the Demo contract "Tell a joke about: <topic>".
+    - kind: InvokeAzureAgent
+      id: tell
+      conversationId: =System.ConversationId
+      agent:
+        name: tell|comedian
+      input:
+        messages: =UserMessage(Concatenate("Tell a joke about: ", First(Local.intake).topic))
+      output:
+        messages: Local.tell
+
+    # Parse the agent's structured answer (a JSON string) into a record so .joke can be read (ParseJSON-free, PROBE-A).
+    - kind: InvokeMcpTool
+      id: parse_tell
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =MessageText(Local.tell)
+      output:
+        result: Local.tellObj
+
+    - kind: SetVariable
+      id: tell_detail
+      variable: Global.tell__detail
+      value: =First(Local.tellObj).joke
+    - kind: SetVariable
+      id: tell_snapshot
+      variable: Global.tell
+      value: =MessageText(Local.tell)
+
+    # Terminal: expose the joke object as the final output and its text as the message/detail.
+    - kind: SetVariable
+      id: done_final
+      variable: Global.__finalOutput
+      value: =MessageText(Local.tell)
+    - kind: SetVariable
+      id: done_message
+      variable: Global.__message
+      value: =First(Local.tellObj).joke
+    - kind: SetVariable
+      id: done_id
+      variable: Global.__terminalId
+      value: ="done"
+    - kind: SendActivity
+      id: done
+      activity:
+        text:
+          - "{First(Local.tellObj).joke}"

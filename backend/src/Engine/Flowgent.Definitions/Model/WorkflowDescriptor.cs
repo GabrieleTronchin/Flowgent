@@ -24,6 +24,9 @@ public sealed class WorkflowDescriptor
     /// <summary>Input JSON Schema (inline or file reference), reused for intake validation.</summary>
     public required SchemaSource InputSchema { get; init; }
 
+    /// <summary>Optional message the intake returns when the input fails schema validation (else a generic default).</summary>
+    public string? InputErrorMessage { get; init; }
+
     /// <summary>Raw declarative YAML text, fed to <c>DeclarativeWorkflowBuilder</c> per run.</summary>
     public required string Yaml { get; init; }
 

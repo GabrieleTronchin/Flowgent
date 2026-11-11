@@ -1,127 +1,103 @@
 namespace Flowgent.Runtime.Maf;
 
-using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Flowgent.Definitions;
 using Flowgent.Definitions.Model;
-using Flowgent.Definitions.Yaml;
 
 /// <summary>
 /// Projects a workflow's declarative YAML plus its manifest <c>terminals[]</c> into a <see cref="WorkflowGraphModel"/>
-/// for the dashboard (design §10). One node per declarative action mapped to a dashboard kind
-/// (<c>InvokeAzureAgent</c>→llm, <c>InvokeMcpTool</c>→tool, <c>Question</c>→human-input, <c>ConditionGroup</c>→rule,
-/// <c>SetVariable</c>→map, terminal <c>SendActivity</c>/end→terminal); plumbing <c>SetVariable</c> nodes
-/// (<c>*_snapshot</c>, <c>read_input</c>, <c>rt_*</c>) are excluded by naming convention. <c>ConditionGroup</c> branch
-/// conditions become labelled edges, <c>elseActions</c> a default edge, and sequential actions an unlabelled edge.
-/// The terminal outcome is tagged from the manifest, never inferred from the YAML. Lives in the seam (it parses the
-/// declarative document); <see cref="ModuleLoader"/> depends only on <see cref="IWorkflowGraphProjector"/>.
+/// for the dashboard (design §10). The logical steps the dashboard shows are the actions that snapshot their output to
+/// <c>Global.&lt;stepId&gt;</c> via a trailing <c>&lt;stepId&gt;_snapshot</c> SetVariable (dashboard kind taken from the
+/// action with id <c>&lt;stepId&gt;</c>); all other actions (input/parse tools, detail/terminal plumbing SetVariables,
+/// ConditionGroups, EndConversation) are excluded. Terminal nodes and their success/failure outcome come from the
+/// manifest <c>terminals[]</c>, never inferred from the YAML. Lives in the seam (it parses the declarative document);
+/// <see cref="ModuleLoader"/> depends only on <see cref="IWorkflowGraphProjector"/>.
 /// </summary>
 public sealed class WorkflowProjector : IWorkflowGraphProjector
 {
-    private static readonly string[] PlumbingPrefixes = ["rt_"];
-    private static readonly string[] PlumbingExact = ["read_input"];
+    // Matches an action header "- kind: <Kind>" and a subsequent "id: <id>" line. A generic YAML parser cannot be used
+    // here because action values are PowerFx expressions containing ": " inside quotes (valid for the declarative
+    // builder's parser but not YamlDotNet); a line scan over the authored action list is robust and sufficient.
+    private static readonly Regex KindLine = new(@"^\s*-\s*kind:\s*(\w+)\s*$", RegexOptions.Compiled);
+    private static readonly Regex IdLine = new(@"^\s*id:\s*(\w[\w-]*)\s*$", RegexOptions.Compiled);
 
     public WorkflowGraphModel Project(WorkflowRef reference, string yaml)
     {
-        var read = YamlJsonReader.Read(yaml);
-        if (!read.IsSuccess || read.Root is not JsonObject root)
+        // Scan the authored action list for (kind, id) pairs in order.
+        var actionKinds = new Dictionary<string, string>(StringComparer.Ordinal);
+        var ordered = new List<string>();
+        string? pendingKind = null;
+        foreach (var line in yaml.Split('\n'))
         {
-            // Unparseable YAML is caught by the trial-build validator; fall back to the minimal graph.
-            return MinimalWorkflowGraphProjector.Instance.Project(reference, yaml);
+            var kindMatch = KindLine.Match(line);
+            if (kindMatch.Success)
+            {
+                pendingKind = kindMatch.Groups[1].Value;
+                continue;
+            }
+
+            var idMatch = IdLine.Match(line);
+            if (idMatch.Success && pendingKind is not null)
+            {
+                var id = idMatch.Groups[1].Value;
+                actionKinds[id] = pendingKind;
+                ordered.Add(id);
+                pendingKind = null;
+            }
         }
 
-        var outcomes = reference.Terminals.ToDictionary(t => t.Id, t => t.Outcome.ToString().ToLowerInvariant(), StringComparer.Ordinal);
-        var actions = (root["trigger"] as JsonObject)?["actions"] as JsonArray ?? [];
-
+        // A logical step is any action that snapshots its output to Global.<stepId> via a trailing SetVariable named
+        // "<stepId>_snapshot"; its dashboard kind comes from the action whose id is <stepId>. Terminals come from the
+        // manifest. This keeps the graph the logical pipeline the dashboard shows, excluding all plumbing actions.
         var nodes = new List<WorkflowGraphNode>();
-        var edges = new List<WorkflowGraphEdge>();
         var sequence = new List<string>();
 
-        foreach (var action in actions.OfType<JsonObject>())
+        foreach (var id in ordered)
         {
-            var id = action["id"]?.GetValue<string>();
-            var kind = action["kind"]?.GetValue<string>();
-            if (id is null || kind is null || IsPlumbing(id, kind))
+            if (!id.EndsWith("_snapshot", StringComparison.Ordinal))
             {
                 continue;
             }
 
-            var dashboardKind = MapKind(kind, id, outcomes);
-            var name = action["displayName"]?.GetValue<string>() ?? id;
-            nodes.Add(new WorkflowGraphNode(id, name, dashboardKind, outcomes.GetValueOrDefault(id)));
-            sequence.Add(id);
-
-            if (kind == "ConditionGroup")
+            var stepId = id[..^"_snapshot".Length];
+            if (!nodes.Any(n => n.Id == stepId))
             {
-                AddConditionEdges(id, action, edges);
+                nodes.Add(new WorkflowGraphNode(stepId, stepId, MapKind(actionKinds.GetValueOrDefault(stepId)), null));
+                sequence.Add(stepId);
             }
         }
 
+        foreach (var terminal in reference.Terminals)
+        {
+            if (!nodes.Any(n => n.Id == terminal.Id))
+            {
+                nodes.Add(new WorkflowGraphNode(terminal.Id, terminal.Id, "terminal", terminal.Outcome.ToString().ToLowerInvariant()));
+            }
+        }
+
+        var edges = new List<WorkflowGraphEdge>();
         AddSequentialEdges(sequence, edges);
 
         var start = sequence.Count > 0 ? sequence[0] : reference.Id;
         return new WorkflowGraphModel(start, nodes, edges);
     }
 
-    private static bool IsPlumbing(string id, string kind) =>
-        kind == "SetVariable" &&
-        (PlumbingExact.Contains(id, StringComparer.Ordinal)
-            || id.EndsWith("_snapshot", StringComparison.Ordinal)
-            || PlumbingPrefixes.Any(p => id.StartsWith(p, StringComparison.Ordinal)));
-
-    private static string MapKind(string kind, string id, IReadOnlyDictionary<string, string> outcomes) =>
-        outcomes.ContainsKey(id)
-            ? "terminal"
-            : kind switch
-            {
-                "InvokeAzureAgent" => "llm",
-                "InvokeMcpTool" => "tool",
-                "Question" => "human-input",
-                "ConditionGroup" => "rule",
-                "SetVariable" => "map",
-                "SendActivity" => "terminal",
-                _ => "map",
-            };
-
-    private static void AddConditionEdges(string from, JsonObject action, List<WorkflowGraphEdge> edges)
-    {
-        if (action["conditions"] is JsonArray conditions)
+    private static string MapKind(string? kind) =>
+        kind switch
         {
-            foreach (var condition in conditions.OfType<JsonObject>())
-            {
-                var to = FirstGotoTarget(condition["actions"] as JsonArray);
-                if (to is not null)
-                {
-                    edges.Add(new WorkflowGraphEdge(from, to, Friendly(condition["condition"]?.GetValue<string>())));
-                }
-            }
-        }
-
-        var elseTo = FirstGotoTarget(action["elseActions"] as JsonArray);
-        if (elseTo is not null)
-        {
-            edges.Add(new WorkflowGraphEdge(from, elseTo, null));
-        }
-    }
-
-    private static string? FirstGotoTarget(JsonArray? actions) =>
-        actions?.OfType<JsonObject>()
-            .Select(a => a["kind"]?.GetValue<string>() == "GotoAction" ? a["actionId"]?.GetValue<string>() : a["id"]?.GetValue<string>())
-            .FirstOrDefault(id => id is not null);
+            "InvokeAzureAgent" => "llm",
+            "InvokeMcpTool" => "tool",
+            "Question" => "human-input",
+            "ConditionGroup" => "rule",
+            "SetVariable" => "map",
+            _ => "map",
+        };
 
     private static void AddSequentialEdges(List<string> sequence, List<WorkflowGraphEdge> edges)
     {
         for (var i = 0; i + 1 < sequence.Count; i++)
         {
-            var from = sequence[i];
-            var to = sequence[i + 1];
-            if (!edges.Any(e => e.From == from))
-            {
-                edges.Add(new WorkflowGraphEdge(from, to, null));
-            }
+            edges.Add(new WorkflowGraphEdge(sequence[i], sequence[i + 1], null));
         }
     }
-
-    /// <summary>Strips the PowerFx <c>=</c> prefix so a condition reads as a friendly edge label.</summary>
-    internal static string? Friendly(string? condition) =>
-        string.IsNullOrWhiteSpace(condition) ? null : condition.TrimStart('=').Trim();
 }

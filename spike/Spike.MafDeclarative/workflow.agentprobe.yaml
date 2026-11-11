@@ -1,0 +1,28 @@
+# FEAT-004 agent probe: how InvokeAzureAgent passes inputArguments (stepId/agentId) to the
+# provider, and how the agent's structured output is captured into a Local/Global for the
+# step-output snapshot. Reference-only, throwaway.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: agentprobe
+  actions:
+    - kind: InvokeAzureAgent
+      id: tell
+      conversationId: =System.ConversationId
+      agent:
+        name: =Concatenate("tell|", "comedian")
+      input:
+        messages: =UserMessage(System.LastMessage.Text)
+      output:
+        messages: Local.tell
+
+    - kind: SetVariable
+      id: tell_snapshot
+      variable: Global.tell
+      value: =MessageText(Local.tell)
+
+    - kind: SendActivity
+      id: done
+      activity:
+        text:
+          - "answer={MessageText(Local.tell)}"

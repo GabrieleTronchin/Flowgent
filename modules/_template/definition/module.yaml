@@ -26,7 +26,18 @@ tools:
     timeoutSeconds: 10
 
 workflows:
-  - workflows/template-hello.yaml
+  - id: template-hello
+    file: workflows/template-hello.yaml
+    version: 1
+    name: Hello (template)
+    description: Summarises a text with an LLM, counts the words of the summary with a module tool and ends.
+    title: "{text}"
+    input:
+      schema: { file: schemas/template-hello.input.schema.json }
+    errorMessage: Text is required.
+    terminals:
+      - id: done
+        outcome: success
 
 samples:
   - samples/template-hello.samples.yaml

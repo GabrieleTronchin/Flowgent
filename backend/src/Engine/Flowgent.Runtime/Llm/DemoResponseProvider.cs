@@ -46,9 +46,9 @@ public sealed partial class DemoResponseProvider
         {
             ("joke", "tell") => JokeTell(renderedPrompt),
             ("support-email", "classify") => Classify(renderedPrompt),
-            ("support-email", "resolve") => Resolve(run),
-            ("support-email", "generate_code") => GenerateCode(run),
-            ("template-hello", "summarize") => Summarize(run),
+            ("support-email", "resolve") => Resolve(renderedPrompt),
+            ("support-email", "generate_code") => GenerateCode(renderedPrompt),
+            ("template-hello", "summarize") => Summarize(renderedPrompt),
             _ => throw new StepFailedException(stepId, $"No demo response is defined for step '{stepId}' of workflow '{workflowId}'."),
         };
 
@@ -65,11 +65,15 @@ public sealed partial class DemoResponseProvider
         return (JsonObject)(selected?.DeepClone() ?? ClassifyDefault.DeepClone());
     }
 
-    private static JsonObject Resolve(RunContext run)
+    // The resolve/generate_code demos read their inputs from the rendered prompt (not RunContext) so they do not depend
+    // on when the seam surfaces prior-step outputs from run state. The migrated resolve prompt renders
+    // "Subject: ..\n\nBody: ..\n\nComponent: .." and generate_code renders "Component: ..\n\nProposedFix: ..\n\nPath: ..".
+    private static JsonObject Resolve(string renderedPrompt)
     {
-        var component = Text(run.GetOutput("locate_component"), "component");
-        var subject = Text(run.Input["subject"]);
-        var severity = AssessSeverity($"{subject} {Text(run.Input["body"])}");
+        var subject = Field(renderedPrompt, "Subject");
+        var body = Field(renderedPrompt, "Body");
+        var component = Field(renderedPrompt, "Component");
+        var severity = AssessSeverity($"{subject} {body}");
         return new JsonObject
         {
             ["rootCauseDescription"] = $"[Demo] Simulated root cause analysis for \"{subject}\": the defect originates in {component}.",
@@ -81,11 +85,11 @@ public sealed partial class DemoResponseProvider
         };
     }
 
-    private static JsonObject GenerateCode(RunContext run)
+    private static JsonObject GenerateCode(string renderedPrompt)
     {
-        var component = Text(run.GetOutput("resolve"), "affectedComponent");
-        var proposedFix = Text(run.GetOutput("resolve"), "proposedFixSummary");
-        var path = Text(run.GetOutput("locate_component"), "path");
+        var component = Field(renderedPrompt, "Component");
+        var proposedFix = Field(renderedPrompt, "ProposedFix");
+        var path = Field(renderedPrompt, "Path");
         return new JsonObject
         {
             ["title"] = $"[Demo] Fix {component}",
@@ -96,10 +100,20 @@ public sealed partial class DemoResponseProvider
         };
     }
 
-    private static JsonObject Summarize(RunContext run)
+    private static JsonObject Summarize(string renderedPrompt)
     {
-        var text = Text(run.Input["text"]);
+        var text = Field(renderedPrompt, "Text");
         return new JsonObject { ["summary"] = $"[Demo] {Truncate(text, 80)}" };
+    }
+
+    /// <summary>
+    /// Extracts a <c>Label: value</c> field from a rendered prompt. The value runs to the end of the line, or — for a
+    /// trailing multi-line field (e.g. Body) — to the next blank line, matching how the prompts are rendered.
+    /// </summary>
+    internal static string Field(string prompt, string label)
+    {
+        var match = Regex.Match(prompt, $@"(?:^|\n){Regex.Escape(label)}:[ \t]*(.*?)(?=\n\n|\n[A-Za-z][A-Za-z ]*:|$)", RegexOptions.Singleline);
+        return match.Success ? match.Groups[1].Value.Trim() : "";
     }
 
     /// <summary>
@@ -137,11 +151,6 @@ public sealed partial class DemoResponseProvider
 
         return renderedPrompt.Trim();
     }
-
-    private static string Text(JsonNode? node, string property) =>
-        node is JsonObject obj && obj.TryGetPropertyValue(property, out var value) ? Text(value) : "";
-
-    private static string Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : node?.ToString() ?? "";
 
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..max];
 

@@ -104,6 +104,7 @@ public static class ModuleLoader
                 Description = reference.Description,
                 TitleTemplate = reference.Title,
                 InputSchema = reference.Input.Schema,
+                InputErrorMessage = reference.ErrorMessage,
                 Yaml = files[normalized],
                 File = normalized,
                 Graph = projector.Project(reference, files[normalized]),

@@ -56,6 +56,7 @@
           "description": { "type": "string" },
           "title": { "type": "string" },
           "input": { "$ref": "#/$defs/schemaRef" },
+          "errorMessage": { "type": "string" },
           "terminals": {
             "type": "array",
             "items": {
