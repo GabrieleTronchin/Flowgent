@@ -17,6 +17,8 @@ A reusable, open-source **engine as a product**: pull the engine/dashboard image
 - ✅ Research: MAF Declarative is GA/stable; confirmed YAML-from-file, MCP from workflow, non-Foundry agents via `ResponseAgentProvider`.
 - ✅ Spike (`spike/Spike.MafDeclarative`, branch `spike/maf-declarative-mcp`): all 4 goals pass — YAML loaded from file, our fake `IChatClient` as the LLM, a real MCP tool invoked, run streamed. Build + run green. Full findings in `spike/README.md`.
 - ✅ Direction chosen: Via 2 (MCP) + Docker images + pipelines.
+- ✅ **Phase 2 COMPLETE** (branch `feature/maf-declarative-engine`, 6 commits, not pushed): engine migrated to MAF Declarative behind the `Flowgent.Runtime.Maf` seam; custom YAML/Scriban/validator/compiler/step-handlers deleted; `jokes`/`support`/`_template` rewritten to declarative YAML; dashboard/inbox/event-log/telemetry/HITL preserved. `dotnet build` 0/0, `dotnet test --solution` 278/278, pipeline review APPROVED. Verified e2e in Demo mode (jokes → Completed; support → through the human-approval gate → code generation). Known gap: declarative `http` step unproven (fixture bridged via `fixture.echo` MCP tool).
+- ✅ **Phase 2.7 (readability) CLOSED** as already satisfied by the migration — the ugly nested code (WorkflowCompiler executors, Scriban, 463-line validator, Steps/*) was deleted, not refactored; remaining multi-type files are cohesive and left grouped. See `tasks.md` 2.7 for the rationale.
 
 ## Decisions — ALL RESOLVED ✅ (see `design.md` for each)
 - D1 MCP wiring: support both; declarative `McpToolHandler` is primary; mini-spike on it in Phase 0.
