@@ -19,6 +19,7 @@
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.27.0" />
     <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.27.0" />
     <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.27.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows.Declarative" Version="1.27.0" />
   </ItemGroup>
 
   <!-- ═══════════════════════════════════════════════════════════════════
@@ -69,7 +70,6 @@
        ═══════════════════════════════════════════════════════════════════ -->
   <ItemGroup Label="Definitions">
     <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
-    <PackageVersion Include="Scriban" Version="7.5.3" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 

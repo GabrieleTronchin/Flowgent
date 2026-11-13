@@ -1,162 +1,398 @@
-# yaml-language-server: $schema=../../../../backend/schemas/workflow.schema.json
-id: support-email
-version: 1
-name: Support email
-description: Classifies a support email, routes it to a team agent, analyses the root cause and proposes a code change after human approval.
-title: "{{ input.subject }}"
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: support-email
+  actions:
 
-input:
-  schema: { file: schemas/support-email.input.schema.json }
-  errorMessage: Subject and Body are required.
-
-start: classify
-
-steps:
-  - id: classify
-    kind: llm
-    name: Classification
-    temperature: 0.1
-    systemPrompt: { file: prompts/classify.system.md }
-    prompt: |
-      Subject: {{ input.subject }}
-
-      Body: {{ input.body }}
-    output:
-      schema: { file: schemas/classification.schema.json }
-    demo:
-      value: "{{ input.subject }} {{ input.body }}"
-      rules:
-        - match: '\btests?\b|flaky|coverage'
-          output: { isCodeRelated: true, category: QualityTestIssue, confidenceScore: 0.88, reasoning: "[Demo] Mentions tests, coverage or flakiness." }
-        - match: 'frontend|front-end|\.razor|component|\bcss\b|\bui\b|button|render|display'
-          output: { isCodeRelated: true, category: FrontendBug, confidenceScore: 0.9, reasoning: "[Demo] Mentions UI components or rendering." }
-        - match: 'exception|error|crash|\bnull\b|\bsql\b|\bapi\b|endpoint|database|\bbug\b|latency|controller|injection|timeout'
-          output: { isCodeRelated: true, category: BackendBug, confidenceScore: 0.92, reasoning: "[Demo] Mentions exceptions, APIs or data access." }
-      default: { isCodeRelated: false, category: OutOfScope, confidenceScore: 0.95, reasoning: "[Demo] No code-related signal found; looks like a general support request." }
-    detail: "{{ steps.classify.category }} ({{ steps.classify.confidenceScore * 100 | math.round }}%)"
-    transitions:
-      - when: steps.classify.isCodeRelated
-        to: route_team
-      - to: classified_out_of_scope
-
-  - id: route_team
-    kind: rule
-    name: Team routing
-    value: "{{ input.subject }} {{ input.body }}"
-    rules:
-      - match: 'Application\s?A'
-        output: { teamName: TeamA, applicationName: ApplicationA, applicationFolder: application-a }
-      - match: 'Application\s?B'
-        output: { teamName: TeamB, applicationName: ApplicationB, applicationFolder: application-b }
-    onMultipleMatches:
-      fail: "Ambiguous routing: both ApplicationA and ApplicationB are mentioned."
-    onNoMatch:
-      fail: "Cannot determine affected application: neither ApplicationA nor ApplicationB is mentioned."
-    detail: "{{ steps.route_team.teamName }}"
-    next: assign_agent
-
-  - id: assign_agent
-    kind: map
-    name: Agent assignment
-    lookups:
-      roleByCategory:
-        BackendBug: BackendDeveloper
-        FrontendBug: FrontendDeveloper
-        QualityTestIssue: QAEngineer
-    outputs:
-      - name: role
-        lookup: roleByCategory
-        key: "{{ steps.classify.category }}"
-        onMissing: "No agent role mapping for category '{{ steps.classify.category }}'."
-      - name: agentId
-        value: "{{ steps.route_team.teamName }}_{{ output.role }}"
-    assignAgent: "{{ steps.assign_agent.agentId }}"
-    detail: "{{ steps.assign_agent.agentId }}"
-    next: locate_component
-
-  - id: locate_component
-    kind: tool
-    name: Component lookup
-    tool: support.locateComponent
-    input:
-      applicationFolder: "{{ steps.route_team.applicationFolder }}"
-      text: "{{ input.subject }} {{ input.body }}"
-    detail: "{{ steps.locate_component.path }}"
-    next: resolve
-
-  - id: resolve
-    kind: llm
-    name: Root cause analysis
-    temperature: 0.2
-    systemPrompt: { file: prompts/resolve.system.md }
-    prompt: { file: prompts/resolve.user.md }
-    output:
-      schema: { file: schemas/resolution.schema.json }
-    demo:
+    # Read the intake input (subject/body) as a record (ParseJSON-free; PROBE-A via the built-in input tool).
+    - kind: InvokeMcpTool
+      id: read_input
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.input
+      requireApproval: false
+      arguments:
+        payload: =System.LastMessage.Text
       output:
-        rootCauseDescription: '[Demo] Simulated root cause analysis for "{{ input.subject }}": the defect originates in {{ steps.locate_component.component }}.'
-        affectedComponent: "{{ steps.locate_component.component }}"
-        severityAssessment: "{{ t = input.subject + ' ' + input.body | string.downcase }}{{ if (t | string.contains 'injection') || (t | string.contains 'security') }}Critical{{ else if (t | string.contains 'exception') || (t | string.contains 'crash') }}High{{ else }}Medium{{ end }}"
-        proposedFixSummary: "[Demo] Apply a targeted fix in {{ steps.locate_component.component }} and add a regression test."
-        requiresEscalation: false
-        escalationReason: null
-    detail: "{{ steps.resolve.proposedFixSummary }}"
-    next: approval
+        result: Local.intake
 
-  - id: approval
-    kind: human-input
-    name: Human approval
-    review:
-      title: "Proposed fix: {{ steps.resolve.affectedComponent }}"
-      fields:
-        - { label: Root cause, value: "{{ steps.resolve.rootCauseDescription }}" }
-        - { label: Affected component, value: "{{ steps.resolve.affectedComponent }}" }
-        - { label: Severity, value: "{{ steps.resolve.severityAssessment }}" }
-        - { label: Proposed fix, value: "{{ steps.resolve.proposedFixSummary }}" }
-        - { label: Escalation, value: "{{ if steps.resolve.requiresEscalation }}{{ steps.resolve.escalationReason }}{{ else }}None{{ end }}" }
-    detail: "{{ steps.resolve.proposedFixSummary }}"
-    transitions:
-      - when: steps.approval.decision == "approved"
-        to: generate_code
-      - to: manual_review_required
-
-  - id: generate_code
-    kind: llm
-    name: Code generation
-    temperature: 0.5
-    systemPrompt: { file: prompts/generate-code.system.md }
-    prompt: { file: prompts/generate-code.user.md }
-    output:
-      schema: { file: schemas/pull-request.schema.json }
-    demo:
+    # ── classify ──────────────────────────────────────────────────────────────────────────────────────
+    # Demo output for (support-email, classify) comes from DemoResponseProvider, which matches its rules against the
+    # rendered prompt; the prompt therefore keeps the "Subject: ...\n\nBody: ..." shape the Demo rules expect.
+    - kind: InvokeAzureAgent
+      id: classify
+      conversationId: =System.ConversationId
+      agent:
+        name: classify
+      input:
+        messages: =UserMessage(Concatenate("Subject: ", First(Local.intake).subject, Char(10), Char(10), "Body: ", First(Local.intake).body))
       output:
-        title: "[Demo] Fix {{ steps.resolve.affectedComponent }}"
-        description: "{{ steps.resolve.proposedFixSummary }}"
-        affectedFilePaths: ["{{ steps.locate_component.path }}"]
-        simulatedDiff: |
-          --- a/{{ steps.locate_component.path }}
-          +++ b/{{ steps.locate_component.path }}
-          @@ -1,3 +1,4 @@
-          +// [Demo] simulated change: {{ steps.resolve.proposedFixSummary }}
-           // existing code
-    detail: "{{ steps.generate_code.title }}"
-    next: code_change_generated
+        messages: Local.classify
+    - kind: InvokeMcpTool
+      id: parse_classify
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =MessageText(Local.classify)
+      output:
+        result: Local.classifyObj
+    - kind: SetVariable
+      id: classify_detail
+      variable: Global.classify__detail
+      value: =Concatenate(First(Local.classifyObj).category, " (", Text(First(Local.classifyObj).confidenceScore * 100, "0"), "%)")
+    - kind: SetVariable
+      id: classify_snapshot
+      variable: Global.classify
+      value: =MessageText(Local.classify)
+    - kind: ConditionGroup
+      id: after_classify
+      conditions:
+        - condition: =First(Local.classifyObj).isCodeRelated = true
+          id: is_code
+          actions:
+            - kind: GotoAction
+              id: goto_route
+              actionId: rt_text
+      elseActions:
+        - kind: GotoAction
+          id: goto_oos
+          actionId: classified_out_of_scope_message
 
-  - id: code_change_generated
-    kind: terminal
-    name: Code change generated
-    outcome: success
-    message: "{{ steps.generate_code.title }}"
-    output: "{{ steps.generate_code }}"
+    # ── route_team (rule -> explicit PowerFx) ───────────────────────────────────────────────────────────
+    # INVARIANT: PowerFx has no IsMatch here, so routing uses Lower(subject & " " & body) + Find() on the two forms of
+    # each application token ("application a"/"applicationa"), equivalent to the old regex Application\s?A/B. Every Find
+    # literal is lower-cased to match Lower(rtText); keep it that way or routing silently breaks.
+    - kind: SetVariable
+      id: rt_text
+      variable: Local.rtText
+      value: =Lower(Concatenate(First(Local.intake).subject, " ", First(Local.intake).body))
+    - kind: SetVariable
+      id: rt_a
+      variable: Local.matchA
+      value: =Or(Find("application a", Local.rtText) > 0, Find("applicationa", Local.rtText) > 0)
+    - kind: SetVariable
+      id: rt_b
+      variable: Local.matchB
+      value: =Or(Find("application b", Local.rtText) > 0, Find("applicationb", Local.rtText) > 0)
+    - kind: ConditionGroup
+      id: route_team
+      conditions:
+        - condition: =Local.matchA And Local.matchB
+          id: both
+          actions:
+            - kind: GotoAction
+              id: goto_ambiguous
+              actionId: fail_ambiguous_message
+        - condition: =Not(Local.matchA) And Not(Local.matchB)
+          id: none
+          actions:
+            - kind: GotoAction
+              id: goto_no_app
+              actionId: fail_no_app_message
+        - condition: =Local.matchA
+          id: is_a
+          actions:
+            - kind: SetVariable
+              id: rt_set_a
+              variable: Local.route
+              value: ={ teamName: "TeamA", applicationName: "ApplicationA", applicationFolder: "application-a" }
+            - kind: GotoAction
+              id: goto_assign_a
+              actionId: assign_role
+      elseActions:
+        - kind: SetVariable
+          id: rt_set_b
+          variable: Local.route
+          value: ={ teamName: "TeamB", applicationName: "ApplicationB", applicationFolder: "application-b" }
+        - kind: GotoAction
+          id: goto_assign_b
+          actionId: assign_role
 
-  - id: classified_out_of_scope
-    kind: terminal
-    name: Out of scope
-    outcome: success
-    message: "{{ steps.classify.reasoning }}"
+    # ── assign_agent (map -> PowerFx) ───────────────────────────────────────────────────────────────────
+    - kind: SetVariable
+      id: assign_role
+      variable: Local.role
+      value: =Switch(First(Local.classifyObj).category, "BackendBug", "BackendDeveloper", "FrontendBug", "FrontendDeveloper", "QualityTestIssue", "QAEngineer", "")
+    - kind: ConditionGroup
+      id: check_role
+      conditions:
+        - condition: =Local.role = ""
+          id: no_role
+          actions:
+            - kind: GotoAction
+              id: goto_no_role
+              actionId: no_agent_mapping_message
+      elseActions:
+        - kind: GotoAction
+          id: goto_assign
+          actionId: assign_id
+    - kind: SetVariable
+      id: assign_id
+      variable: Local.agentId
+      value: =Concatenate(Local.route.teamName, "_", Local.role)
+    - kind: SetVariable
+      id: assigned_agent
+      variable: Global.assignedAgentId
+      value: =Local.agentId
+    - kind: SetVariable
+      id: route_team_detail
+      variable: Global.route_team__detail
+      value: =Local.route.teamName
+    - kind: SetVariable
+      id: route_team_snapshot
+      variable: Global.route_team
+      value: =Local.route
+    - kind: SetVariable
+      id: assign_agent_detail
+      variable: Global.assign_agent__detail
+      value: =Local.agentId
+    - kind: SetVariable
+      id: assign_agent_snapshot
+      variable: Global.assign_agent
+      value: ={ role: Local.role, agentId: Local.agentId }
 
-  - id: manual_review_required
-    kind: terminal
-    name: Manual review required
-    outcome: failure
-    message: "{{ steps.approval.reason | object.default 'Rejected' }}"
+    # ── locate_component (tool -> InvokeMcpTool) ────────────────────────────────────────────────────────
+    - kind: InvokeMcpTool
+      id: locate_component
+      serverUrl: inproc://support
+      serverLabel: support
+      toolName: support.locateComponent
+      requireApproval: false
+      arguments:
+        applicationFolder: =Local.route.applicationFolder
+        text: =Local.rtText
+      output:
+        result: Local.locate
+    - kind: SetVariable
+      id: locate_component_detail
+      variable: Global.locate_component__detail
+      value: =First(Local.locate).path
+    - kind: SetVariable
+      id: locate_component_snapshot
+      variable: Global.locate_component
+      value: =First(Local.locate)
+
+    # ── resolve ─────────────────────────────────────────────────────────────────────────────────────────
+    - kind: InvokeAzureAgent
+      id: resolve
+      conversationId: =System.ConversationId
+      agent:
+        name: =Concatenate("resolve|", Local.agentId)
+      input:
+        messages: =UserMessage(Concatenate("Subject: ", First(Local.intake).subject, Char(10), Char(10), "Body: ", First(Local.intake).body, Char(10), Char(10), "Component: ", First(Local.locate).component))
+      output:
+        messages: Local.resolveMsg
+    - kind: InvokeMcpTool
+      id: parse_resolve
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =MessageText(Local.resolveMsg)
+      output:
+        result: Local.resolveObj
+    - kind: SetVariable
+      id: resolve_detail
+      variable: Global.resolve__detail
+      value: =First(Local.resolveObj).proposedFixSummary
+    - kind: SetVariable
+      id: resolve_snapshot
+      variable: Global.resolve
+      value: =MessageText(Local.resolveMsg)
+
+    # ── approval (human-input -> Question + ConditionGroup) ─────────────────────────────────────────────
+    # The review is rendered as a JSON object the seam turns into the dashboard ReviewPayload (title + labelled fields).
+    # Build the review as a JSON object the seam turns into the dashboard ReviewPayload. Field values are quote-sanitised
+    # (double quotes -> single) so an LLM/Demo value containing a quote cannot break the JSON.
+    - kind: SetVariable
+      id: review_component
+      variable: Local.reviewComponent
+      value: =Substitute(First(Local.resolveObj).affectedComponent, Char(34), "'")
+    - kind: SetVariable
+      id: review_rootcause
+      variable: Local.reviewRootCause
+      value: =Substitute(First(Local.resolveObj).rootCauseDescription, Char(34), "'")
+    - kind: SetVariable
+      id: review_fix
+      variable: Local.reviewFix
+      value: =Substitute(First(Local.resolveObj).proposedFixSummary, Char(34), "'")
+    - kind: SetVariable
+      id: review_severity
+      variable: Local.reviewSeverity
+      value: =Substitute(First(Local.resolveObj).severityAssessment, Char(34), "'")
+    - kind: SetVariable
+      id: review_json
+      variable: Local.reviewJson
+      value: =Concatenate("{""title"":""Proposed fix: ", Local.reviewComponent, """,""fields"":[{""label"":""Root cause"",""value"":""", Local.reviewRootCause, """},{""label"":""Affected component"",""value"":""", Local.reviewComponent, """},{""label"":""Severity"",""value"":""", Local.reviewSeverity, """},{""label"":""Proposed fix"",""value"":""", Local.reviewFix, """},{""label"":""Escalation"",""value"":""None""}]}")
+    - kind: Question
+      id: approval
+      property: Local.approvalRaw
+      prompt:
+        kind: Message
+        text:
+          - "{Local.reviewJson}"
+      entity:
+        kind: StringPrebuiltEntity
+    - kind: InvokeMcpTool
+      id: parse_approval
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =Local.approvalRaw
+      output:
+        result: Local.approvalObj
+    - kind: SetVariable
+      id: approval_snapshot
+      variable: Global.approval
+      value: =Local.approvalRaw
+    - kind: ConditionGroup
+      id: after_approval
+      conditions:
+        - condition: =Find("approved", Local.approvalRaw) > 0
+          id: approved
+          actions:
+            - kind: GotoAction
+              id: goto_generate
+              actionId: generate_code
+      elseActions:
+        - kind: GotoAction
+          id: goto_manual
+          actionId: manual_review_required_message
+
+    # ── generate_code ───────────────────────────────────────────────────────────────────────────────────
+    - kind: InvokeAzureAgent
+      id: generate_code
+      conversationId: =System.ConversationId
+      agent:
+        name: =Concatenate("generate_code|", Local.agentId)
+      input:
+        messages: =UserMessage(Concatenate("Component: ", First(Local.resolveObj).affectedComponent, Char(10), Char(10), "ProposedFix: ", First(Local.resolveObj).proposedFixSummary, Char(10), Char(10), "Path: ", First(Local.locate).path))
+      output:
+        messages: Local.prMsg
+    - kind: InvokeMcpTool
+      id: parse_pr
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =MessageText(Local.prMsg)
+      output:
+        result: Local.prObj
+    - kind: SetVariable
+      id: generate_code_detail
+      variable: Global.generate_code__detail
+      value: =First(Local.prObj).title
+    - kind: SetVariable
+      id: generate_code_snapshot
+      variable: Global.generate_code
+      value: =MessageText(Local.prMsg)
+
+    # ── code_change_generated (success terminal, output = generate_code) ────────────────────────────────
+    - kind: SetVariable
+      id: code_change_generated_final
+      variable: Global.__finalOutput
+      value: =MessageText(Local.prMsg)
+    - kind: SetVariable
+      id: code_change_generated_message
+      variable: Global.__message
+      value: =First(Local.prObj).title
+    - kind: SetVariable
+      id: code_change_generated_id
+      variable: Global.__terminalId
+      value: ="code_change_generated"
+    - kind: SendActivity
+      id: code_change_generated
+      activity:
+        text:
+          - "{First(Local.prObj).title}"
+    - kind: EndConversation
+      id: end_code_change_generated
+
+    # ── classified_out_of_scope (success terminal, message from classify reasoning) ─────────────────────
+    - kind: SetVariable
+      id: classified_out_of_scope_message
+      variable: Global.__message
+      value: =First(Local.classifyObj).reasoning
+    - kind: SetVariable
+      id: classified_out_of_scope_id
+      variable: Global.__terminalId
+      value: ="classified_out_of_scope"
+    - kind: SendActivity
+      id: classified_out_of_scope
+      activity:
+        text:
+          - "{First(Local.classifyObj).reasoning}"
+    - kind: EndConversation
+      id: end_classified_out_of_scope
+
+    # ── manual_review_required (failure terminal, message Coalesce(reason, "Rejected")) ─────────────────
+    - kind: SetVariable
+      id: manual_review_required_message
+      variable: Global.__message
+      value: =Coalesce(First(Local.approvalObj).reason, "Rejected")
+    - kind: SetVariable
+      id: manual_review_required_id
+      variable: Global.__terminalId
+      value: ="manual_review_required"
+    - kind: SendActivity
+      id: manual_review_required
+      activity:
+        text:
+          - "{Global.__message}"
+    - kind: EndConversation
+      id: end_manual_review_required
+
+    # ── fail_ambiguous (failure terminal, verbatim message) ─────────────────────────────────────────────
+    - kind: SetVariable
+      id: fail_ambiguous_message
+      variable: Global.__message
+      value: ="Ambiguous routing: both ApplicationA and ApplicationB are mentioned."
+    - kind: SetVariable
+      id: fail_ambiguous_id
+      variable: Global.__terminalId
+      value: ="fail_ambiguous"
+    - kind: SendActivity
+      id: fail_ambiguous
+      activity:
+        text:
+          - "Ambiguous routing: both ApplicationA and ApplicationB are mentioned."
+    - kind: EndConversation
+      id: end_fail_ambiguous
+
+    # ── fail_no_app (failure terminal, verbatim message) ────────────────────────────────────────────────
+    - kind: SetVariable
+      id: fail_no_app_message
+      variable: Global.__message
+      value: ="Cannot determine affected application: neither ApplicationA nor ApplicationB is mentioned."
+    - kind: SetVariable
+      id: fail_no_app_id
+      variable: Global.__terminalId
+      value: ="fail_no_app"
+    - kind: SendActivity
+      id: fail_no_app
+      activity:
+        text:
+          - "Cannot determine affected application: neither ApplicationA nor ApplicationB is mentioned."
+    - kind: EndConversation
+      id: end_fail_no_app
+
+    # ── no_agent_mapping (failure terminal, missing category) ───────────────────────────────────────────
+    - kind: SetVariable
+      id: no_agent_mapping_message
+      variable: Global.__message
+      value: =Concatenate("No agent role mapping for category '", First(Local.classifyObj).category, "'.")
+    - kind: SetVariable
+      id: no_agent_mapping_id
+      variable: Global.__terminalId
+      value: ="no_agent_mapping"
+    - kind: SendActivity
+      id: no_agent_mapping
+      activity:
+        text:
+          - "{Global.__message}"

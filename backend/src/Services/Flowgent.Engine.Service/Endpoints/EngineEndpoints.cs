@@ -59,7 +59,7 @@ public static class EngineEndpoints
             FormatSchemas.GetText(name) is { } text
                 ? Results.Text(text, "application/schema+json")
                 : NotFound($"Schema '{name}' not found. Available: {string.Join(", ", FormatSchemas.Names)}."))
-            .WithSummary("JSON Schemas of the YAML formats (module, workflow, samples)");
+            .WithSummary("JSON Schemas of the module envelope formats (module, samples)");
     }
 
     private static void MapRuns(RouteGroupBuilder group)
@@ -166,7 +166,7 @@ public static class EngineEndpoints
     public static RuntimeConfigInfo BuildConfig(EngineOptions engine, LlmOptions llm) =>
         new(engine.SequentialProcessing, llm.IsDemo, ChatClientSetup.EffectiveProvider(llm), ChatClientSetup.EffectiveModel(llm));
 
-    internal static WorkflowInfo ToWorkflowInfo(ModuleState module, WorkflowDefinition workflow)
+    internal static WorkflowInfo ToWorkflowInfo(ModuleState module, WorkflowDescriptor workflow)
     {
         var definition = module.Definition!;
         return new WorkflowInfo(
@@ -176,7 +176,7 @@ public static class EngineEndpoints
             workflow.Description,
             workflow.Version,
             module.IsAvailable,
-            definition.GetSchemaNode(workflow.Input.Schema).DeepClone(),
+            definition.GetSchemaNode(workflow.InputSchema).DeepClone(),
             BuildGraph(workflow),
             definition.Samples
                 .Where(s => s.Workflow == workflow.Id)
@@ -184,12 +184,10 @@ public static class EngineEndpoints
                 .ToList());
     }
 
-    internal static WorkflowGraph BuildGraph(WorkflowDefinition workflow) => new(
-        workflow.Start,
-        workflow.Steps.Select(s => new GraphNode(s.Id, s.Name, s.Kind, (s as TerminalStep)?.Outcome.ToString().ToLowerInvariant())).ToList(),
-        workflow.Steps
-            .SelectMany(s => s.EffectiveTransitions.Select(t => new GraphEdge(s.Id, t.To, t.When)))
-            .ToList());
+    internal static WorkflowGraph BuildGraph(WorkflowDescriptor workflow) => new(
+        workflow.Graph.Start,
+        workflow.Graph.Nodes.Select(n => new GraphNode(n.Id, n.Name, n.Kind, n.Outcome)).ToList(),
+        workflow.Graph.Edges.Select(e => new GraphEdge(e.From, e.To, e.Label)).ToList());
 
     private static IResult ToResult((HumanInputResult Result, string? Error) outcome) => outcome.Result switch
     {

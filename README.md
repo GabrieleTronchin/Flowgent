@@ -1,15 +1,15 @@
 # Flowgent
 
-![CI](https://github.com/GabrieleTronchin/AiSupportWorkflow/actions/workflows/ci.yml/badge.svg)
-![Dashboard CI](https://github.com/GabrieleTronchin/AiSupportWorkflow/actions/workflows/dashboard-ci.yml/badge.svg)
+![CI](https://github.com/GabrieleTronchin/Flowgent/actions/workflows/ci.yml/badge.svg)
+![Dashboard CI](https://github.com/GabrieleTronchin/Flowgent/actions/workflows/dashboard-ci.yml/badge.svg)
 ![.NET](https://img.shields.io/badge/.NET-10.0-blueviolet)
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)
-![License](https://img.shields.io/github/license/GabrieleTronchin/AiSupportWorkflow)
+![License](https://img.shields.io/github/license/GabrieleTronchin/Flowgent)
 
 **A spec-driven AI experiment.**
 
-Flowgent is a base for building LLM workflows. Workflows are described in YAML (steps, transitions, prompts, JSON schemas, rules, human review, demo responses) and run by a domain-agnostic engine on **Microsoft Agent Framework Workflows**. Each business domain is a **module**: a small service that owns its definitions and custom code. A generic dashboard monitors every module, and one command starts everything.
+Flowgent is a base for building LLM workflows. Workflows are **Microsoft Agent Framework declarative** documents (actions, PowerFx expressions, prompts, JSON schemas, human review) run by a domain-agnostic engine. Each business domain is a **module**: a small service that owns its definitions and custom code. A generic dashboard monitors every module, and one command starts everything.
 
 - **Engine**: validates and runs workflows, owns runs, events, the inbox, human input, LLM access (Demo or OpenAI-compatible) and telemetry.
 - **Modules**: publish their definitions and expose tools (C# operations called by workflow steps) and domain endpoints.
@@ -50,38 +50,31 @@ A test-only fixture module (`backend/tests/Fixtures/Flowgent.Fixtures.Module`) c
 4. The run executes step by step: `llm`, `rule`, `map`, `human-input`, `tool` (calls the module service), `http` (calls an external API) and `terminal`.
 5. Every transition is persisted and streamed to the dashboard.
 
-A minimal workflow (shortened from [`template-hello.yaml`](modules/_template/definition/workflows/template-hello.yaml)):
+Workflows are **Microsoft Agent Framework declarative** documents — a `trigger` with an ordered list of `actions`, with [PowerFx](docs/expressions.md) expressions (`=Expr`). An excerpt from [`template-hello.yaml`](modules/_template/definition/workflows/template-hello.yaml) (an LLM summary, then a module tool over MCP, then a terminal):
 
 ```yaml
-id: template-hello
-version: 1
-name: Hello (template)
-input:
-  schema: { file: schemas/template-hello.input.schema.json }
-start: summarize
-steps:
-  - id: summarize
-    kind: llm
-    name: Summary
-    prompt: { file: prompts/summarize.user.md }
-    output: { schema: { file: schemas/summary.schema.json } }
-    demo:
-      output: { summary: "[Demo] {{ input.text | string.truncate 80 }}" }
-    next: count_words
-  - id: count_words
-    kind: tool
-    name: Word count
-    tool: template.wordCount
-    input: { text: "{{ steps.summarize.summary }}" }
-    next: done
-  - id: done
-    kind: terminal
-    name: Done
-    outcome: success
-    message: "{{ steps.summarize.summary }} ({{ steps.count_words.words }} words)"
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: template-hello
+  actions:
+    - kind: InvokeAzureAgent          # an LLM step, resolved by name through our IChatClient (no Foundry)
+      id: summarize
+      agent: { name: summarize|template_writer }
+      input: { messages: =UserMessage(Concatenate("Text: ", First(Local.intake).text)) }
+      output: { messages: Local.summarize }
+    - kind: InvokeMcpTool             # a domain tool, invoked over MCP
+      id: count_words
+      serverLabel: template
+      toolName: template.wordCount
+      arguments: { text: =Local.summary }
+      output: { result: Local.wc }
+    - kind: SendActivity              # terminal output
+      id: done
+      activity: { text: ["{Global.__message}"] }
 ```
 
-To add a module, copy `modules/_template` and follow its README: no change to the engine, the gateway code or the dashboard is needed. See [Module authoring](docs/module-authoring.md).
+The engine loads these with the declarative workflow builder; there is no custom YAML format, validator or Scriban template engine. To add a module, copy `modules/_template` and follow its README: no change to the engine, the gateway or the dashboard is needed. See [Module authoring](docs/module-authoring.md) and the [Workflow reference](docs/workflow-reference.md).
 
 ## Getting started
 
@@ -150,7 +143,7 @@ docs/                               # platform documentation
 | Runtime | .NET 10, C# latest |
 | Execution | Microsoft Agent Framework Workflows 1.27 |
 | LLM | Microsoft.Extensions.AI `IChatClient` (Demo, OpenAI-compatible) with structured output |
-| Definitions | YAML (YamlDotNet), Scriban templates, JSON Schema (JsonSchema.Net) |
+| Definitions | MAF declarative workflows (`Microsoft.Agents.AI.Workflows.Declarative`) + PowerFx; module envelope in YAML (YamlDotNet), JSON Schema (JsonSchema.Net) |
 | Services | ASP.NET Core minimal APIs, YARP gateway, gRPC-Web |
 | Orchestration | .NET Aspire 13, OpenTelemetry |
 | Persistence | EF Core 10 InMemory |
@@ -162,8 +155,8 @@ docs/                               # platform documentation
 | Document | Content |
 |----------|---------|
 | [Architecture](docs/architecture.md) | Services, contracts, module catalog, run model, persistence, dependency rules |
-| [Workflow reference](docs/workflow-reference.md) | `module.yaml`, workflows, every step kind, samples, validation |
-| [Expressions](docs/expressions.md) | Scriban templates and conditions, available data, sandbox |
+| [Workflow reference](docs/workflow-reference.md) | `module.yaml`, MAF declarative workflows, action kinds, samples, validation |
+| [Expressions](docs/expressions.md) | PowerFx expressions and conditions in declarative workflows, available data |
 | [Module authoring](docs/module-authoring.md) | Creating a module from the template: SDK, tools, endpoints, registration, tests |
 | [Gateway](docs/gateway.md) | Routes, configuration, correlation id, 503 handling |
 | [Engine API](docs/engine-api.md) | `/api/engine` endpoints, gRPC stream, engine configuration |

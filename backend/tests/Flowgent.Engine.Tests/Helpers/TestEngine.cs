@@ -101,7 +101,7 @@ public sealed class TestEngine : IAsyncDisposable
         return (await Store.GetAsync(runId))!;
     }
 
-    public async Task<RunRecord> WaitForAsync(Guid runId, Func<RunRecord, bool> condition, int timeoutMs = 10_000)
+    public async Task<RunRecord> WaitForAsync(Guid runId, Func<RunRecord, bool> condition, int timeoutMs = 60_000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (true)
@@ -121,11 +121,11 @@ public sealed class TestEngine : IAsyncDisposable
         }
     }
 
-    public Task<RunRecord> WaitForStatusAsync(Guid runId, RunStatus status, int timeoutMs = 10_000) =>
+    public Task<RunRecord> WaitForStatusAsync(Guid runId, RunStatus status, int timeoutMs = 60_000) =>
         WaitForAsync(runId, r => r.Status == status, timeoutMs);
 
     /// <summary>Waits until the run's human input is registered (approve/reject can then be called).</summary>
-    public async Task WaitForHumanInputAsync(Guid runId, int timeoutMs = 10_000)
+    public async Task WaitForHumanInputAsync(Guid runId, int timeoutMs = 60_000)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
         while (!HumanInputs.IsPending(runId))

@@ -4,7 +4,9 @@
 
 A module is one business domain: its workflow definitions plus a small ASP.NET Core service built on `Flowgent.Module.Sdk`. Adding a module needs no change to the engine, the gateway code or the dashboard.
 
-Start from [`modules/_template`](../modules/_template/README.md): it is a minimal, valid module (one `llm` → `tool` → `terminal` workflow, one tool, one sample, tests) and its README lists the copy-and-rename steps.
+Start from [`modules/_template`](../modules/_template/README.md): it is a minimal, valid module (a MAF declarative workflow that calls an LLM, invokes one tool and ends; one tool; one sample; tests) and its README lists the copy-and-rename steps.
+
+Workflows are **Microsoft Agent Framework declarative** documents (`kind: Workflow`, a `trigger` with ordered `actions`, [PowerFx](expressions.md) expressions). See the [Workflow reference](workflow-reference.md) for the action kinds. The engine trial-builds each workflow with the declarative builder; there is no custom step format.
 
 ## Layout
 
@@ -58,11 +60,11 @@ public static class NotesHost
 | `EngineUrl` | `http://localhost:5081` | Engine address for `IEngineClient` (the AppHost sets `http://engine`). |
 | `FailOnInvalidDefinition` | `false` | Stop the service when the definition is invalid. By default it starts anyway and logs the errors, so the engine and the dashboard can show them. |
 
-At startup the SDK validates the definition with the engine's rules and logs an error for every tool declared in `module.yaml` without a registered handler.
+At startup the SDK validates the module envelope (`module.yaml`: agents, tool/sample references, schema files) and logs an error for every tool declared in `module.yaml` without a registered handler. Each workflow is not step-validated at load; the engine trial-builds it with the declarative builder and reports a build failure as a module error.
 
 ## Tools
 
-A tool is C# code the workflow calls with a `tool` step (or `demo.tool` in an `llm` step). Declare it in `module.yaml` with its input and output schemas, then implement it:
+A tool is C# code the workflow runs over MCP. Declare it in `module.yaml` with its input and output schemas, then implement it:
 
 ```csharp
 public sealed record WordCountInput(string Text);
@@ -77,8 +79,27 @@ public sealed class WordCountTool : ModuleTool<WordCountInput, WordCountOutput>
 
 - `ModuleTool<TInput, TOutput>` (de)serializes camelCase JSON; implement `IModuleTool` for raw `JsonNode` access.
 - `ToolInvocation` carries `RunId`, `ModuleId`, `WorkflowId`, `StepId`, the input and `Module` (definition root, module root and `config`).
-- Throw `ToolException` for expected failures: the step fails with `Tool '<name>' failed: <message>`.
+- Throw `ToolException` for expected failures.
 - Tools are resolved from DI as transient services, so constructor injection works.
+
+### Calling a tool from a workflow
+
+A workflow invokes a tool with the declarative `InvokeMcpTool` action, where `serverLabel` is the module id and `toolName` is the declared tool name. The engine's MCP tool handler routes the call to the module service (today over the SDK's `/_module/tools` endpoint) and returns the result as a JSON string, read back with `First(Local.x).<field>`:
+
+```yaml
+- kind: InvokeMcpTool
+  id: count_words
+  serverUrl: inproc://notes
+  serverLabel: notes            # module id
+  toolName: notes.wordCount     # declared tool name
+  requireApproval: false
+  arguments: { text: =Local.summary }
+  output: { result: Local.wc }  # read as =First(Local.wc).words
+```
+
+> Tool results must be a non-numeric JSON string or object — a bare top-level number crashes the PowerFx binding. The handler wraps a bare number automatically, but prefer returning an object.
+
+The engine also exposes two reserved built-in tools under `serverLabel: flowgent`, since PowerFx has no `ParseJSON`: `flowgent.input` returns the run's intake input as a record, and `flowgent.parse` turns a JSON string (e.g. an agent's structured answer) into a record — both read with `First(Local.x).<field>`. See [`modules/_template/definition/workflows/template-hello.yaml`](../modules/_template/definition/workflows/template-hello.yaml) for all three in use.
 
 ## Domain endpoints
 

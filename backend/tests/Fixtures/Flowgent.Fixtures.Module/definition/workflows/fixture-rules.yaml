@@ -1,41 +1,105 @@
-# yaml-language-server: $schema=../../../../../schemas/workflow.schema.json
-#
-# classify (rule: fallback output when nothing matches, failure when several rules match) -> routed
-id: fixture-rules
-version: 1
-name: Fixture rules
-description: Rule step with an onNoMatch fallback output and a failing onMultipleMatches policy.
-title: "{{ input.text }}"
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: fixture-rules
+  actions:
 
-input:
-  schema:
-    type: object
-    required: [text]
-    properties:
-      text: { type: string, minLength: 1 }
+    # Read the intake input (text) as a record (ParseJSON-free; built-in input tool, PROBE-A).
+    - kind: InvokeMcpTool
+      id: read_input
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.input
+      requireApproval: false
+      arguments:
+        payload: =System.LastMessage.Text
+      output:
+        result: Local.intake
 
-start: classify
+    # ── classify (rule -> explicit PowerFx) ─────────────────────────────────────────────────────────────
+    # INVARIANT: PowerFx has no regex here; matching uses Find() on the lower-cased text. Every literal is lower-cased.
+    # alpha only -> Alpha, beta only -> Beta, both -> ambiguous (failure), neither -> Other (fallback, success).
+    - kind: SetVariable
+      id: cl_text
+      variable: Local.clText
+      value: =Lower(First(Local.intake).text)
+    - kind: SetVariable
+      id: cl_a
+      variable: Local.hasAlpha
+      value: =Find("alpha", Local.clText) > 0
+    - kind: SetVariable
+      id: cl_b
+      variable: Local.hasBeta
+      value: =Find("beta", Local.clText) > 0
+    - kind: ConditionGroup
+      id: classify
+      conditions:
+        - condition: =Local.hasAlpha And Local.hasBeta
+          id: both
+          actions:
+            - kind: GotoAction
+              id: goto_ambiguous
+              actionId: ambiguous_message
+        - condition: =Local.hasAlpha
+          id: only_a
+          actions:
+            - kind: SetVariable
+              id: cl_set_a
+              variable: Local.group
+              value: ="Alpha"
+        - condition: =Local.hasBeta
+          id: only_b
+          actions:
+            - kind: SetVariable
+              id: cl_set_b
+              variable: Local.group
+              value: ="Beta"
+      elseActions:
+        - kind: SetVariable
+          id: cl_set_other
+          variable: Local.group
+          value: ="Other"
+    - kind: SetVariable
+      id: classify_detail
+      variable: Global.classify__detail
+      value: =Local.group
+    - kind: SetVariable
+      id: classify_snapshot
+      variable: Global.classify
+      value: ={ group: Local.group }
 
-steps:
-  - id: classify
-    kind: rule
-    name: Classify
-    value: "{{ input.text }}"
-    rules:
-      - match: '\balpha\b'
-        output: { group: Alpha }
-      - match: '\bbeta\b'
-        output: { group: Beta }
-    onMultipleMatches:
-      fail: "Ambiguous: '{{ input.text }}' matches several groups."
-    onNoMatch:
-      output: { group: Other }
-    detail: "{{ steps.classify.group }}"
-    next: routed
+    # ── routed (success terminal, output = { group }) ──────────────────────────────────────────────────
+    - kind: SetVariable
+      id: routed_final
+      variable: Global.__finalOutput
+      value: ={ group: Local.group }
+    - kind: SetVariable
+      id: routed_message
+      variable: Global.__message
+      value: =Local.group
+    - kind: SetVariable
+      id: routed_id
+      variable: Global.__terminalId
+      value: ="routed"
+    - kind: SendActivity
+      id: routed
+      activity:
+        text:
+          - "{Local.group}"
+    - kind: EndConversation
+      id: end_routed
 
-  - id: routed
-    kind: terminal
-    name: Routed
-    outcome: success
-    message: "{{ steps.classify.group }}"
-    output: "{{ steps.classify }}"
+    # ── ambiguous (failure terminal, verbatim message) ─────────────────────────────────────────────────
+    - kind: SetVariable
+      id: ambiguous_message
+      variable: Global.__message
+      value: =Concatenate("Ambiguous: '", First(Local.intake).text, "' matches several groups.")
+    - kind: SetVariable
+      id: ambiguous_id
+      variable: Global.__terminalId
+      value: ="ambiguous"
+    - kind: SendActivity
+      id: ambiguous
+      activity:
+        text:
+          - "{Global.__message}"

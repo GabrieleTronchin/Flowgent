@@ -1,0 +1,46 @@
+# PROBE-A (+ PROBE-B source): structured MCP result binding through the DECLARATIVE path.
+#
+# Finding (from decompiling InvokeMcpToolExecutor.AssignResultAsync): the executor runs
+# JsonDocument.Parse on each TextContent. A valid JSON OBJECT string therefore parses into
+# a PowerFx RECORD, collected into a one-row table. So fields are read directly off
+# First(Local.r) as record fields -- First(Local.r).path -- NOT via ParseJSON and NOT via
+# .Value (.Value only appears when the string is NOT valid JSON, e.g. the spike's "5 words").
+#
+# This probe:
+#   A) confirms the object JSON string does NOT crash (no "Unsupported element type: Double")
+#      and its fields are readable as record fields;
+#   B) writes those fields into Global.* so PROBE-B can recover them from run state.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: spike_probe_a_structured_mcp
+  actions:
+
+    - kind: InvokeMcpTool
+      id: invoke_locate
+      displayName: Locate component via MCP (returns a JSON object string)
+      serverUrl: inproc://spike-probe
+      serverLabel: spike_probe
+      toolName: locateComponent
+      requireApproval: false
+      arguments:
+        query: =System.LastMessage.Text
+      output:
+        result: Local.locate
+
+    # PROBE-A: read fields directly off the parsed record (one-row table -> First()).
+    - kind: SetVariable
+      id: capture_path
+      variable: Global.locatePath
+      value: =Text(First(Local.locate).path)
+
+    - kind: SetVariable
+      id: capture_found
+      variable: Global.locateFound
+      value: =Text(First(Local.locate).found)
+
+    - kind: SendActivity
+      id: send_probe
+      activity:
+        text:
+          - "PROBE-A path={Text(First(Local.locate).path)} found={Text(First(Local.locate).found)} component={Text(First(Local.locate).component)}"

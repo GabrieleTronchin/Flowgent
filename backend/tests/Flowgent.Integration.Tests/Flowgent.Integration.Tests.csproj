@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Run the heavyweight in-process platform tests serially (see xunit.runner.json). -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.MTP" />
     <PackageReference Include="Grpc.Net.Client.Web" />
     <PackageReference Include="xunit.v3" />

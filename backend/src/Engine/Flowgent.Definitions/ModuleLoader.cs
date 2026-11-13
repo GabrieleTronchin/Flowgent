@@ -14,8 +14,10 @@ using Flowgent.Definitions.Validation;
 using Flowgent.Definitions.Yaml;
 
 /// <summary>
-/// Loads a module definition (manifest, workflows, samples, prompts, schemas) from a package or a folder:
-/// YAML → JSON → format schema → model → semantic validation. The engine and the Module SDK use the same rules.
+/// Loads a module definition (manifest, workflows, samples, prompts, schemas) from a package or a folder.
+/// Keeps the envelope pipeline (manifest format schema, reference checks, schema-file existence, samples
+/// validation) and carries each workflow's raw declarative YAML in a <see cref="WorkflowDescriptor"/>. The
+/// declarative workflow document itself is not parsed or step-validated here (that is the MAF builder's job).
 /// </summary>
 public static class ModuleLoader
 {
@@ -61,9 +63,16 @@ public static class ModuleLoader
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())))[..16];
     }
 
-    public static LoadResult Load(ModulePackage package)
+    public static LoadResult Load(ModulePackage package) => Load(package, MinimalWorkflowGraphProjector.Instance);
+
+    /// <summary>
+    /// Loads a package, projecting each workflow graph with the supplied projector. The engine injects a
+    /// declarative-aware projector; the default produces a minimal graph.
+    /// </summary>
+    public static LoadResult Load(ModulePackage package, IWorkflowGraphProjector projector)
     {
         ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(projector);
         var files = package.Files.ToDictionary(f => DefinitionPaths.Normalize(f.Key), f => f.Value, StringComparer.Ordinal);
         var errors = new DefinitionErrors(package.ModuleId);
 
@@ -76,20 +85,30 @@ public static class ModuleLoader
         var manifest = manifestDoc.Value.Model;
         errors.ModuleId = manifest.Id;
 
-        var workflows = new List<WorkflowDocument>();
-        foreach (var path in manifest.Workflows)
+        // Resolve each workflow's raw YAML text (reference + existence checks only; the declarative document
+        // itself is not parsed here).
+        var workflows = new List<WorkflowDescriptor>();
+        foreach (var reference in manifest.Workflows)
         {
-            if (!CheckReference(files, path, ModuleManifest.FileName, "workflow", errors))
+            if (!CheckReference(files, reference.File, ModuleManifest.FileName, "workflow", errors))
             {
                 continue;
             }
 
-            var doc = ReadDocument<WorkflowDefinition>(files, DefinitionPaths.Normalize(path), FormatSchemas.Workflow, errors);
-            if (doc is { } d)
+            var normalized = DefinitionPaths.Normalize(reference.File);
+            workflows.Add(new WorkflowDescriptor
             {
-                d.Model.File = DefinitionPaths.Normalize(path);
-                workflows.Add(new WorkflowDocument(d.Model, d.Lines));
-            }
+                Id = reference.Id,
+                Version = reference.Version,
+                Name = reference.Name,
+                Description = reference.Description,
+                TitleTemplate = reference.Title,
+                InputSchema = reference.Input.Schema,
+                InputErrorMessage = reference.ErrorMessage,
+                Yaml = files[normalized],
+                File = normalized,
+                Graph = projector.Project(reference, files[normalized]),
+            });
         }
 
         var samples = new List<SampleDocument>();
@@ -113,7 +132,7 @@ public static class ModuleLoader
         }
 
         var schemas = new Dictionary<string, (JsonObject, JsonSchema)>(StringComparer.Ordinal);
-        DefinitionValidator.Validate(manifest, workflows, samples, files, schemas, errors);
+        EnvelopeValidator.Validate(manifest, workflows, samples, files, schemas, errors);
 
         if (errors.HasErrors)
         {
@@ -123,7 +142,7 @@ public static class ModuleLoader
         var module = new ModuleDefinition(
             manifest,
             package.Version,
-            workflows.Select(w => w.Definition).ToList(),
+            workflows,
             samples.Select(s => s.Sample).ToList(),
             files,
             schemas,
@@ -209,8 +228,6 @@ public static class ModuleLoader
             ? value
             : null;
 }
-
-internal sealed record WorkflowDocument(WorkflowDefinition Definition, LineMap Lines);
 
 internal sealed record SampleDocument(SampleDefinition Sample, string File, LineMap Lines, int Index);
 

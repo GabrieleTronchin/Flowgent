@@ -15,7 +15,7 @@ graph LR
     ENG -->|"GET /_module/package<br/>POST /_module/tools/{name}"| MOD
     MOD -->|"POST /api/engine/workflows/{id}/runs"| ENG
     ENG -->|IChatClient| LLM[(Demo / OpenAI-compatible)]
-    ENG -->|http steps| EXT[(External APIs)]
+    MOD -->|module tools reach| EXT[(External APIs / data)]
     HOST[Aspire AppHost] -. starts and wires .-> GW & ENG & MOD & Browser
 ```
 
@@ -72,11 +72,10 @@ Each submitted input becomes a **run** of one workflow. A run has a current step
 
 ### Execution
 
-- `WorkflowCompiler` builds a fresh Agent Framework workflow graph **per run**: one executor per step, bound to the run's `RunContext`. Concurrent runs never share state.
-- The only message between executors is `StepMessage(NextStepId)`. Each step evaluates its own transitions and the graph routes the message to the chosen step.
-- A step that fails (LLM error, schema mismatch, rule failure, tool or HTTP error, template error) ends the run as `Failed` on that step with a descriptive reason.
-- A `maxSteps` guard (default 100 per run) stops loops: `Run exceeded the maximum of N steps.`
-- Each step emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Runtime`) tagged with run, module, workflow and step.
+- `MafWorkflowFactory` builds a fresh MAF **declarative** workflow **per run** from the workflow's YAML (`DeclarativeWorkflowBuilder.Build<JsonObject>`), bound to the run's `RunContext`. Concurrent runs never share state. All declarative types are confined to the `Flowgent.Runtime.Maf` seam.
+- `MafRunDriver` runs the workflow with JSON checkpointing and translates the declarative event stream into neutral records: per-step `StepStarted`/`StepCompleted` read from `Global.<stepId>` run-state variables, HITL via `RequestInfoEvent`↔`HumanInputRegistry`, and one terminal transition whose outcome comes from the manifest `terminals[]`.
+- A step that fails (agent/LLM error, tool error, PowerFx error) ends the run as `Failed` with a descriptive reason; an expected module-tool failure surfaces its `StepFailedException` message (e.g. `Module '<id>' is unavailable…`).
+- Each agent call emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Runtime`) tagged with run, module, workflow and step.
 
 ### Persistence
 
@@ -130,5 +129,4 @@ graph TD
 
 - There is no end-user or service-to-service authentication. The gateway is the only intended public entry point; engine and module ports, including `/_module/*`, must stay on a private network.
 - Secrets (`Flowgent:Llm:ApiKey`, `Flowgent:Secrets:*`) are read from configuration only and never returned by any endpoint. Keep them in user secrets, environment variables or the git-ignored `appsettings.Development.json`.
-- Templates run in a Scriban sandbox (see [Expressions](expressions.md)); regexes have a 1 s timeout.
-- `http` steps can call any URL written by the module author.
+- Workflow expressions are PowerFx evaluated by the MAF declarative builder (see [Expressions](expressions.md)); module-tool calls validate input/output against the declared schemas.

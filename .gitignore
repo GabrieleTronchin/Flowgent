@@ -364,3 +364,7 @@ FodyWeavers.xsd
 
 # Development settings with secrets
 appsettings.Development.json
+
+# Agent pipeline working artifacts (scratch output of workflow runs; the curated
+# record lives in .kiro/specs). Not part of the project source.
+.agents/

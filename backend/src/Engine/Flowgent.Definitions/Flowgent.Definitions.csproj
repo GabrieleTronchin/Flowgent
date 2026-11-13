@@ -1,12 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Flowgent definition model: YAML loading, validation, Scriban expressions and JSON Schema helpers.</Description>
+    <Description>Flowgent definition model: module envelope YAML loading, JSON Schema helpers and the WorkflowDescriptor carrying raw MAF declarative YAML.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="JsonSchema.Net" />
-    <PackageReference Include="Scriban" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 

@@ -11,7 +11,8 @@ using Microsoft.Extensions.Options;
 /// </summary>
 public sealed class ModuleCatalogService(
     ModuleCatalog catalog,
-    IModuleClient client,
+    VolumeDefinitionSource volume,
+    HttpDefinitionSource http,
     IOptions<EngineOptions> options,
     ILogger<ModuleCatalogService> logger) : BackgroundService
 {
@@ -27,7 +28,9 @@ public sealed class ModuleCatalogService(
             return;
         }
 
-        var result = await client.FetchPackageAsync(moduleId, current.Definition?.Version, ct);
+        // Volume is primary when the module's folder exists on the mounted path; otherwise pull over HTTP.
+        var source = volume.HasModule(moduleId) ? (IDefinitionSource)volume : http;
+        var result = await source.FetchAsync(moduleId, current.Definition?.Version, ct);
         switch (result)
         {
             case PackageFetchResult.Changed changed:

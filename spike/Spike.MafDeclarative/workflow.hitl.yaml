@@ -1,0 +1,44 @@
+# GOAL F5: human-in-the-loop via the declarative RequestExternalInput action.
+#
+# This mirrors our support "human-input" approval gate. RequestExternalInput
+# (BotElementKind.RequestExternalInput) pauses the workflow and surfaces a
+# RequestInfoEvent whose payload is a declarative ExternalInputRequest (its
+# AgentResponse carries the prompt). The host reads the prompt, then resumes the run
+# by sending an ExternalResponse built from request.CreateResponse(scriptedAnswer)
+# through StreamingRun.SendResponseAsync. The supplied value lands in Local.approval.
+#
+# After the gate we BRANCH on the stored response, exactly like the support approval:
+#   approved -> one activity, anything else (rejected) -> another activity.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: spike_f5_hitl
+  actions:
+
+    # 1. Human-in-the-loop gate. Pauses the run and asks for external input.
+    - kind: RequestExternalInput
+      id: request_approval
+      displayName: Approval gate (human-in-the-loop)
+      prompt:
+        text: "Approve this request? Reply 'approved' or 'rejected'."
+      variable: Local.approval
+
+    # 2. Branch on the human's answer (first match wins), like the support gate.
+    #    RequestExternalInput stores the raw response as a TABLE of chat-message records
+    #    in Local.approval, and also sets System.LastMessage to the supplied message. We
+    #    branch on System.LastMessage.Text, which is the plain "approved"/"rejected" string.
+    - kind: If
+      id: branch_on_approval
+      condition: =System.LastMessage.Text = "approved"
+      then:
+        - kind: SendActivity
+          id: on_approved
+          activity:
+            text:
+              - "APPROVED branch taken. Decision = {System.LastMessage.Text}. Proceeding with the request."
+      else:
+        - kind: SendActivity
+          id: on_rejected
+          activity:
+            text:
+              - "REJECTED branch taken. Decision = {System.LastMessage.Text}. Request will not proceed."

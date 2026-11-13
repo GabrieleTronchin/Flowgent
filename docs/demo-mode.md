@@ -6,10 +6,10 @@ The engine owns LLM access; module services never call a model for workflow step
 
 | `Flowgent:Llm:Provider` | Behaviour |
 |-------------------------|-----------|
-| `Demo` (default) | No model, no API key, no network. Each `llm` step answers with the response declared in its `demo:` block. |
+| `Demo` (default) | No model, no API key, no network. Each agent step (`InvokeAzureAgent`) answers with the response the engine's `DemoResponseProvider` computes for `(workflowId, stepId)`. |
 | `OpenAI` | Any OpenAI-compatible chat API (`ApiKey` required, optional `Endpoint`). |
 
-Everything else (inbox, runs, tools, http steps, human input, persistence, telemetry, dashboard) behaves the same in both modes.
+Everything else (inbox, runs, tools, human input, persistence, telemetry, dashboard) behaves the same in both modes.
 
 ## Settings (`Flowgent:Llm`, engine service)
 
@@ -35,51 +35,34 @@ The AppHost can also override the provider without touching files: `dotnet run -
 
 ## Declaring demo responses
 
-Each `llm` step declares its Demo response in YAML, in one of three forms. Templates work as everywhere else (see [Expressions](expressions.md)).
+Demo responses live in the engine's `DemoResponseProvider` (C#), not in the workflow YAML — migrated workflows carry **no** `demo:` block. The provider is keyed by `(workflowId, stepId)` and returns the JSON an agent step would have produced, computed from the rendered prompt (so a step's prompt keeps a stable, parseable shape, e.g. jokes `Tell a joke about: <topic>`, support `Subject: …\n\nBody: …`). When you add an agent step, add the matching key:
 
-Static or templated output:
-
-```yaml
-demo:
-  output:
-    summary: "[Demo] {{ input.text | string.truncate 80 }}"
+```csharp
+// Flowgent.Runtime/Llm/DemoResponseProvider.cs
+public JsonNode Resolve(string workflowId, string stepId, string renderedPrompt, RunContext run) =>
+    (workflowId, stepId) switch
+    {
+        ("notes-summary", "summarize") => new JsonObject { ["summary"] = $"[Demo] {Truncate(Field(renderedPrompt, "Text"), 80)}" },
+        // …
+        _ => throw new StepFailedException(stepId, $"No demo response is defined for step '{stepId}' of workflow '{workflowId}'."),
+    };
 ```
 
-Ordered rules with a default (same matching as the `rule` step, first match wins, case-insensitive):
-
-```yaml
-demo:
-  value: "{{ input.text }}"
-  rules:
-    - match: '\burgent\b|asap'
-      output: { priority: high, reasoning: "[Demo] Mentions urgency." }
-    - when: input.text | string.contains "later"
-      output: { priority: low, reasoning: "[Demo] Can wait." }
-  default: { priority: normal, reasoning: "[Demo] No signal." }
-```
-
-A module tool that computes the response (input `{ stepId, prompt, systemPrompt }`):
-
-```yaml
-demo:
-  tool: notes.demoSummary
-```
-
-The demo output must still match the step's output schema: it is validated like a real response.
+Keyword routing reuses the retained `RuleMatcher` over `MatchRule` records, so Demo classification stays the ordered first-match-wins behaviour it had in YAML.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    STEP[llm step] -->|demo response computed from YAML| TM[LlmTelemetryMiddleware]
+    STEP[InvokeAzureAgent step] -->|MafAgentProvider attaches DemoResponseProvider output| TM[LlmTelemetryMiddleware]
     TM --> OT[OpenTelemetry]
     OT -->|Provider = Demo| DC[DemoChatClient]
     OT -->|Provider = OpenAI| OA[OpenAI-compatible API]
 ```
 
-In Demo mode the `llm` step evaluates the `demo:` block before the call and passes the JSON to `DemoChatClient` through `ChatOptions.AdditionalProperties`. The demo client waits `DemoLatencyMs` and returns it with model `demo-simulated` and an estimated token usage (about 4 characters per token). Calls go through the same telemetry middleware as real ones, so the Agents page shows calls, tokens and latency.
+In Demo mode the agent provider calls `DemoResponseProvider.Resolve` and attaches the JSON to the call (`LlmCallAttribution.WithDemoResponse`); `DemoChatClient` waits `DemoLatencyMs` and returns it with model `demo-simulated` and an estimated token usage (about 4 characters per token). The call still uses the non-streaming path so it goes through the same telemetry middleware as a real one, so the Agents page shows calls, tokens and latency.
 
-When Demo mode is active and an `llm` step has no `demo:` block, the step fails with `Step '<id>' has no demo response; Demo mode requires a demo: block.` The validator reports such steps as warnings when the module loads.
+When Demo mode is active and an agent step has no `DemoResponseProvider` key, the step fails with `No demo response is defined for step '<id>' of workflow '<id>'.`
 
 ## In the dashboard
 
@@ -87,5 +70,5 @@ When Demo mode is active and an `llm` step has no `demo:` block, the step fails 
 
 ## Limitations
 
-- Demo responses are as good as the rules written in YAML: they do not read the prompt.
+- Demo responses are as good as the logic written in `DemoResponseProvider`; they read only the rendered prompt.
 - Use the `OpenAI` provider to evaluate prompts and model behaviour.

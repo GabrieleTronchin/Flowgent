@@ -1,75 +1,70 @@
-# Expressions and templates
+# Expressions
 
 [← README](../README.md) · [Workflow reference](workflow-reference.md)
 
-Workflow definitions use [Scriban](https://github.com/scriban/scriban) for templates and conditions. Everything is parsed when the module is loaded: an invalid template or expression, or a reference to an unknown `steps.<id>`, makes the module invalid before any run starts.
+Workflows are MAF declarative documents, so expressions inside them are **PowerFx** (the declarative workflow builder's expression language), not Scriban. An expression is written `=Expr` as an action value (e.g. a `SetVariable` `value`, an `InvokeMcpTool` argument, a `ConditionGroup` `condition`). `SendActivity`/`Question` text uses `{expr}` interpolation inside a string, not a bare `=expr`.
 
-## Templates
+> Scriban (`{{ … }}`) is gone with the custom workflow format. The one remaining non-PowerFx template is the manifest `title`, which uses a tiny `{field}` interpolation over the input object (e.g. `title: "{subject}"`).
 
-Any string containing `{{ ... }}` is a template (prompts, `detail`, `message`, `title`, tool and HTTP inputs, review fields, demo outputs, rule outputs).
+## Reading data
 
-| Form | Result |
-|------|--------|
-| `"plain text"` | Literal string, not evaluated. |
-| `"Summary: {{ steps.summarize.summary }}"` | Rendered text. |
-| `"{{ steps.summarize }}"` | Exactly one expression: the **typed** value (object, array, number, boolean, null). |
-
-Typed results let you pass whole objects around:
+The run's intake input arrives as the trigger message text (a JSON string). PowerFx has no `ParseJSON`, so a workflow reads structured data through the seam's built-in MCP tools and then `First(...)`:
 
 ```yaml
-output: "{{ steps.summarize }}"            # the object, not its JSON text
-input:
-  words: "{{ steps.count_words.words }}"   # a number
+- kind: InvokeMcpTool
+  id: read_input
+  serverUrl: inproc://flowgent
+  serverLabel: flowgent
+  toolName: flowgent.input          # echoes the run input as a JSON-object string
+  requireApproval: false
+  arguments: { payload: =System.LastMessage.Text }
+  output: { result: Local.intake }
+# then: =First(Local.intake).subject  /  =First(Local.intake).body
 ```
 
-Objects and arrays in YAML are evaluated recursively, so each string inside them follows the same rules.
+`flowgent.parse` does the same for any JSON string (for example an agent's structured answer, `=MessageText(Local.someAgentMessage)`), so `=First(Local.parsed).field` reads a field out of it.
 
-## Conditions
+| Source | How to read it |
+|--------|----------------|
+| Intake input | `flowgent.input` → `First(Local.intake).<field>` |
+| An agent's structured answer | `flowgent.parse` on `MessageText(Local.msg)` → `First(Local.obj).<field>` |
+| A module tool result | the `output.result` local → `First(Local.result).<field>` |
+| A prior step's snapshot | it was written to `Global.<stepId>`; read it back as a `Local` via `flowgent.parse` where needed |
 
-`when:` in transitions and rules is a Scriban expression **without** braces. `null`, `false`, `0` and the empty string are false; everything else is true.
-
-```yaml
-when: steps.review.decision == "approved"
-when: steps.check.score >= 0.5 && input.priority != "low"
-when: input.text | string.contains "urgent"
-when: steps.lookup.owner == null
-```
-
-## Data available
-
-| Variable | Content |
-|----------|---------|
-| `input` | The run input (validated against the workflow input schema). |
-| `steps.<id>` | Output of a completed step. Missing members are `null`. |
-| `config` | The `config` section of `module.yaml`. |
-| `run` | `{ id, moduleId, workflowId, title, agentId, agent }`; `agent` is the run's assigned agent (`id`, `name`, `group`, `role`, `persona`) or `null`. |
-| `agent` | Only in `llm` prompts: the agent of this call (the step's `agent`, else the run's assigned agent). |
-| `output` | Only in `map` steps: the outputs computed so far. |
-
-The run `title` template is rendered at intake, when only `input`, `config` and `run.id/moduleId/workflowId` exist.
-
-## Built-in functions
-
-The standard Scriban built-ins are available, for example:
+## Common PowerFx
 
 | Need | Example |
 |------|---------|
-| Text | `input.text \| string.downcase`, `string.upcase`, `string.truncate 60`, `string.contains "x"`, `string.starts_with "x"`, `string.replace "a" "b"` |
-| Regex | `input.text \| regex.match '\d+'`, `regex.replace` |
-| Defaults | `steps.review.reason \| object.default 'Declined'` |
-| Numbers | `steps.check.score * 100 \| math.round` |
-| Arrays | `steps.enrich.tags \| array.size`, `array.join ", "` |
-| Control flow (templates) | `{{ if steps.check.ok }}yes{{ else }}no{{ end }}` |
-| Variables (templates) | `{{ t = input.text \| string.downcase }}{{ if t \| string.contains 'x' }}…{{ end }}` |
+| Build text | `=Concatenate(First(Local.intake).subject, " ", First(Local.intake).body)` |
+| Lower-case + newline | `=Lower(...)`, `Char(10)` for `\n` |
+| Keyword test (no regex) | `=Find("application a", Local.rtText) > 0` — `IsMatch` is not supported, lower-case every literal |
+| Boolean logic | `=And(Local.matchA, Local.matchB)`, `=Or(...)`, `=Not(...)` |
+| Choose | `=If(Local.team = "Alpha", "Writer", "Reviewer")`, `=Switch(First(Local.obj).category, "BackendBug", "BackendDeveloper", …, "")` |
+| Default/fallback | `=Coalesce(First(Local.approval).reason, "Rejected")` |
+| Number → string | `=Text(First(Local.obj).confidenceScore * 100, "0")` |
+| Record literal | `={ team: Local.team, role: Local.role }` |
 
-Inside a YAML string, `|` is the Scriban pipe; quote the whole value (`"..."` or `'...'`).
+## Conditions and branches
 
-## Sandbox
+`ConditionGroup` evaluates its `conditions[]` in order (first true wins) and otherwise runs `elseActions`. Each condition's actions typically `SetVariable` and/or `GotoAction` to an action id:
 
-Templates only see JSON data, never .NET objects, and run with limits:
+```yaml
+- kind: ConditionGroup
+  id: after_classify
+  conditions:
+    - condition: =First(Local.classifyObj).isCodeRelated = true
+      id: is_code
+      actions:
+        - { kind: GotoAction, id: goto_route, actionId: rt_text }
+  elseActions:
+    - { kind: GotoAction, id: goto_oos, actionId: classified_out_of_scope_message }
+```
 
-- No template loader: `include` and `import` of files fail.
-- Loop limit 1000, recursion limit 50, output limit 200 000 characters, regex timeout 1 s.
-- Relaxed member access: a missing member is `null` instead of an error.
+## Crossing the seam boundary
 
-There is no file, network or process access. A runtime error fails the step with `Template error in step '<id>': …`.
+Values cross between the engine and PowerFx as JSON strings. Two invariants to respect when authoring:
+
+- A module tool result is returned as exactly one non-numeric JSON string; a bare top-level number is wrapped (a bare number crashes the `InvokeMcpTool` PowerFx binding).
+- Each step writes its output to `Global.<stepId>` (snapshot) so the engine can surface it as `steps.<stepId>`; terminals write `Global.__terminalId` / `Global.__message` / `Global.__finalOutput`.
+
+See the [workflow reference](workflow-reference.md) for the full run contract, and [`modules/support/definition/workflows/support-email.yaml`](../modules/support/definition/workflows/support-email.yaml) for a worked example.

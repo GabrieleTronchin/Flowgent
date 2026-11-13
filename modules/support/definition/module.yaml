@@ -49,7 +49,28 @@ tools:
     timeoutSeconds: 10
 
 workflows:
-  - workflows/support-email.yaml
+  - id: support-email
+    file: workflows/support-email.yaml
+    version: 1
+    name: Support email
+    description: Classifies a support email, routes it to a team agent, analyses the root cause and proposes a code change after human approval.
+    title: "{subject}"
+    input:
+      schema: { file: schemas/support-email.input.schema.json }
+    errorMessage: Subject and Body are required.
+    terminals:
+      - id: code_change_generated
+        outcome: success
+      - id: classified_out_of_scope
+        outcome: success
+      - id: manual_review_required
+        outcome: failure
+      - id: fail_ambiguous
+        outcome: failure
+      - id: fail_no_app
+        outcome: failure
+      - id: no_agent_mapping
+        outcome: failure
 
 samples:
   - samples/scenarios.yaml

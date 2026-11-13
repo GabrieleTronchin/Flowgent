@@ -6,9 +6,19 @@ using Flowgent.Definitions;
 using Flowgent.Definitions.Model;
 using Flowgent.Engine.Tests.Helpers;
 
+/// <summary>
+/// Module-envelope loading after the MAF declarative migration (design §4.3, §15, §18 AC-16). The custom step-format
+/// validator (DefinitionValidator) is deleted: the loader no longer parses or step-validates the workflow document
+/// (unknown step kind, unreachable step, template/condition/regex, terminal-with-next, duplicate step ids, etc.).
+/// Those checks are gone as a documented behavior change — a malformed declarative workflow is now reported by the
+/// MAF trial build wired into the catalog (see MafSeamSmokeTests/ModuleCatalogTests), not here. What the loader still
+/// enforces is the envelope: the manifest format schema, agent/tool declarations, tool/workflow-input schema files,
+/// and samples against the workflow input schema.
+/// </summary>
 public class ModuleLoaderTests
 {
     private const string WorkflowFile = "workflows/hello.yaml";
+    private const string ManifestFile = "module.yaml";
 
     [Fact]
     public void ValidModule_IsLoaded()
@@ -19,10 +29,11 @@ public class ModuleLoaderTests
         var workflow = Assert.Single(module.Workflows);
         Assert.Equal("hello", workflow.Id);
         Assert.Equal(WorkflowFile, workflow.File);
-        Assert.Equal(["summarize", "count", "long", "short"], workflow.Steps.Select(s => s.Id));
-        Assert.IsType<LlmStep>(workflow.Steps[0]);
-        Assert.IsType<ToolStep>(workflow.Steps[1]);
-        Assert.Equal(TerminalOutcome.Failure, Assert.IsType<TerminalStep>(workflow.Steps[3]).Outcome);
+        Assert.Equal(1, workflow.Version);
+        Assert.Equal("Hello", workflow.Name);
+        // The raw declarative YAML is carried verbatim; the step model is no longer parsed at load time.
+        Assert.Contains("kind: Workflow", workflow.Yaml);
+        Assert.Contains("id: summarize", workflow.Yaml);
         Assert.Equal(2, module.Samples.Count);
         Assert.Equal("Hello", module.Config["greeting"]!.GetValue<string>());
     }
@@ -31,11 +42,12 @@ public class ModuleLoaderTests
     public void ValidModule_ResolvesFilesAndSchemas()
     {
         var module = TestModules.LoadValid();
-        var llm = (LlmStep)module.Workflows[0].Steps[0];
 
-        Assert.Equal("You are {{ agent.persona }}", module.ResolveText(llm.SystemPrompt!));
-        Assert.Equal("object", module.GetSchemaNode(llm.Output.Schema)["type"]!.GetValue<string>());
-        Assert.NotNull(module.GetSchema(module.Workflows[0].Input.Schema));
+        // Prompt files are still available via ResolveText.
+        Assert.Equal("You are {{ agent.persona }}", module.ResolveText(TextSource.FromFile("prompts/summarize.md")));
+        // The workflow input schema (manifest-side) and the tool schemas are compiled and cached.
+        Assert.Equal("object", module.GetSchemaNode(module.Workflows[0].InputSchema)["type"]!.GetValue<string>());
+        Assert.NotNull(module.GetSchema(module.Workflows[0].InputSchema));
         Assert.NotNull(module.GetSchema(module.FindTool("demo.count")!.Output!.Schema));
     }
 
@@ -50,198 +62,80 @@ public class ModuleLoaderTests
         Assert.NotEqual(a.Version, c.Version);
     }
 
+    // ── Envelope checks that survive the migration ─────────────────────
+
     [Fact]
     public void MissingManifest_IsReported()
     {
-        var result = TestModules.Load(f => f.Remove("module.yaml"));
+        var result = TestModules.Load(f => f.Remove(ManifestFile));
 
-        AssertError(result, "module.yaml", null, "missing");
+        AssertError(result, ManifestFile, null, "missing");
     }
 
     [Fact]
-    public void YamlSyntaxError_ReportsFileAndLine()
+    public void ManifestYamlSyntaxError_ReportsFileAndLine()
     {
-        var result = TestModules.Load(f => f[WorkflowFile] = "id: hello\nsteps: [\n");
+        var result = TestModules.Load(f => f[ManifestFile] = "id: demo\nagents: [\n");
 
-        var error = AssertError(result, WorkflowFile, null, "Invalid YAML");
+        var error = AssertError(result, ManifestFile, null, "Invalid YAML");
         Assert.NotNull(error.Line);
     }
 
     [Fact]
-    public void FormatSchemaViolation_ReportsStepAndLine()
+    public void MissingWorkflowFile_IsReported()
     {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "    temperature: 0.2", "    temperature: 0.2\n    unknownField: 1"));
+        var result = TestModules.Load(f => f.Remove(WorkflowFile));
 
-        var error = AssertError(result, WorkflowFile, "summarize", "not allowed");
-        Assert.Equal(19, error.Line);
+        AssertError(result, ManifestFile, null, "workflows/hello.yaml");
     }
 
     [Fact]
-    public void UnknownStepKind_IsReported()
+    public void DuplicateWorkflowId_IsReported()
     {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "kind: tool", "kind: code"));
+        var result = TestModules.Load(f =>
+        {
+            TestModules.AddReviewWorkflow(f);
+            // Rename the review descriptor's id to collide with the hello workflow.
+            f.Replace(ManifestFile, "- id: review", "- id: hello");
+        });
 
-        AssertError(result, WorkflowFile, "count", "");
+        AssertError(result, "workflows/review.yaml", null, "declared more than once");
     }
 
     [Fact]
-    public void DuplicateStepIds_AreReported()
+    public void DuplicateAgent_IsReported()
     {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "- id: short", "- id: long"));
+        var result = TestModules.Load(f => f.Replace(
+            ManifestFile,
+            "agents:\n  - id: demo_writer",
+            "agents:\n  - id: demo_writer\n    name: Dup\n    group: Writers\n    role: Writer\n    persona: A duplicate.\n  - id: demo_writer"));
 
-        AssertError(result, WorkflowFile, "long", "declared more than once");
-    }
-
-    [Fact]
-    public void UnknownTransitionTarget_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "to: short", "to: nowhere"));
-
-        AssertError(result, WorkflowFile, "count", "'nowhere' does not exist");
-    }
-
-    [Fact]
-    public void UnknownStartStep_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "start: summarize", "start: missing"));
-
-        AssertError(result, WorkflowFile, null, "Start step 'missing' does not exist");
-    }
-
-    [Fact]
-    public void UnreachableStep_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "      - to: short", "      - to: long"));
-
-        AssertError(result, WorkflowFile, "short", "not reachable");
-    }
-
-    [Fact]
-    public void NoReachableTerminal_IsReported()
-    {
-        var result = TestModules.Load(f => f[WorkflowFile] = """
-            id: hello
-            version: 1
-            name: Loop
-            input: { schema: { type: object } }
-            start: a
-            steps:
-              - id: a
-                kind: map
-                name: A
-                outputs: [{ name: x, value: 1 }]
-                next: b
-              - id: b
-                kind: map
-                name: B
-                outputs: [{ name: x, value: 1 }]
-                next: a
-            """);
-
-        AssertError(result, WorkflowFile, null, "No terminal step is reachable");
-    }
-
-    [Fact]
-    public void TerminalWithNext_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "    message: Too short", "    message: Too short\n    next: long"));
-
-        AssertError(result, WorkflowFile, "short", "cannot declare");
-    }
-
-    [Fact]
-    public void MissingPromptFile_IsReported()
-    {
-        var result = TestModules.Load(f => f.Remove("prompts/summarize.md"));
-
-        AssertError(result, WorkflowFile, "summarize", "prompts/summarize.md");
-    }
-
-    [Fact]
-    public void InvalidSchemaFile_IsReported()
-    {
-        var result = TestModules.Load(f => f["schemas/summary.schema.json"] = "{ not json");
-
-        AssertError(result, "schemas/summary.schema.json", "summarize", "Invalid JSON");
-    }
-
-    [Fact]
-    public void NonStrictLlmOutputSchema_IsReported()
-    {
-        var result = TestModules.Load(f => f["schemas/summary.schema.json"] = """{"type":"object","properties":{"summary":{"type":"string"}}}""");
-
-        AssertError(result, WorkflowFile, "summarize", "additionalProperties: false");
-    }
-
-    [Fact]
-    public void UndeclaredAgent_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "agent: demo_writer", "agent: ghost"));
-
-        AssertError(result, WorkflowFile, "summarize", "Agent 'ghost' is not declared");
-    }
-
-    [Fact]
-    public void UndeclaredTool_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "tool: demo.count", "tool: demo.missing"));
-
-        AssertError(result, WorkflowFile, "count", "Tool 'demo.missing' is not declared");
+        AssertError(result, ManifestFile, null, "declared more than once");
     }
 
     [Fact]
     public void ToolWithoutModulePrefix_IsReported()
     {
-        var result = TestModules.Load(f =>
-        {
-            f.Replace("module.yaml", "name: demo.count", "name: other.count");
-            f.Replace(WorkflowFile, "tool: demo.count", "tool: other.count");
-        });
+        var result = TestModules.Load(f => f.Replace(ManifestFile, "name: demo.count", "name: other.count"));
 
-        AssertError(result, "module.yaml", null, "prefixed with the module id");
+        AssertError(result, ManifestFile, null, "prefixed with the module id");
     }
 
     [Fact]
-    public void InvalidTemplate_IsReported()
+    public void InvalidSchemaFile_IsReported()
     {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "detail: \"{{ steps.summarize.summary }}\"", "detail: \"{{ steps. }}\""));
+        // count.schema.json is referenced as the demo.count tool output schema (envelope), so a broken JSON file is reported.
+        var result = TestModules.Load(f => f["schemas/count.schema.json"] = "{ not json");
 
-        AssertError(result, WorkflowFile, "summarize", "Invalid detail template");
+        AssertError(result, "schemas/count.schema.json", null, "Invalid JSON");
     }
 
     [Fact]
-    public void InvalidCondition_IsReported()
+    public void MissingSchemaFile_IsReported()
     {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "when: steps.count.words > 3", "when: steps.count.words >"));
+        var result = TestModules.Load(f => f.Remove("schemas/count.schema.json"));
 
-        AssertError(result, WorkflowFile, "count", "Invalid transition condition");
-    }
-
-    [Fact]
-    public void UnknownStepReference_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "message: \"{{ steps.summarize.summary }}\"", "message: \"{{ steps.ghost.summary }}\""));
-
-        AssertError(result, WorkflowFile, "long", "Unknown step 'steps.ghost'");
-    }
-
-    [Fact]
-    public void InvalidRegex_IsReported()
-    {
-        var result = TestModules.Load(f => f.Replace(
-            WorkflowFile,
-            "    kind: tool\n    name: Count\n    tool: demo.count\n    input: { text: \"{{ steps.summarize.summary }}\" }",
-            "    kind: rule\n    name: Count\n    value: \"{{ input.text }}\"\n    rules:\n      - match: '([a-'\n        output: { words: 5 }"));
-
-        AssertError(result, WorkflowFile, "count", "Invalid regular expression");
-    }
-
-    [Fact]
-    public void PathTraversal_IsRejected()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "file: prompts/summarize.md", "file: ../../secrets.txt"));
-
-        AssertError(result, WorkflowFile, "summarize", "does not exist");
+        AssertError(result, ManifestFile, null, "does not exist");
     }
 
     [Fact]
@@ -258,17 +152,6 @@ public class ModuleLoaderTests
         var result = TestModules.Load(f => f.Replace("samples/hello.yaml", "workflow: hello\n    input: { text: \"Agent", "workflow: ghost\n    input: { text: \"Agent"));
 
         AssertError(result, "samples/hello.yaml", null, "unknown workflow 'ghost'");
-    }
-
-    [Fact]
-    public void LlmStepWithoutDemo_IsAWarningOnly()
-    {
-        var result = TestModules.Load(f => f.Replace(WorkflowFile, "    demo:\n      output: { summary: \"[Demo] {{ input.text }}\" }\n", ""));
-
-        Assert.True(result.IsValid);
-        var warning = Assert.Single(result.Errors);
-        Assert.Equal(DefinitionSeverity.Warning, warning.Severity);
-        Assert.Equal("summarize", warning.StepId);
     }
 
     [Fact]
@@ -302,12 +185,22 @@ public class ModuleLoaderTests
     [Fact]
     public void InlineSchemas_AreSupported()
     {
-        var module = TestModules.LoadValid(f => f.Replace(WorkflowFile, "schema: { file: schemas/summary.schema.json }",
-            "schema: { type: object, additionalProperties: false, required: [summary], properties: { summary: { type: string } } }"));
+        // An inline workflow input schema (in the manifest) is compiled and cached like a file reference.
+        // Newline-agnostic (the fixture source may be stored with CRLF): normalise, then collapse the workflow
+        // input `schema:` multi-line block onto a single inline line.
+        const string block =
+            "      schema:\n" +
+            "        type: object\n" +
+            "        required: [text]\n" +
+            "        properties:\n" +
+            "          text: { type: string, minLength: 1 }";
+        const string inline =
+            "      schema: { type: object, additionalProperties: false, required: [text], properties: { text: { type: string } } }";
+        var module = TestModules.LoadValid(f => f["module.yaml"] = f["module.yaml"].Replace("\r\n", "\n").Replace(block, inline));
 
-        var llm = (LlmStep)module.Workflows[0].Steps[0];
-        Assert.Null(llm.Output.Schema.File);
-        Assert.Equal(JsonValue.Create(false)!.ToJsonString(), module.GetSchemaNode(llm.Output.Schema)["additionalProperties"]!.ToJsonString());
+        var input = module.Workflows[0].InputSchema;
+        Assert.Null(input.File);
+        Assert.Equal(JsonValue.Create(false)!.ToJsonString(), module.GetSchemaNode(input)["additionalProperties"]!.ToJsonString());
     }
 
     private static DefinitionErrorInfo AssertError(LoadResult result, string file, string? stepId, string messagePart)

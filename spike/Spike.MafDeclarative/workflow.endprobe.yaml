@@ -1,0 +1,31 @@
+# Probe: how to terminate a branch so sequential fall-through to the next action stops.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: endprobe
+  actions:
+    - kind: ConditionGroup
+      id: branch
+      conditions:
+        - condition: =true
+          id: yes
+          actions:
+            - kind: GotoAction
+              id: goto_a
+              actionId: term_a
+      elseActions:
+        - kind: GotoAction
+          id: goto_b
+          actionId: term_b
+    - kind: SendActivity
+      id: term_a
+      activity:
+        text:
+          - "TERM_A"
+    - kind: EndConversation
+      id: end_a
+    - kind: SendActivity
+      id: term_b
+      activity:
+        text:
+          - "TERM_B"

@@ -1,0 +1,31 @@
+# PROBE-C (malformed / non-JSON string behavior).
+#
+# ParseJSON does NOT exist in the 1.27.0 declarative PowerFx host (confirmed: 'ParseJSON'
+# is an unknown or unsupported function). So this probe instead exercises the executor's
+# OWN JSON handling with a NON-JSON tool result ("not-json-at-all"): JsonDocument.Parse
+# fails, the executor keeps the raw string, list.ToFormula() makes a single-column table
+# whose column is `Value`. We read First(Local.badRaw).Value to confirm a non-JSON result
+# surfaces as a plain string (the spike's "5 words" shape) rather than erroring or blanking.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: spike_probe_c_malformed
+  actions:
+
+    - kind: InvokeMcpTool
+      id: invoke_bad
+      displayName: Return a malformed (non-JSON) string
+      serverUrl: inproc://spike-probe
+      serverLabel: spike_probe
+      toolName: malformed
+      requireApproval: false
+      arguments:
+        query: =System.LastMessage.Text
+      output:
+        result: Local.badRaw
+
+    - kind: SendActivity
+      id: send_bad
+      activity:
+        text:
+          - "PROBE-C non-json value={First(Local.badRaw).Value}"

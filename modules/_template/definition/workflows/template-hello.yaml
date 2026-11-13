@@ -1,47 +1,91 @@
-# yaml-language-server: $schema=../../../../backend/schemas/workflow.schema.json
-id: template-hello
-version: 1
-name: Hello (template)
-description: Summarises a text with an LLM, counts the words of the summary with a module tool and ends.
-title: "{{ input.text | string.truncate 60 }}"
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: template-hello
+  actions:
 
-input:
-  schema: { file: schemas/template-hello.input.schema.json }
-  errorMessage: Text is required.
-
-start: summarize
-
-steps:
-  - id: summarize
-    kind: llm
-    name: Summary
-    agent: template_writer
-    temperature: 0.2
-    systemPrompt: { file: prompts/summarize.system.md }
-    prompt: { file: prompts/summarize.user.md }
-    output:
-      schema: { file: schemas/summary.schema.json }
-    # Used in Demo mode (no API key needed): the engine returns this output instead of calling a model.
-    demo:
+    # Read the intake input (text) as a record (ParseJSON-free; PROBE-A via the built-in input tool).
+    - kind: InvokeMcpTool
+      id: read_input
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.input
+      requireApproval: false
+      arguments:
+        payload: =System.LastMessage.Text
       output:
-        summary: "[Demo] {{ input.text | string.truncate 80 }}"
-    detail: "{{ steps.summarize.summary }}"
-    next: count_words
+        result: Local.intake
 
-  - id: count_words
-    kind: tool
-    name: Word count
-    tool: template.wordCount
-    input:
-      text: "{{ steps.summarize.summary }}"
-    detail: "{{ steps.count_words.words }} words"
-    next: done
+    # Summarise. Demo output for (template-hello, summarize) comes from DemoResponseProvider.
+    - kind: InvokeAzureAgent
+      id: summarize
+      conversationId: =System.ConversationId
+      agent:
+        name: summarize|template_writer
+      input:
+        messages: =UserMessage(Concatenate("Text: ", First(Local.intake).text))
+      output:
+        messages: Local.summarize
 
-  - id: done
-    kind: terminal
-    name: Done
-    outcome: success
-    message: "{{ steps.summarize.summary }} ({{ steps.count_words.words }} words)"
-    output:
-      summary: "{{ steps.summarize.summary }}"
-      words: "{{ steps.count_words.words }}"
+    - kind: InvokeMcpTool
+      id: parse_summary
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =MessageText(Local.summarize)
+      output:
+        result: Local.summaryObj
+
+    - kind: SetVariable
+      id: summary_text
+      variable: Local.summary
+      value: =First(Local.summaryObj).summary
+    - kind: SetVariable
+      id: summarize_detail
+      variable: Global.summarize__detail
+      value: =Local.summary
+    - kind: SetVariable
+      id: summarize_snapshot
+      variable: Global.summarize
+      value: =MessageText(Local.summarize)
+
+    # Count the words of the summary via the module tool (reached through ModuleToolHandler -> /_module/tools).
+    - kind: InvokeMcpTool
+      id: count_words
+      serverUrl: inproc://template
+      serverLabel: template
+      toolName: template.wordCount
+      requireApproval: false
+      arguments:
+        text: =Local.summary
+      output:
+        result: Local.wc
+    - kind: SetVariable
+      id: count_words_detail
+      variable: Global.count_words__detail
+      value: =Concatenate(Text(First(Local.wc).words, "0"), " words")
+    - kind: SetVariable
+      id: count_words_snapshot
+      variable: Global.count_words
+      value: ={ words: First(Local.wc).words }
+
+    # Terminal: final output { summary, words } and message "<summary> (<n> words)".
+    - kind: SetVariable
+      id: done_final
+      variable: Global.__finalOutput
+      value: ={ summary: Local.summary, words: First(Local.wc).words }
+    - kind: SetVariable
+      id: done_message
+      variable: Global.__message
+      value: =Concatenate(Local.summary, " (", Text(First(Local.wc).words, "0"), " words)")
+    - kind: SetVariable
+      id: done_id
+      variable: Global.__terminalId
+      value: ="done"
+    - kind: SendActivity
+      id: done
+      activity:
+        text:
+          - "{Global.__message}"

@@ -18,7 +18,7 @@ modules/_template/
 ├── definition/               # published to the engine by the service (GET /_module/package)
 │   ├── module.yaml           # id, config, agents, tools, workflow and sample files
 │   ├── workflows/template-hello.yaml
-│   ├── prompts/              # llm prompts (Scriban templates)
+│   ├── prompts/              # llm prompt text referenced by the workflow's agent actions
 │   ├── schemas/              # JSON Schemas: workflow input, llm output, tool input/output
 │   └── samples/              # sample inputs shown by the dashboard
 ├── service/                  # module service (ASP.NET Core + Flowgent.Module.Sdk), port 5083

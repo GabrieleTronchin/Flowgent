@@ -17,7 +17,17 @@ agents:
     persona: A witty comedian who keeps it clean and brief.
 
 workflows:
-  - workflows/joke.yaml
+  - id: joke
+    file: workflows/joke.yaml
+    version: 1
+    name: Tell a joke
+    description: Turns a topic into a short joke with a single LLM step and ends.
+    title: "Joke about {topic}"
+    input:
+      schema: { file: schemas/joke.input.schema.json }
+    terminals:
+      - id: done
+        outcome: success
 
 samples:
   - samples/joke.samples.yaml

@@ -17,6 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Each TestEngine spins up the full runtime in-process and drives MAF runs with per-run checkpoint I/O; running
+         classes in parallel overloads the machine and flakes the bounded HITL/terminal waits. Run serially. -->
+    <Content Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Engine\Flowgent.Definitions\Flowgent.Definitions.csproj" />
     <ProjectReference Include="..\..\src\Engine\Flowgent.Persistence\Flowgent.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Engine\Flowgent.Runtime\Flowgent.Runtime.csproj" />

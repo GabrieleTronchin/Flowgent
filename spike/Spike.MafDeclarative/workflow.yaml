@@ -1,0 +1,45 @@
+# Declarative workflow loaded FROM THIS FILE at runtime by
+# DeclarativeWorkflowBuilder.Build("workflow.yaml", options).
+#
+# Goal mapping:
+#   - This whole file proves Goal 1 (YAML loaded from disk at runtime).
+#   - The InvokeAzureAgent action resolves "SpikeAgent" through our custom
+#     ResponseAgentProvider, which builds a ChatClientAgent on our OWN fake
+#     IChatClient (Goal 2 - non-Foundry LLM, fully offline).
+#   - That same agent is given an MCP tool (wordCount) via the provider's
+#     Functions; the fake client emits a function call so the MCP tool is
+#     actually invoked during the agent turn (Goal 3 - MCP tool from the
+#     workflow). This is the documented "agent-level MCP" pattern.
+#   - SendActivity emits the final text; the run is streamed to stdout (Goal 4).
+#
+# NOTE: the action kind is "InvokeAzureAgent" (the only agent-invocation action
+# the declarative schema ships). It is NOT Azure-bound at runtime: the agent is
+# resolved purely by name through ResponseAgentProvider, so no Foundry/Azure
+# credential is ever used. See README Findings.
+kind: Workflow
+trigger:
+
+  kind: OnConversationStart
+  id: spike_maf_declarative_mcp
+  actions:
+
+    # Resolve "SpikeAgent" via our ResponseAgentProvider -> ChatClientAgent on
+    # our fake IChatClient. The agent calls the MCP wordCount tool in its turn.
+    - kind: InvokeAzureAgent
+      id: invoke_spike_agent
+      conversationId: =System.ConversationId
+      agent:
+        name: SpikeAgent
+      input:
+        messages: =UserMessage(System.LastMessage.Text)
+      output:
+        messages: Local.AgentAnswer
+
+    # Emit the agent's answer as the final workflow activity (streamed output).
+    # The activity text is a PowerFx expression (prefixed with =) that pulls the
+    # agent's answer out of the Local.AgentAnswer message variable.
+    - kind: SendActivity
+      id: send_final
+      activity:
+        text:
+          - "{MessageText(Local.AgentAnswer)}"

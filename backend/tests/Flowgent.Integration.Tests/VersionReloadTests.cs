@@ -33,12 +33,13 @@ public sealed class VersionReloadTests : IAsyncLifetime
         var inFlight = await platform.SubmitFixtureFlowAsync("old run");
         await platform.WaitForHumanInputAsync(inFlight);
 
-        // Redeploy the module with workflow version 2 and a different success message.
+        // Redeploy the module with fixture-flow at version 2 and a "v2 " success-message prefix. The workflow version
+        // now lives in the manifest (module.yaml) descriptor; the message prefix is the fixture-flow done_prefix action.
+        var manifest = Path.Combine(_definition, "module.yaml");
+        File.WriteAllText(manifest, Replace(ReadLf(manifest), "id: fixture-flow\n    file: workflows/fixture-flow.yaml\n    version: 1", "id: fixture-flow\n    file: workflows/fixture-flow.yaml\n    version: 2"));
+
         var file = Path.Combine(_definition, "workflows", "fixture-flow.yaml");
-        var yaml = File.ReadAllText(file);
-        yaml = Replace(yaml, "version: 1", "version: 2");
-        yaml = Replace(yaml, "message: \"{{ steps.echo.echoed }}\"", "message: \"v2 {{ steps.echo.echoed }}\"");
-        File.WriteAllText(file, yaml);
+        File.WriteAllText(file, Replace(ReadLf(file), "variable: Local.donePrefix\n      value: =\"\"", "variable: Local.donePrefix\n      value: =\"v2 \""));
         await platform.RestartModuleAsync(FixtureHost.ModuleId);
 
         var newVersion = await FixtureVersionAsync(platform);
@@ -62,6 +63,8 @@ public sealed class VersionReloadTests : IAsyncLifetime
 
     private static async Task<string?> FixtureVersionAsync(PlatformHarness platform) =>
         (await platform.GetAsync<List<ModuleInfo>>("/api/engine/modules")).Single(m => m.Id == FixtureHost.ModuleId).Version;
+
+    private static string ReadLf(string path) => File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
 
     private static string Replace(string text, string oldValue, string newValue) =>
         text.Contains(oldValue, StringComparison.Ordinal)

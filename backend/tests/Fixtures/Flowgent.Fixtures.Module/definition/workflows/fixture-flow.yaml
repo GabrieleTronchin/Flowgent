@@ -1,113 +1,207 @@
-# yaml-language-server: $schema=../../../../../schemas/workflow.schema.json
-#
-# draft (llm) -> shape (map) -> reverse (tool) -> echo (http) -> review (human-input) -> done (success) | declined (failure)
-id: fixture-flow
-version: 1
-name: Fixture flow
-description: Every step kind except rule, ending in success (approved) or failure (rejected).
-title: "{{ input.text }}"
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: fixture-flow
+  actions:
 
-input:
-  schema:
-    type: object
-    required: [text, priority]
-    properties:
-      text: { type: string, minLength: 1, pattern: '\S' }
-      priority: { type: string, enum: [high, low] }
-  errorMessage: Text and priority are required.
+    # Read the intake input (text/priority) as a record (ParseJSON-free; built-in input tool, PROBE-A).
+    - kind: InvokeMcpTool
+      id: read_input
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.input
+      requireApproval: false
+      arguments:
+        payload: =System.LastMessage.Text
+      output:
+        result: Local.intake
 
-start: draft
+    # ── draft (llm) ─────────────────────────────────────────────────────────────────────────────────────
+    # Demo output for (fixture-flow, draft) comes from DemoResponseProvider; the prompt keeps the
+    # "Write a draft for: <text>" shape the Demo logic expects.
+    - kind: InvokeAzureAgent
+      id: draft
+      conversationId: =System.ConversationId
+      agent:
+        name: draft|fixture_writer
+      input:
+        messages: =UserMessage(Concatenate("Write a draft for: ", First(Local.intake).text))
+      output:
+        messages: Local.draftMsg
+    - kind: InvokeMcpTool
+      id: parse_draft
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =MessageText(Local.draftMsg)
+      output:
+        result: Local.draftObj
+    - kind: SetVariable
+      id: draft_text
+      variable: Local.draftText
+      value: =First(Local.draftObj).text
+    - kind: SetVariable
+      id: draft_detail
+      variable: Global.draft__detail
+      value: =Local.draftText
+    - kind: SetVariable
+      id: draft_snapshot
+      variable: Global.draft
+      value: ={ text: Local.draftText }
 
-steps:
-  - id: draft
-    kind: llm
-    name: Draft
-    agent: fixture_writer
-    temperature: 0.1
-    systemPrompt: "You are {{ agent.persona }}."
-    prompt: "Write a draft for: {{ input.text }}"
-    output:
-      schema:
-        type: object
-        additionalProperties: false
-        required: [text]
-        properties:
-          text: { type: string }
-    demo:
-      output: { text: "draft {{ input.text }}" }
-    detail: "{{ steps.draft.text }}"
-    next: shape
+    # ── shape (map -> PowerFx) ──────────────────────────────────────────────────────────────────────────
+    # queue = high -> fast-lane, low -> slow-lane; label = "<queue>:<DRAFT UPPER>"; assigns fixture_reviewer.
+    - kind: SetVariable
+      id: shape_queue
+      variable: Local.queue
+      value: =If(First(Local.intake).priority = "high", "fast-lane", "slow-lane")
+    - kind: SetVariable
+      id: shape_label
+      variable: Local.label
+      value: =Concatenate(Local.queue, ":", Upper(Local.draftText))
+    - kind: SetVariable
+      id: shape_assign
+      variable: Global.assignedAgentId
+      value: ="fixture_reviewer"
+    - kind: SetVariable
+      id: shape_detail
+      variable: Global.shape__detail
+      value: =Local.label
+    - kind: SetVariable
+      id: shape_snapshot
+      variable: Global.shape
+      value: ={ queue: Local.queue, label: Local.label }
 
-  - id: shape
-    kind: map
-    name: Shape
-    lookups:
-      queueByPriority: { high: fast-lane, low: slow-lane }
-    outputs:
-      - name: queue
-        lookup: queueByPriority
-        key: "{{ input.priority }}"
-      - name: label
-        value: "{{ output.queue }}:{{ steps.draft.text | string.upcase }}"
-    assignAgent: fixture_reviewer
-    detail: "{{ steps.shape.label }}"
-    next: reverse
+    # ── reverse (tool -> InvokeMcpTool) ─────────────────────────────────────────────────────────────────
+    - kind: InvokeMcpTool
+      id: reverse
+      serverUrl: inproc://fixture
+      serverLabel: fixture
+      toolName: fixture.reverse
+      requireApproval: false
+      arguments:
+        text: =Local.draftText
+      output:
+        result: Local.reverseRaw
+    - kind: SetVariable
+      id: reverse_value
+      variable: Local.reversed
+      value: =First(Local.reverseRaw).reversed
+    - kind: SetVariable
+      id: reverse_detail
+      variable: Global.reverse__detail
+      value: =Local.reversed
+    - kind: SetVariable
+      id: reverse_snapshot
+      variable: Global.reverse
+      value: ={ reversed: Local.reversed }
 
-  - id: reverse
-    kind: tool
-    name: Reverse
-    tool: fixture.reverse
-    input:
-      text: "{{ steps.draft.text }}"
-    detail: "{{ steps.reverse.reversed }}"
-    next: echo
+    # ── echo (was http; now a module tool via InvokeMcpTool -> ModuleToolHandler; see module.yaml fixture.echo) ──
+    - kind: InvokeMcpTool
+      id: echo
+      serverUrl: inproc://fixture
+      serverLabel: fixture
+      toolName: fixture.echo
+      requireApproval: false
+      arguments:
+        value: =Local.reversed
+        queue: =Local.queue
+      output:
+        result: Local.echo
+    - kind: SetVariable
+      id: echo_detail
+      variable: Global.echo__detail
+      value: =First(Local.echo).echoed
+    - kind: SetVariable
+      id: echo_snapshot
+      variable: Global.echo
+      value: =First(Local.echo)
 
-  - id: echo
-    kind: http
-    name: Echo
-    method: POST
-    url: "{{ config.echoBaseUrl }}/api/modules/fixture/echo"
-    headers:
-      X-Fixture-Run: "{{ run.id }}"
-    body:
-      value: "{{ steps.reverse.reversed }}"
-      queue: "{{ steps.shape.queue }}"
-    timeoutSeconds: 5
-    output:
-      schema:
-        type: object
-        required: [echoed, queue, runHeader]
-        properties:
-          echoed: { type: string }
-          queue: { type: string }
-          runHeader: { type: string }
-    detail: "{{ steps.echo.echoed }}"
-    next: review
+    # ── review (human-input -> Question + ConditionGroup) ───────────────────────────────────────────────
+    - kind: SetVariable
+      id: review_json
+      variable: Local.reviewJson
+      value: =Concatenate("{""title"":""Review ", First(Local.intake).text, """,""fields"":[{""label"":""Draft"",""value"":""", Local.draftText, """},{""label"":""Queue"",""value"":""", Local.queue, """},{""label"":""Echo"",""value"":""", First(Local.echo).echoed, """}]}")
+    - kind: Question
+      id: review
+      property: Local.approvalRaw
+      prompt:
+        kind: Message
+        text:
+          - "{Local.reviewJson}"
+      entity:
+        kind: StringPrebuiltEntity
+    - kind: InvokeMcpTool
+      id: parse_review
+      serverUrl: inproc://flowgent
+      serverLabel: flowgent
+      toolName: flowgent.parse
+      requireApproval: false
+      arguments:
+        payload: =Local.approvalRaw
+      output:
+        result: Local.approvalObj
+    - kind: SetVariable
+      id: review_detail
+      variable: Global.review__detail
+      value: ="Waiting for review"
+    - kind: SetVariable
+      id: review_snapshot
+      variable: Global.review
+      value: =Local.approvalRaw
+    - kind: ConditionGroup
+      id: after_review
+      conditions:
+        - condition: =Find("approved", Local.approvalRaw) > 0
+          id: approved
+          actions:
+            - kind: GotoAction
+              id: goto_done
+              actionId: done_final
+      elseActions:
+        - kind: GotoAction
+          id: goto_declined
+          actionId: declined_message
 
-  - id: review
-    kind: human-input
-    name: Review
-    review:
-      title: "Review {{ input.text }}"
-      fields:
-        - { label: Draft, value: "{{ steps.draft.text }}" }
-        - { label: Queue, value: "{{ steps.shape.queue }}" }
-        - { label: Echo, value: "{{ steps.echo.echoed }}" }
-    detail: Waiting for review
-    transitions:
-      - when: steps.review.decision == "approved"
-        to: done
-      - to: declined
+    # ── done (success terminal, output = echo) ──────────────────────────────────────────────────────────
+    - kind: SetVariable
+      id: done_final
+      variable: Global.__finalOutput
+      value: =First(Local.echo)
+    # done_prefix is "" by default; VersionReloadTests patches it to "v2 " to prove the in-flight run keeps v1.
+    - kind: SetVariable
+      id: done_prefix
+      variable: Local.donePrefix
+      value: =""
+    - kind: SetVariable
+      id: done_message
+      variable: Global.__message
+      value: =Concatenate(Local.donePrefix, First(Local.echo).echoed)
+    - kind: SetVariable
+      id: done_id
+      variable: Global.__terminalId
+      value: ="done"
+    - kind: SendActivity
+      id: done
+      activity:
+        text:
+          - "{Global.__message}"
+    - kind: EndConversation
+      id: end_done
 
-  - id: done
-    kind: terminal
-    name: Done
-    outcome: success
-    message: "{{ steps.echo.echoed }}"
-    output: "{{ steps.echo }}"
-
-  - id: declined
-    kind: terminal
-    name: Declined
-    outcome: failure
-    message: "{{ steps.review.reason | object.default 'Declined' }}"
+    # ── declined (failure terminal, message Coalesce(reason, "Declined")) ───────────────────────────────
+    - kind: SetVariable
+      id: declined_message
+      variable: Global.__message
+      value: =Coalesce(First(Local.approvalObj).reason, "Declined")
+    - kind: SetVariable
+      id: declined_id
+      variable: Global.__terminalId
+      value: ="declined"
+    - kind: SendActivity
+      id: declined
+      activity:
+        text:
+          - "{Global.__message}"

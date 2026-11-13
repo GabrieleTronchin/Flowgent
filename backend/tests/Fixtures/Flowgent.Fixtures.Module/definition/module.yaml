@@ -1,14 +1,13 @@
 # yaml-language-server: $schema=../../../../schemas/module.schema.json
 #
 # Test-only module used by Flowgent.Integration.Tests: it runs alongside the support module and its workflows
-# exercise every step kind and both terminal outcomes.
+# exercise every declarative action kind and both terminal outcomes.
 id: fixture
 name: Fixture
-description: Test-only module exercising every step kind and both terminal outcomes.
+description: Test-only module exercising every declarative action kind and both terminal outcomes.
 
 config:
-  # The http step calls the fixture service's own echo endpoint as if it were an external API
-  # (the in-process harness routes http://fixture to the fixture service).
+  # Kept for parity with the pre-migration definition (unused by the declarative workflows).
   echoBaseUrl: http://fixture
 
 agents:
@@ -31,10 +30,61 @@ tools:
     output:
       schema: { type: object, required: [reversed], properties: { reversed: { type: string } } }
     timeoutSeconds: 5
+  # fixture.echo bridges what used to be the http step: the migration proved llm/map/rule/tool/human-input/terminal on
+  # MAF but NOT a declarative HTTP action, so the echo "external API" is reached as a module tool via InvokeMcpTool /
+  # ModuleToolHandler (the proven MCP boundary). runHeader echoes the run id (ToolInvocation.RunId), as the old echo
+  # endpoint echoed the X-Fixture-Run header. A genuine declarative HTTP action remains UNPROVEN (known gap).
+  - name: fixture.echo
+    description: Echoes a value and a queue back with the run id (stands in for the external echo API).
+    input:
+      schema: { type: object, required: [value, queue], properties: { value: { type: string }, queue: { type: string } } }
+    output:
+      schema:
+        type: object
+        required: [echoed, queue, runHeader]
+        properties:
+          echoed: { type: string }
+          queue: { type: string }
+          runHeader: { type: string }
+    timeoutSeconds: 5
 
 workflows:
-  - workflows/fixture-flow.yaml
-  - workflows/fixture-rules.yaml
+  - id: fixture-flow
+    file: workflows/fixture-flow.yaml
+    version: 1
+    name: Fixture flow
+    description: Every action kind except a rule branch, ending in success (approved) or failure (rejected).
+    title: "{text}"
+    input:
+      schema:
+        type: object
+        required: [text, priority]
+        properties:
+          text: { type: string, minLength: 1, pattern: '\S' }
+          priority: { type: string, enum: [high, low] }
+    errorMessage: Text and priority are required.
+    terminals:
+      - id: done
+        outcome: success
+      - id: declined
+        outcome: failure
+  - id: fixture-rules
+    file: workflows/fixture-rules.yaml
+    version: 1
+    name: Fixture rules
+    description: Rule branch with a fallback output and an ambiguous-match failure terminal.
+    title: "{text}"
+    input:
+      schema:
+        type: object
+        required: [text]
+        properties:
+          text: { type: string, minLength: 1 }
+    terminals:
+      - id: routed
+        outcome: success
+      - id: ambiguous
+        outcome: failure
 
 samples:
   - samples/fixture.samples.yaml
