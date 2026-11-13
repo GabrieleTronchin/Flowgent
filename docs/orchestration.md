@@ -66,4 +66,4 @@ Start them in any order: the engine retries the modules, the gateway answers `50
 - **Metrics**: ASP.NET Core, HttpClient, runtime and the same `Flowgent.*` / Agent Framework meters.
 - **Logs**: OpenTelemetry logging with scopes and formatted messages.
 - **Export**: OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (the AppHost sets it, so everything shows up in the Aspire dashboard).
-- **Resilience and discovery**: every `HttpClient` gets the standard resilience handler and service discovery. Exceptions: the engine's module clients replace it with their per-module timeout and retries, `http` step calls are not retried, and the SDK's engine client does not retry intake requests (a retried POST could create a duplicate run).
+- **Resilience and discovery**: every `HttpClient` gets the standard resilience handler and service discovery. Exceptions: the engine's module clients replace it with their per-module timeout and retries, and the SDK's engine client does not retry intake requests (a retried POST could create a duplicate run).

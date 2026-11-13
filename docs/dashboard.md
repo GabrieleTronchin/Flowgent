@@ -41,7 +41,7 @@ Node.js 20.19 or later is required.
 
 ## Pipeline graph
 
-`PipelineVisualizer` draws `workflow.graph` with React Flow, laid out left-to-right by dagre. Nodes are coloured by the state of the active runs of the selected workflow; terminal nodes have a border coloured by outcome (success or failure); edge labels show transition conditions.
+`PipelineVisualizer` draws `workflow.graph` with React Flow, laid out left-to-right by dagre. Nodes are coloured by the state of the active runs of the selected workflow; terminal nodes have a border coloured by outcome (success or failure); edge labels show the branch conditions.
 
 ## Submission form
 

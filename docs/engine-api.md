@@ -4,7 +4,7 @@
 
 The engine exposes a module-agnostic API under `/api/engine`, reached through the gateway (`http://localhost:5080`). JSON is camelCase with string enums. Errors are problem details (`title`, `detail`, optional `errors`). Ready-made requests: [`engine.http`](../backend/src/Services/Flowgent.Engine.Service/engine.http).
 
-No endpoint returns secrets: API keys, LLM endpoint URLs and `http` step secret headers stay in configuration.
+No endpoint returns secrets: API keys and LLM endpoint URLs stay in configuration.
 
 ## Modules and workflows
 
@@ -14,9 +14,9 @@ No endpoint returns secrets: API keys, LLM endpoint URLs and `http` step secret 
 | GET | `/api/engine/modules` | `[{ id, name, description, status, version, workflows[], errors[], lastLoadedAt, lastError }]`; `status` is `Loading`, `Available`, `Invalid` or `Unavailable`; `errors[]` are `{ moduleId, file, stepId, line, message, severity }` |
 | GET | `/api/engine/workflows?moduleId=` | `[{ id, moduleId, name, description, version, available, inputSchema, graph, samples[] }]` |
 | GET | `/api/engine/workflows/{workflowId}` | One workflow; `404` when unknown |
-| GET | `/api/engine/schemas/{name}` | JSON Schema of a YAML format: `module`, `workflow` or `samples`; `404` otherwise |
+| GET | `/api/engine/schemas/{name}` | JSON Schema of a YAML format: `module` or `samples`; `404` otherwise (the custom `workflow` schema was removed with the move to MAF declarative) |
 
-`graph` is `{ start, nodes: [{ id, name, kind, outcome }], edges: [{ from, to, label }] }`; `outcome` is `success`/`failure` on terminal nodes, `label` is the transition condition. `samples[]` are `{ id, name, group, description, workflowId, input, expectInvalid }`.
+`graph` is `{ start, nodes: [{ id, name, kind, outcome }], edges: [{ from, to, label }] }`, projected from the declarative workflow; `kind` is the action/terminal kind, `outcome` is `success`/`failure` on terminal nodes, `label` is the edge condition. `samples[]` are `{ id, name, group, description, workflowId, input, expectInvalid }`.
 
 ## Runs
 
@@ -27,7 +27,7 @@ No endpoint returns secrets: API keys, LLM endpoint URLs and `http` step secret 
 | GET | `/api/engine/runs/{runId}` | Run detail; `404` |
 | POST | `/api/engine/runs/{runId}/abort` | `202` running run cancelled; `204` queued run failed; `404`; `409` already terminal |
 
-A `400` from the intake carries the workflow's `input.errorMessage` (or a default) as `detail` and the schema errors:
+A `400` from the intake carries the manifest's input `errorMessage` (or a default) as `detail` and the schema errors:
 
 ```json
 {
@@ -94,7 +94,7 @@ Every transition (including `Queued`) is published. The stream returns `Unavaila
 | `EnableVisualization` | `true` | Enables the gRPC stream and the agents endpoint. |
 | `SequentialProcessing` | `false` | Start a run only when no other run is running or awaiting input. See [Inbox](inbox.md). |
 | `InboxPollingIntervalSeconds` | `5` (`1` in `appsettings.json`) | Inbox polling interval. |
-| `DefaultToolTimeoutSeconds` | `30` | Tool timeout when neither the tool, the step nor the module sets one. |
+| `DefaultToolTimeoutSeconds` | `30` | Tool timeout when neither the tool nor the module sets one. |
 | `Modules[]` | — | `{ Id, Url, Enabled, RefreshSeconds, TimeoutSeconds, Retries, RetryDelayMilliseconds }`; see [Module authoring](module-authoring.md#registering-the-module). |
 | `Llm` | — | LLM provider; see [Demo mode](demo-mode.md). |
-| `Secrets:<moduleId>:<key>` | — | Secret values for `http` step headers. |
+

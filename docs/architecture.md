@@ -15,7 +15,7 @@ graph LR
     ENG -->|"GET /_module/package<br/>POST /_module/tools/{name}"| MOD
     MOD -->|"POST /api/engine/workflows/{id}/runs"| ENG
     ENG -->|IChatClient| LLM[(Demo / OpenAI-compatible)]
-    ENG -->|http steps| EXT[(External APIs)]
+    MOD -->|module tools reach| EXT[(External APIs / data)]
     HOST[Aspire AppHost] -. starts and wires .-> GW & ENG & MOD & Browser
 ```
 
