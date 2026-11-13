@@ -1,15 +1,15 @@
 # Flowgent
 
-![CI](https://github.com/GabrieleTronchin/AiSupportWorkflow/actions/workflows/ci.yml/badge.svg)
-![Dashboard CI](https://github.com/GabrieleTronchin/AiSupportWorkflow/actions/workflows/dashboard-ci.yml/badge.svg)
+![CI](https://github.com/GabrieleTronchin/Flowgent/actions/workflows/ci.yml/badge.svg)
+![Dashboard CI](https://github.com/GabrieleTronchin/Flowgent/actions/workflows/dashboard-ci.yml/badge.svg)
 ![.NET](https://img.shields.io/badge/.NET-10.0-blueviolet)
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)
-![License](https://img.shields.io/github/license/GabrieleTronchin/AiSupportWorkflow)
+![License](https://img.shields.io/github/license/GabrieleTronchin/Flowgent)
 
 **A spec-driven AI experiment.**
 
-Flowgent is a base for building LLM workflows. Workflows are described in YAML (steps, transitions, prompts, JSON schemas, rules, human review, demo responses) and run by a domain-agnostic engine on **Microsoft Agent Framework Workflows**. Each business domain is a **module**: a small service that owns its definitions and custom code. A generic dashboard monitors every module, and one command starts everything.
+Flowgent is a base for building LLM workflows. Workflows are **Microsoft Agent Framework declarative** documents (actions, PowerFx expressions, prompts, JSON schemas, human review) run by a domain-agnostic engine. Each business domain is a **module**: a small service that owns its definitions and custom code. A generic dashboard monitors every module, and one command starts everything.
 
 - **Engine**: validates and runs workflows, owns runs, events, the inbox, human input, LLM access (Demo or OpenAI-compatible) and telemetry.
 - **Modules**: publish their definitions and expose tools (C# operations called by workflow steps) and domain endpoints.
