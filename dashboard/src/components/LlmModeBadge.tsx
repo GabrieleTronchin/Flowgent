@@ -14,7 +14,7 @@ export function LlmModeBadge({ demoMode, llmProvider, llmModel }: LlmModeBadgePr
     return (
       <span
         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-900/50 text-violet-300 border border-violet-700"
-        title="LLM responses are simulated (LlmProvider:Provider = Demo)"
+        title="LLM responses are simulated (Flowgent:Llm:Provider = Demo)"
       >
         Demo Mode
       </span>
