@@ -29,6 +29,9 @@ spike/
 backend/tests/
 **/*.Tests/
 modules/**/tests/
+# ...but keep the support demo's dummy-apps fixtures: the support-mcp tool ships
+# and searches them (incl. their tests/ dirs, which encode "missing test" scenarios).
+!modules/support/dummy-apps/**
 
 # Local dev secrets
 **/appsettings.Development.json
