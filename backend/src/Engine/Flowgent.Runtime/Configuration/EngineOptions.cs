@@ -18,8 +18,26 @@ public sealed class EngineOptions
 
     public List<ModuleEndpointOptions> Modules { get; set; } = [];
 
+    /// <summary>
+    /// MCP servers the engine reaches domain tools on over Streamable HTTP (section <c>Flowgent:McpServers</c>).
+    /// Each entry maps a workflow <c>serverLabel</c> to a server URL; a tool whose label is mapped here is routed
+    /// over HTTP, an unmapped label falls back to the legacy in-process invoker (FEAT-002, design §2.2).
+    /// The reserved label <c>flowgent</c> (ordinal-ignore-case) is never HTTP-routable and such entries are skipped.
+    /// </summary>
+    public List<McpServerOptions> McpServers { get; set; } = [];
+
     /// <summary>Definition distribution settings (mounted volume primary, HTTP secondary).</summary>
     public DefinitionsOptions Definitions { get; set; } = new();
+}
+
+/// <summary>An MCP server the engine reaches domain tools on (section <c>Flowgent:McpServers</c>).</summary>
+public sealed class McpServerOptions
+{
+    /// <summary>The workflow <c>serverLabel</c> this server answers for (e.g. <c>support</c>).</summary>
+    public string Label { get; set; } = "";
+
+    /// <summary>Base URL of the MCP server's Streamable-HTTP endpoint.</summary>
+    public string Url { get; set; } = "";
 }
 
 /// <summary>Where module definitions are read from (section <c>Flowgent:Definitions</c>).</summary>
