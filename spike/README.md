@@ -25,7 +25,7 @@ Follow-up frictions **F4** (declarative `McpToolHandler`) and **F5** (declarativ
 cd spike/Spike.MafDeclarative
 dotnet run
 ```
-`dotnet run` runs three demos (A, F4, F5) and ends with `[summary] A=True F4=True F5=True` / `=== Spike complete (all demos passed) ===`.
+`dotnet run` runs four demos (A, F4, F5, Gate-0) plus the ASP.NET-Core-leak check, and ends with `[summary] A=True F4=True F5=True Gate0Http=True NoAspNetCoreLeak=True` / `=== Spike complete (all demos passed) ===`. See "Gate-0 (FEAT-001): MCP-over-HTTP" below.
 
 ## Package versions used (nuget.org)
 - `Microsoft.Agents.AI` 1.27.0
@@ -137,7 +137,103 @@ compliance with licensing restrictions.
   [MessageActivityEvent] REJECTED branch taken. Decision = rejected. Request will not proceed.
   ```
 
-### Migration implications (F4 + F5)
+## Gate-0 (FEAT-001): MCP-over-HTTP — **PASS** ✅
+
+Hard make-or-break gate for the containerize-and-mcp task: prove a declarative
+`InvokeMcpTool` action can reach a REAL MCP server over HTTP, fully offline and
+deterministically, before committing to any later phase. Added as a fourth demo
+(`GATE-0`) plus the ASP.NET-Core-leak check. Reproduce with
+`cd spike/Spike.MafDeclarative && dotnet run`; the summary now ends with
+`Gate0Http=True NoAspNetCoreLeak=True` / `=== Spike complete (all demos passed) ===`.
+
+What it exercises, fully on loopback (no external network):
+- A real in-process HTTP MCP server (`ModelContextProtocol.AspNetCore`):
+  `builder.Services.AddMcpServer().WithHttpTransport().WithTools<EchoUpperTool>()` +
+  `app.MapMcp()`, Kestrel bound to `http://127.0.0.1:0`, the actual port read back via
+  `IServerAddressesFeature` (`McpHttpEchoServer.cs`).
+- One deterministic tool `echoUpper(text)` returning the uppercased input as a
+  NON-numeric string (finding F4).
+- `workflow.mcphttp.yaml`: a single `InvokeMcpTool` action; its `serverUrl` placeholder
+  is replaced at runtime with the real bound URL and the workflow is built from the
+  resulting text via the `DeclarativeWorkflowBuilder.Build<string>(TextReader, ...)`
+  overload.
+- The custom `HttpMcpToolHandler` (`HttpMcpToolHandler.cs`), set on
+  `DeclarativeWorkflowOptions.McpToolHandler`, lazily connecting one `McpClient` per
+  `serverUrl`.
+
+### The four Gate-0 outcomes
+
+1. **InvokeMcpTool result crosses PowerFx with NO "Unsupported element type: Double".**
+   PASS. `echoUpper("gate-zero mcp over http")` returns the non-numeric string
+   `GATE-ZERO MCP OVER HTTP`; it is read back with `First(Local.mcpResult).Value` and
+   flows into the final activity `MCP echoUpper(gate-zero mcp over http) =
+   GATE-ZERO MCP OVER HTTP`. No `Double` error. (This confirms finding F4 holds over the
+   HTTP transport exactly as over the in-memory pipe.)
+
+2. **Adopted handler: the custom `HttpMcpToolHandler`.** There is NO built-in/default
+   handler to adopt in MAF 1.27.0. The "primary attempt" (`DefaultMcpToolHandler`) could
+   not even be constructed: **no `DefaultMcpToolHandler` type exists in any
+   `Microsoft.Agents.AI*` 1.27.0 assembly** — a scan of those assemblies finds only the
+   `IMcpToolHandler` interface and the `McpToolHandler` options property, no concrete
+   handler. So a custom `IMcpToolHandler` is mandatory, and the adopted handler is the
+   custom `HttpMcpToolHandler` (HTTP analogue of `SpikeMcpToolHandler`: connect an
+   `McpClient` to `serverUrl`, `CallToolAsync`, map `TextContentBlock` → `TextContent`
+   into `McpServerToolResultContent.Outputs`).
+   > Correction to earlier finding F4, which speculated a built-in `DefaultMcpToolHandler`
+   > connecting over HTTP: that type does not exist in 1.27.0. Later phases must not
+   > assume a stock HTTP handler; they inherit the spike's custom handler shape.
+
+3. **External (caller-owned) `HttpClient` + `HttpClientTransport` constructor works
+   end-to-end with `McpClient.CreateAsync`.** PASS. `HttpMcpToolHandler` builds
+   `new HttpClientTransport(new HttpClientTransportOptions { Endpoint = new Uri(serverUrl),
+   Name = serverLabel }, httpClient, loggerFactory: null, ownsHttpClient: false)` over a
+   caller-owned `HttpClient` and connects with
+   `McpClient.CreateAsync(transport, cancellationToken: ct)`; the tool call succeeds over
+   real HTTP. This is the injectable-HttpClient constructor the later engine work (and its
+   resilience/service-discovery handlers) depends on.
+
+4. **ASP.NET-Core-leak result: NO LEAK.** `AspNetCoreLeakCheck.Run()` reflects over the
+   assembly that defines the client type `McpClient` — `ModelContextProtocol.Core`
+   (1.4.2.0) — and asserts via `Assembly.GetReferencedAssemblies()` that no referenced
+   assembly name starts with `Microsoft.AspNetCore`. Result: of 30 referenced assemblies,
+   **zero** are `Microsoft.AspNetCore.*`. So a plain classlib referencing only the client
+   package (`ModelContextProtocol`) does NOT drag in ASP.NET Core. (The AspNetCore server
+   support lives in the separate `ModelContextProtocol.AspNetCore` package, which this
+   spike's Exe references only for the HTTP server — it is NOT pulled in transitively by
+   the client type.)
+
+### Gate-0 implications for later FEATs
+
+- **FEAT-002 (package placement):** the client package `ModelContextProtocol` is
+  ASP.NET-Core-free, so a client-only consumer (e.g. an engine-side handler or a parity
+  test) can reference `ModelContextProtocol` alone; only a project that actually hosts an
+  MCP server needs `ModelContextProtocol.AspNetCore`. Both are now central
+  `<PackageVersion>` entries (ItemGroup `Label="MCP"`) in `backend/Directory.Packages.props`.
+- **FEAT-003 (in-process parity-test feasibility):** feasible. A real HTTP MCP server can
+  be stood up in-process on a loopback port and driven end-to-end offline (Kestrel +
+  `MapMcp`, port 0, read-back address), and the client half references no ASP.NET Core — so
+  a parity test can host the server and connect a client without a leak into a client-only
+  assembly.
+- **Adopted handler is custom, not stock:** later code must carry its own `IMcpToolHandler`
+  (the `HttpMcpToolHandler` shape), because MAF 1.27.0 provides none.
+
+### stdout evidence (Gate-0)
+
+```
+[MCP HTTP server] started, bound to http://127.0.0.1:52615 (echoUpper tool, offline loopback)
+[HttpMcpToolHandler] InvokeToolAsync -> serverUrl='http://127.0.0.1:52615' label='spike_echo_upper_http' tool='echoUpper' args=[text=gate-zero mcp over http] (NO LLM in this path, over HTTP)
+[HttpMcpToolHandler] connecting McpClient to 'http://127.0.0.1:52615' (HttpClientTransport, external HttpClient)
+[MCP HTTP server] echoUpper invoked: text="gate-zero mcp over http" -> "GATE-ZERO MCP OVER HTTP"
+[HttpMcpToolHandler] tool returned 1 content block(s): "GATE-ZERO MCP OVER HTTP"
+[MessageActivityEvent] MCP echoUpper(gate-zero mcp over http) = GATE-ZERO MCP OVER HTTP
+[Gate0 final] MCP echoUpper(gate-zero mcp over http) = GATE-ZERO MCP OVER HTTP
+[leak-check] client assembly: ModelContextProtocol.Core (1.4.2.0)
+[leak-check] total referenced assemblies: 30
+[leak-check] RESULT: NO LEAK — the client assembly references no Microsoft.AspNetCore assembly.
+[summary] A=True F4=True F5=True Gate0Http=True NoAspNetCoreLeak=True
+```
+
+## Migration implications (F4 + F5)
 
 - The declarative MCP path works offline with a custom `IMcpToolHandler`, so a domain module can
   expose deterministic tools without any agent/LLM in the loop. But the `InvokeMcpTool` result
@@ -155,6 +251,10 @@ compliance with licensing restrictions.
 - `workflow.hitl.yaml` — F5 negative artifact: the `RequestExternalInput` + `If` variant that stalls (kept for reference, not run).
 - `SpikeAgentProvider.cs` — custom `ResponseAgentProvider` over our `IChatClient` (Goal 2 + agent-level MCP wiring).
 - `SpikeMcpToolHandler.cs` — F4: custom `IMcpToolHandler` routing to the in-process MCP client.
+- `workflow.mcphttp.yaml` — Gate-0: declarative `InvokeMcpTool` over HTTP (serverUrl placeholder substituted at runtime).
+- `McpHttpEchoServer.cs` — Gate-0: real in-process HTTP MCP server (`ModelContextProtocol.AspNetCore`, `MapMcp`, port 0) exposing `echoUpper`.
+- `HttpMcpToolHandler.cs` — Gate-0: custom `IMcpToolHandler` connecting a real `McpClient` over `HttpClientTransport` with an external `HttpClient`.
+- `AspNetCoreLeakCheck.cs` — Gate-0 check 4: reflects over the MCP client assembly and asserts no `Microsoft.AspNetCore.*` reference.
 - `FakeChatClient.cs` — deterministic offline LLM that emits a tool call then a final answer.
 - `McpWordCountServer.cs` — real MCP server+client over in-memory pipes (Goal 3 + F4 `CallToolAsync`).
 - `nuget.config` — nuget.org only (see Finding 1).

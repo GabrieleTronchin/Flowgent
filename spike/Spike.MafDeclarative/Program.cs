@@ -56,10 +56,17 @@ Console.WriteLine();
 var okA = await Demos.RunExistingAsync(mcp, mcpTools, ct);
 var okF4 = await Demos.RunF4McpHandlerAsync(mcp, ct);
 var okF5 = await Demos.RunF5HitlAsync(ct);
-var allOk = okA && okF4 && okF5;
+
+// GATE-0 (FEAT-001): MCP-over-HTTP, fully offline on loopback.
+var okGate0 = await Demos.RunGate0HttpMcpAsync(ct);
+
+// GATE-0 check 4: ASP.NET-Core-leak into the MCP CLIENT assembly.
+var noAspNetLeak = AspNetCoreLeakCheck.Run();
+
+var allOk = okA && okF4 && okF5 && okGate0 && noAspNetLeak;
 
 Console.WriteLine();
-Console.WriteLine($"[summary] A={okA} F4={okF4} F5={okF5}");
+Console.WriteLine($"[summary] A={okA} F4={okF4} F5={okF5} Gate0Http={okGate0} NoAspNetCoreLeak={noAspNetLeak}");
 Console.WriteLine(allOk ? "=== Spike complete (all demos passed) ===" : "=== Spike finished WITH FAILURES ===");
 return allOk ? 0 : 1;
 
@@ -249,6 +256,99 @@ internal static class Demos
                           $"capturedValueReachedNextAction={capturedValueSeen} branchTaken={branchTaken} finalStatus={status}");
 
         return sawRequest && responded && capturedValueSeen && branchTaken;
+    }
+
+    // -----------------------------------------------------------------------
+    // (GATE-0 / FEAT-001) deterministic MCP tool over a REAL HTTP transport.
+    // A real in-process ModelContextProtocol.AspNetCore server (app.MapMcp) on
+    // http://127.0.0.1:0; the declarative InvokeMcpTool action routes to the custom
+    // HttpMcpToolHandler, which connects a real McpClient over HttpClientTransport.
+    // Fully offline (loopback only). NO agent, NO LLM.
+    //
+    // Adopted-handler note: MAF 1.27.0 ships NO built-in/default IMcpToolHandler
+    // (no `DefaultMcpToolHandler` type exists in any Microsoft.Agents.AI* assembly;
+    // only the `IMcpToolHandler` interface and the `McpToolHandler` options property).
+    // So the "primary attempt" (a built-in default handler) is not constructable and
+    // the adopted handler is necessarily the custom HttpMcpToolHandler.
+    // -----------------------------------------------------------------------
+    public static async Task<bool> RunGate0HttpMcpAsync(CancellationToken ct)
+    {
+        Header("GATE-0", "MCP over HTTP: real ModelContextProtocol.AspNetCore server + custom HttpMcpToolHandler (NO LLM, offline)");
+
+        var template = WorkflowPath("workflow.mcphttp.yaml");
+        if (!File.Exists(template)) { Console.Error.WriteLine($"FATAL: {template} not found"); return false; }
+
+        // 1. Start the real HTTP MCP server and read back the bound loopback URL.
+        await using var httpServer = await McpHttpEchoServer.StartAsync(ct);
+        var serverUrl = httpServer.McpUrl;
+        Console.WriteLine($"[run] MCP server bound at {serverUrl}; substituting into workflow.mcphttp.yaml");
+
+        // 2. Substitute the real bound URL for the placeholder token (the Kestrel port
+        //    is chosen at runtime, so it cannot be hard-coded in the YAML on disk).
+        var yaml = (await File.ReadAllTextAsync(template, ct))
+            .Replace("__MCP_SERVER_URL__", serverUrl, StringComparison.Ordinal);
+
+        // 3. The adopted handler: a custom IMcpToolHandler over HTTP, driven by an
+        //    EXTERNAL (caller-owned) HttpClient -> proves the injectable-HttpClient
+        //    HttpClientTransport constructor works end to end with McpClient.CreateAsync.
+        using var httpClient = new HttpClient();
+        await using var handler = new HttpMcpToolHandler(httpClient);
+
+        var agentProvider = new SpikeAgentProvider(new FakeChatClient(), []);
+        var options = new DeclarativeWorkflowOptions(agentProvider)
+        {
+            McpToolHandler = handler,
+        };
+
+        Workflow workflow;
+        using (var reader = new StringReader(yaml))
+        {
+            workflow = DeclarativeWorkflowBuilder.Build<string>(
+                reader, options, inputTransform: text => new ChatMessage(ChatRole.User, text));
+        }
+
+        Console.WriteLine("[run] no LLM involved; InvokeMcpTool -> HttpMcpToolHandler.InvokeToolAsync -> McpClient over HTTP");
+        Console.WriteLine("----- streamed events -----");
+
+        string? final = null;
+        string? error = null;
+        StreamingRun run = await InProcessExecution.RunStreamingAsync(workflow, "trigger", cancellationToken: ct);
+        await foreach (WorkflowEvent evt in run.WatchStreamAsync(ct))
+        {
+            switch (evt)
+            {
+                case Decl.MessageActivityEvent activity:
+                    final = activity.Message;
+                    Console.WriteLine($"  [MessageActivityEvent] {final}");
+                    break;
+                case WorkflowOutputEvent output:
+                    Console.WriteLine($"  [WorkflowOutputEvent] {output.Data}");
+                    break;
+                case WorkflowErrorEvent err:
+                    error = err.Data?.ToString();
+                    Console.WriteLine($"  [WorkflowErrorEvent] {error}");
+                    break;
+            }
+        }
+
+        Console.WriteLine("----- end -----");
+        Console.WriteLine($"[Gate0 final] {final ?? "(none)"}");
+
+        // GATE-0 check 1: the InvokeMcpTool result must cross PowerFx with NO
+        // "Unsupported element type: Double" (echoUpper returns a non-numeric string).
+        var hadDoubleError = error?.Contains("Unsupported element type: Double", StringComparison.Ordinal) == true
+            || final?.Contains("Unsupported element type: Double", StringComparison.Ordinal) == true;
+        if (hadDoubleError)
+        {
+            Console.WriteLine("[Gate0] FAIL: hit 'Unsupported element type: Double' at the PowerFx boundary");
+            return false;
+        }
+
+        // The echoUpper result ("GATE-ZERO MCP OVER HTTP") must flow into the final activity.
+        var expected = "GATE-ZERO MCP OVER HTTP";
+        var resultReadAsValue = final?.Contains(expected, StringComparison.Ordinal) == true;
+        Console.WriteLine($"[Gate0] echoUpper result read as a value: {resultReadAsValue} (expected substring \"{expected}\")");
+        return error is null && final is not null && resultReadAsValue;
     }
 
     private static string DescribeRequest(ExternalRequest request)

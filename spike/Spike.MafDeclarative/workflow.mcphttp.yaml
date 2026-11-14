@@ -1,0 +1,52 @@
+# GATE-0 (FEAT-001): deterministic MCP tool over a REAL HTTP transport via the
+# DECLARATIVE InvokeMcpTool action.
+#
+# Like workflow.mcp.yaml there is NO agent and NO LLM. The difference is the transport:
+# the serverUrl below points at a REAL in-process HTTP MCP server (ModelContextProtocol
+# .AspNetCore, app.MapMcp()) bound to http://127.0.0.1:<port> on loopback. The handler
+# (HttpMcpToolHandler) connects a real McpClient to that URL over Streamable-HTTP and
+# routes the call — fully offline, no external network.
+#
+# serverUrl is a placeholder token here because the Kestrel port is chosen at runtime
+# (port 0). Program.cs reads this YAML, substitutes the real bound URL for the token, and
+# builds the workflow from the resulting text. See FEAT-001 / spike README Gate-0.
+#
+# Flow:
+#   1. SetVariable: fix a deterministic input text (no agent decides it).
+#   2. InvokeMcpTool: call echoUpper(text=Local.textToEcho) over HTTP -> Local.mcpResult.
+#   3. SendActivity: emit the deterministic tool result as the final activity.
+kind: Workflow
+trigger:
+  kind: OnConversationStart
+  id: spike_gate0_http_mcp
+  actions:
+
+    # 1. Deterministic, fixed input. No LLM chooses this.
+    - kind: SetVariable
+      id: set_input
+      variable: Local.textToEcho
+      value: gate-zero mcp over http
+
+    # 2. Call the MCP echoUpper tool as an EXPLICIT declarative action over HTTP.
+    #    This routes to HttpMcpToolHandler.InvokeToolAsync, which connects an McpClient
+    #    to the real bound serverUrl.
+    - kind: InvokeMcpTool
+      id: invoke_echo_upper
+      displayName: Uppercase text via MCP over HTTP (deterministic, no LLM)
+      serverUrl: __MCP_SERVER_URL__
+      serverLabel: spike_echo_upper_http
+      toolName: echoUpper
+      requireApproval: false
+      arguments:
+        text: =Local.textToEcho
+      output:
+        result: Local.mcpResult
+
+    # 3. Emit the deterministic result.
+    #    The InvokeMcpTool executor stores the tool's text outputs as a single-column
+    #    PowerFx table (column "Value"); pull the one cell with First(...).Value.
+    - kind: SendActivity
+      id: send_mcp_result
+      activity:
+        text:
+          - "MCP echoUpper({Local.textToEcho}) = {First(Local.mcpResult).Value}"

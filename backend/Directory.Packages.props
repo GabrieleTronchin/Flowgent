@@ -23,6 +23,16 @@
   </ItemGroup>
 
   <!-- ═══════════════════════════════════════════════════════════════════
+       Model Context Protocol (MCP)
+       Added for the containerize-and-mcp task (Gate-0 / FEAT-001). No project
+       consumes these yet — central versions only; the build stays green.
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="MCP">
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.2" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.2" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
        gRPC
        ═══════════════════════════════════════════════════════════════════ -->
   <ItemGroup Label="gRPC">
