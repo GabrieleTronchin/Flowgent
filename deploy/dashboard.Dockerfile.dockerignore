@@ -1,0 +1,37 @@
+# Shared .dockerignore for every image built from the repo root context.
+# Keeps the build context small and prevents host build output / tooling from
+# leaking into the image or invalidating layer caches.
+
+# Build output
+**/bin/
+**/obj/
+**/dist/
+artifacts/
+
+# Node
+**/node_modules/
+
+# VCS and worktrees
+.git/
+.worktrees/
+
+# Agent / spec tooling scratch
+.agents/
+.kiro/
+spike/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Test projects (not needed to publish the services or build the SPA)
+backend/tests/
+**/*.Tests/
+modules/**/tests/
+# ...but keep the support demo's dummy-apps fixtures: the support-mcp tool ships
+# and searches them (incl. their tests/ dirs, which encode "missing test" scenarios).
+!modules/support/dummy-apps/**
+
+# Local dev secrets
+**/appsettings.Development.json

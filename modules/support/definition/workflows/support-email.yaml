@@ -156,7 +156,7 @@ trigger:
     # ── locate_component (tool -> InvokeMcpTool) ────────────────────────────────────────────────────────
     - kind: InvokeMcpTool
       id: locate_component
-      serverUrl: inproc://support
+      serverUrl: http://support-mcp
       serverLabel: support
       toolName: support.locateComponent
       requireApproval: false

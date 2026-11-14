@@ -58,6 +58,14 @@ public static class RuntimeServiceExtensions
         services.AddSingleton<MafWorkflowFactory>();
         services.AddSingleton<MafRunDriver>();
 
+        // FEAT-002: MCP-over-HTTP. The pool caches one McpClient per server URL; the transport factory builds a
+        // Streamable-HTTP transport over the named "mcp" IHttpClientFactory client (ownsHttpClient:false), with
+        // per-call timeouts (so no client-level timeout) like the per-module clients.
+        services.TryAddSingleton<IMcpTransportFactory, HttpMcpTransportFactory>();
+        services.AddSingleton<McpClientPool>();
+        services.AddHttpClient(HttpMcpTransportFactory.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .RemoveAllResilienceHandlers();
+
         services.AddSingleton<VolumeDefinitionSource>();
         services.AddSingleton<IDefinitionSource>(sp => sp.GetRequiredService<VolumeDefinitionSource>());
         services.AddSingleton<HttpDefinitionSource>();
