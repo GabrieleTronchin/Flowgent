@@ -85,20 +85,6 @@ public class SupportServiceTests
     }
 
     [Fact]
-    public async Task ToolError_Returns400WithMessage()
-    {
-        await using var platform = await SupportPlatform.StartAsync();
-
-        var response = await platform.ModuleClient("support").PostAsJsonAsync(
-            ModuleRoutes.Tool("support.locateComponent"),
-            new ToolInvocationRequest(Guid.NewGuid(), "support", "support-email", "locate_component", new JsonObject { ["applicationFolder"] = "../x", ["text"] = "" }));
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ToolInvocationResponse>(PlatformHarness.Json);
-        Assert.Contains("Invalid application folder", body!.Error);
-    }
-
-    [Fact]
     public async Task ModuleSummary_IsRoutedByTheGateway()
     {
         await using var platform = await SupportPlatform.StartAsync();

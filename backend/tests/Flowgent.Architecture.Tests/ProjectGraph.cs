@@ -15,6 +15,8 @@ public static class ProjectGraph
 
     public static string ServiceDefaults => Path.Combine(Root, "backend", "src", "AppHost", "Flowgent.ServiceDefaults", "Flowgent.ServiceDefaults.csproj");
 
+    public static string McpSupport => Service("Flowgent.Mcp.Support");
+
     public static string FixtureModule => Path.Combine(Root, "backend", "tests", "Fixtures", "Flowgent.Fixtures.Module", "Flowgent.Fixtures.Module.csproj");
 
     /// <summary>Engine projects: libraries and the engine service.</summary>
@@ -37,6 +39,12 @@ public static class ProjectGraph
             .Order(StringComparer.Ordinal),
         FixtureModule,
     ];
+
+    /// <summary>The NuGet package ids referenced directly by <paramref name="project"/> (<c>PackageReference</c> includes).</summary>
+    public static IReadOnlyList<string> PackageReferences(string project) =>
+        XDocument.Load(project).Descendants("PackageReference")
+            .Select(r => r.Attribute("Include")!.Value)
+            .ToList();
 
     /// <summary>Full paths of the projects referenced directly by <paramref name="project"/>.</summary>
     public static IReadOnlyList<string> DirectReferences(string project)

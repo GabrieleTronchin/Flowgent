@@ -61,7 +61,7 @@ public static class RuntimeServiceExtensions
         // FEAT-002: MCP-over-HTTP. The pool caches one McpClient per server URL; the transport factory builds a
         // Streamable-HTTP transport over the named "mcp" IHttpClientFactory client (ownsHttpClient:false), with
         // per-call timeouts (so no client-level timeout) like the per-module clients.
-        services.AddSingleton<IMcpTransportFactory, HttpMcpTransportFactory>();
+        services.TryAddSingleton<IMcpTransportFactory, HttpMcpTransportFactory>();
         services.AddSingleton<McpClientPool>();
         services.AddHttpClient(HttpMcpTransportFactory.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan)
             .RemoveAllResilienceHandlers();

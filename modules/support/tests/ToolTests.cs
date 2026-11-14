@@ -2,18 +2,18 @@ namespace Flowgent.Modules.Support.Tests;
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Flowgent.Module.Sdk;
-using Flowgent.Modules.Support.Tools;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
+using Flowgent.Mcp.Support;
 
-/// <summary><c>support.locateComponent</c> against the real dummy apps.</summary>
+/// <summary>
+/// The pure locate algorithm (<see cref="LocateComponentCore"/>) against the real dummy apps. These assertions are the
+/// direct-helper parity for <c>support.locateComponent</c>: the tool now runs in the standalone MCP server, but the
+/// algorithm is single-sourced in the core, so the located path/component/language/snippet values are unchanged.
+/// </summary>
 public class ToolTests
 {
-    private static readonly ModuleDefinitionProvider Provider = new(
-        Options.Create(new ModuleSdkOptions { DefinitionPath = SupportPlatform.DefinitionFolder }),
-        new TestEnvironment());
+    private static readonly string DummyAppsRoot = Path.Combine(SupportPlatform.ModuleFolder, "dummy-apps");
+
+    private static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web);
 
     [Theory]
     [InlineData("scenario-a1", "application-a", "OrderController.cs", "dummy-apps/application-a/src/Controllers/OrderController.cs", "csharp")]
@@ -63,7 +63,7 @@ public class ToolTests
     [InlineData("Application-A")]
     public void InvalidFolders_AreRejected(string folder)
     {
-        var ex = Assert.Throws<ToolException>(() => Locate(folder, "OrderController"));
+        var ex = Assert.Throws<LocateComponentException>(() => Locate(folder, "OrderController"));
 
         Assert.Contains("application folder", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -71,45 +71,21 @@ public class ToolTests
     [Fact]
     public void UnknownFolder_IsRejected()
     {
-        var ex = Assert.Throws<ToolException>(() => Locate("application-z", "OrderController"));
+        var ex = Assert.Throws<LocateComponentException>(() => Locate("application-z", "OrderController"));
 
         Assert.Equal("Unknown application folder 'application-z'.", ex.Message);
     }
 
     [Fact]
-    public async Task Output_MatchesTheDeclaredToolSchema()
+    public void Output_MatchesTheDeclaredToolSchema()
     {
-        var tool = new LocateComponentTool();
-        var output = await tool.InvokeAsync(Invocation("application-a", "OrderController"), TestContext.Current.CancellationToken);
-        var schema = SupportPlatform.Definition.GetSchema(SupportPlatform.Definition.FindTool(LocateComponentTool.Name)!.Output!.Schema);
+        var result = Locate("application-a", "OrderController");
+        var output = JsonNode.Parse(JsonSerializer.Serialize(result, Web))!;
+        var schema = SupportPlatform.Definition.GetSchema(SupportPlatform.Definition.FindTool("support.locateComponent")!.Output!.Schema);
 
         Assert.Empty(Flowgent.Definitions.Schemas.JsonSchemaValidator.Validate(schema, output));
     }
 
-    internal static LocateComponentOutput Locate(string folder, string text)
-    {
-        try
-        {
-            var output = new LocateComponentTool().InvokeAsync(Invocation(folder, text), CancellationToken.None).GetAwaiter().GetResult();
-            return output.Deserialize<LocateComponentOutput>(ModuleTool<object, object>.JsonOptions)!;
-        }
-        catch (AggregateException ex) when (ex.InnerException is ToolException inner)
-        {
-            throw inner;
-        }
-    }
-
-    private static ToolInvocation Invocation(string folder, string text) =>
-        new(Guid.NewGuid(), "support", "support-email", "locate_component", new JsonObject { ["applicationFolder"] = folder, ["text"] = text }, Provider);
-
-    private sealed class TestEnvironment : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = "Testing";
-
-        public string ApplicationName { get; set; } = "tests";
-
-        public string ContentRootPath { get; set; } = SupportPlatform.DefinitionFolder;
-
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
-    }
+    internal static LocateResult Locate(string folder, string text) =>
+        LocateComponentCore.LocateAsync(folder, text, DummyAppsRoot, "dummy-apps", CancellationToken.None).GetAwaiter().GetResult();
 }
