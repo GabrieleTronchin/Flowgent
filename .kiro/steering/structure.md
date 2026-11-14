@@ -6,7 +6,8 @@
 Dashboard (:5173) ─┐
 HTTP clients ──────┴─> Gateway (:5080) ─┬─> Engine service (:5081)
                                         └─> Module services (support :5082, template :5083)
-Engine ──(GET /_module/package, POST /_module/tools/{name})──> Module services
+Engine ──(GET /_module/package)──> Module services
+Engine ──(MCP over Streamable HTTP, per Flowgent:McpServers[])──> Domain MCP servers (e.g. Flowgent.Mcp.Support)
 Module services ──(POST /api/engine/workflows/{id}/runs)──> Engine
 ```
 
@@ -24,13 +25,15 @@ backend/
 ├── src/
 │   ├── Engine/
 │   │   ├── Flowgent.Contracts/      # HTTP DTOs: module package, tool invocation, engine API views, RunStatus/RunEventKind
-│   │   ├── Flowgent.Definitions/    # YAML → JsonNode reader, model records, ModuleLoader, DefinitionValidator, Scriban TemplateEngine
-│   │   ├── Flowgent.Runtime/        # WorkflowCompiler, step handlers, RunOrchestrator, RunRegistry, HumanInputRegistry,
-│   │   │                            #   IntakeService, InboxProcessor, ModuleCatalog(+Service), ModuleClient, LLM (Demo, telemetry)
+│   │   ├── Flowgent.Definitions/    # YAML → JsonNode reader, model records, ModuleLoader, DefinitionValidator
+│   │   ├── Flowgent.Runtime/        # WorkflowCompiler, RunOrchestrator, RunRegistry, HumanInputRegistry, IntakeService,
+│   │   │                            #   InboxProcessor, ModuleCatalog(+Service), ModuleToolInvoker, LLM (Demo, telemetry);
+│   │   │                            #   Maf/ = ModuleToolHandler (MCP-over-HTTP branch), McpClientPool, IMcpTransportFactory
 │   │   └── Flowgent.Persistence/    # EF Core InMemory EngineDbContext, EfRunStore (dual-write), EfInboxStore
 │   ├── Services/
 │   │   ├── Flowgent.Engine.Service/ # EngineHost, /api/engine endpoints, RunMonitorService (gRPC), engine.http
-│   │   └── Flowgent.Gateway/        # GatewayHost, GatewayRoutes, GatewayMiddleware (correlation id, 503)
+│   │   ├── Flowgent.Gateway/        # GatewayHost, GatewayRoutes, GatewayMiddleware (correlation id, 503)
+│   │   └── Flowgent.Mcp.Support/    # standalone support MCP server (locateComponent); ServiceDefaults + MCP package only
 │   ├── Sdk/
 │   │   ├── Flowgent.Module.Sdk/     # AddFlowgentModule/MapFlowgentModule, ModuleTool<TIn,TOut>, IEngineClient, ModuleDefinitionAssert
 │   │   └── Flowgent.Testing/        # PlatformHarness: engine, modules and gateway in-process on TestServer

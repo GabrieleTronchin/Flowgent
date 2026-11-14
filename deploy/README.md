@@ -1,5 +1,10 @@
 # Flowgent container images
 
+> ⚠️ **Beta / pre-release.** These images are early (`v0.1.0-alpha.1`) and not
+> production-ready. Contents, environment variables and defaults can change
+> between releases. Use the `alpha` channel tag for the latest pre-release or a
+> pinned `0.1.0-alpha.1` tag for reproducibility.
+
 Four multi-stage Dockerfiles that package the Flowgent services. **The build
 context is the repository root** for every image, so always build from the repo
 root and pass the Dockerfile with `-f`:
