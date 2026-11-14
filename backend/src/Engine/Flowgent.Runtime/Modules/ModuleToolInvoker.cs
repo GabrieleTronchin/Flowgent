@@ -32,10 +32,7 @@ public sealed class ModuleToolInvoker(IModuleClient moduleClient, IOptions<Engin
         CancellationToken ct)
     {
         var tool = module.FindTool(toolName) ?? throw new StepFailedException(callerId, $"Tool '{toolName}' is not declared.");
-        if (tool.Input is not null)
-        {
-            StepSchemas.Validate(module, tool.Input.Schema, input, callerId, $"Input of tool '{toolName}'");
-        }
+        ToolValidation.ValidateInput(module, tool, input, callerId, toolName);
 
         var timeoutSeconds = tool.TimeoutSeconds ?? stepTimeoutSeconds
             ?? engineOptions.Value.Modules.FirstOrDefault(m => m.Id == module.Id)?.TimeoutSeconds
@@ -53,13 +50,10 @@ public sealed class ModuleToolInvoker(IModuleClient moduleClient, IOptions<Engin
         }
         catch (ToolInvocationException ex)
         {
-            throw new StepFailedException(callerId, ex.Message, ex);
+            throw ToolValidation.ToStepFailure(callerId, ex);
         }
 
-        if (tool.Output is not null)
-        {
-            StepSchemas.Validate(module, tool.Output.Schema, output, callerId, $"Output of tool '{toolName}'");
-        }
+        ToolValidation.ValidateOutput(module, tool, output, callerId, toolName);
 
         return output;
     }
