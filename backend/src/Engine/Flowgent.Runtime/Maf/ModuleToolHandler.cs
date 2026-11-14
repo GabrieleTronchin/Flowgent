@@ -215,7 +215,7 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         {
             if (string.Equals(server.Label, ReservedLabel, StringComparison.OrdinalIgnoreCase))
             {
-                logger.LogError("Ignoring MCP server entry with reserved label '{Label}' ({Url}); the '{Reserved}' label is never HTTP-routable.", server.Label, server.Url, ReservedLabel);
+                logger.LogError("Ignoring MCP server entry with reserved label '{Label}' ({Url}); the '{Reserved}' label is never HTTP-routable.", server.Label, RedactUrlForLog(server.Url), ReservedLabel);
                 continue;
             }
 
@@ -223,6 +223,26 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         }
 
         return map;
+    }
+
+    /// <summary>
+    /// Redacts a configured MCP server URL for logging: strips any embedded credentials (userinfo),
+    /// query and fragment, so a secret in the configured URL is never written to logs.
+    /// </summary>
+    private static string RedactUrlForLog(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return "<empty>";
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return "<redacted>";
+        }
+
+        var builder = new UriBuilder(uri) { UserName = string.Empty, Password = string.Empty, Query = string.Empty, Fragment = string.Empty };
+        return builder.Uri.ToString();
     }
 
     /// <summary>Serializes the tool output to a single JSON string, wrapping a bare top-level number so the PowerFx cell is never a Double.</summary>
