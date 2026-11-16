@@ -183,7 +183,7 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         }
         catch (Exception ex) when (ex is not OperationCanceledException && ex is not StepFailedException)
         {
-            throw new StepFailedException(callerId, $"MCP server '{serverLabel}' unavailable: {ex.Message}", ex);
+            throw new StepFailedException(callerId, $"MCP server '{serverLabel}' unavailable.", ex);
         }
     }
 
