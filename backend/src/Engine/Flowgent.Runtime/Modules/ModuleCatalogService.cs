@@ -1,5 +1,6 @@
 namespace Flowgent.Runtime.Modules;
 
+using System.Collections.Concurrent;
 using Flowgent.Runtime.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,32 +17,45 @@ public sealed class ModuleCatalogService(
     IOptions<EngineOptions> options,
     ILogger<ModuleCatalogService> logger) : BackgroundService
 {
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _refreshGates = new(StringComparer.Ordinal);
+
     /// <summary>Checks every module once (also used by tests to load modules deterministically).</summary>
     public async Task RefreshAllAsync(CancellationToken ct = default) =>
         await Task.WhenAll(catalog.Modules.Select(m => RefreshAsync(m.Id, ct)));
 
     public async Task RefreshAsync(string moduleId, CancellationToken ct = default)
     {
-        var current = catalog.FindModule(moduleId);
-        if (current is null)
+        // A manual refresh may overlap the background poll. Serialize per module so an older request cannot
+        // complete after a newer failure and incorrectly restore the module to Available with NotModified.
+        var gate = _refreshGates.GetOrAdd(moduleId, static _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
         {
-            return;
-        }
+            var current = catalog.FindModule(moduleId);
+            if (current is null)
+            {
+                return;
+            }
 
-        // Volume is primary when the module's folder exists on the mounted path; otherwise pull over HTTP.
-        var source = volume.HasModule(moduleId) ? (IDefinitionSource)volume : http;
-        var result = await source.FetchAsync(moduleId, current.Definition?.Version, ct);
-        switch (result)
+            // Volume is primary when the module's folder exists on the mounted path; otherwise pull over HTTP.
+            var source = volume.HasModule(moduleId) ? (IDefinitionSource)volume : http;
+            var result = await source.FetchAsync(moduleId, current.Definition?.Version, ct);
+            switch (result)
+            {
+                case PackageFetchResult.Changed changed:
+                    catalog.ApplyPackage(moduleId, changed.Package);
+                    break;
+                case PackageFetchResult.NotModified:
+                    catalog.ApplyNotModified(moduleId);
+                    break;
+                case PackageFetchResult.Failed failed:
+                    catalog.ApplyFailure(moduleId, failed.Error);
+                    break;
+            }
+        }
+        finally
         {
-            case PackageFetchResult.Changed changed:
-                catalog.ApplyPackage(moduleId, changed.Package);
-                break;
-            case PackageFetchResult.NotModified:
-                catalog.ApplyNotModified(moduleId);
-                break;
-            case PackageFetchResult.Failed failed:
-                catalog.ApplyFailure(moduleId, failed.Error);
-                break;
+            gate.Release();
         }
     }
 

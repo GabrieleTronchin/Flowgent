@@ -84,6 +84,31 @@ public class DependencyRulesTests
         Assert.Empty(ProjectGraph.TransitiveReferences(path).Intersect(forbidden, StringComparer.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void SupportMcpServer_ReferencesOnlyServiceDefaultsAndTheMcpPackage()
+    {
+        // FEAT-003: the standalone support MCP server is intentionally NOT a module service and NOT an engine project.
+        // Its only project reference is ServiceDefaults, and its only NuGet dependency is the MCP ASP.NET Core package;
+        // it must never reach the Module SDK, contracts, definitions, runtime or any engine/service project.
+        string[] forbidden =
+        [
+            ProjectGraph.Sdk("Flowgent.Module.Sdk"),
+            ProjectGraph.Engine("Flowgent.Contracts"),
+            ProjectGraph.Engine("Flowgent.Definitions"),
+            ProjectGraph.Engine("Flowgent.Runtime"),
+            ProjectGraph.Engine("Flowgent.Persistence"),
+            ProjectGraph.Service("Flowgent.Engine.Service"),
+            ProjectGraph.Service("Flowgent.Gateway"),
+            ProjectGraph.Sdk("Flowgent.Testing"),
+        ];
+
+        Assert.Equal(
+            [ProjectGraph.Relative(ProjectGraph.ServiceDefaults)],
+            ProjectGraph.DirectReferences(ProjectGraph.McpSupport).Select(ProjectGraph.Relative));
+        Assert.Empty(ProjectGraph.TransitiveReferences(ProjectGraph.McpSupport).Intersect(forbidden, StringComparer.OrdinalIgnoreCase));
+        Assert.Equal(["ModelContextProtocol.AspNetCore"], ProjectGraph.PackageReferences(ProjectGraph.McpSupport));
+    }
+
     // ── Compiled assemblies (NetArchTest) ──────────────────────────────
 
     [Theory]

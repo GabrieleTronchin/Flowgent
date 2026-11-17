@@ -1,0 +1,75 @@
+name: Images
+
+# Build and publish the four Flowgent container images to GHCR.
+#   - push of a git tag v*  -> versioned semver tags (+ a moving prerelease channel tag)
+#   - push to master        -> a floating 'edge' tag
+#   - pull_request          -> build only (validation), no push
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: engine
+            dockerfile: deploy/engine.Dockerfile
+            image: flowgent-engine
+          - name: gateway
+            dockerfile: deploy/gateway.Dockerfile
+            image: flowgent-gateway
+          - name: dashboard
+            dockerfile: deploy/dashboard.Dockerfile
+            image: flowgent-dashboard
+          - name: support-mcp
+            dockerfile: deploy/support-mcp.Dockerfile
+            image: flowgent-support-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Only authenticate when we actually push (never on pull_request).
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # GHCR repositories must be lowercase.
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            # On a v* tag: full semver (v0.1.0-alpha.1 -> 0.1.0-alpha.1)
+            type=semver,pattern={{version}}
+            # On a prerelease v* tag: a moving channel tag (…-alpha.N -> alpha)
+            type=match,pattern=v\d+\.\d+\.\d+-([0-9A-Za-z]+).*,group=1
+            # On a push to the default branch (master): a floating 'edge' tag
+            type=edge,branch=master
+          flavor: |
+            latest=false
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

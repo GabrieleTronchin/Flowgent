@@ -18,6 +18,7 @@
   <Folder Name="/backend/src/Services/">
     <Project Path="src/Services/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj" />
     <Project Path="src/Services/Flowgent.Gateway/Flowgent.Gateway.csproj" />
+    <Project Path="src/Services/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj" />
   </Folder>
   <Folder Name="/backend/tests/">
     <Project Path="tests/Flowgent.Architecture.Tests/Flowgent.Architecture.Tests.csproj" />

@@ -18,12 +18,18 @@ using Flowgent.Runtime.Modules;
 public sealed class MafWorkflowFactory(
     IChatClient chatClient,
     ModuleToolInvoker toolInvoker,
+    McpClientPool mcpClientPool,
+    Microsoft.Extensions.Options.IOptions<Configuration.EngineOptions> engineOptions,
+    Microsoft.Extensions.Logging.ILoggerFactory loggerFactory,
     Llm.DemoResponseProvider demo,
     Microsoft.Extensions.Options.IOptions<Llm.LlmOptions> llmOptions,
     Func<IConversationStore> conversationStoreFactory)
 {
     private readonly IChatClient _chatClient = chatClient;
     private readonly ModuleToolInvoker _toolInvoker = toolInvoker;
+    private readonly McpClientPool _mcpClientPool = mcpClientPool;
+    private readonly Configuration.EngineOptions _engineOptions = engineOptions.Value;
+    private readonly Microsoft.Extensions.Logging.ILogger _toolHandlerLogger = Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<ModuleToolHandler>(loggerFactory);
     private readonly Llm.DemoResponseProvider _demo = demo;
     private readonly Llm.LlmOptions _llmOptions = llmOptions.Value;
     private readonly Func<IConversationStore> _conversationStoreFactory = conversationStoreFactory;
@@ -34,7 +40,7 @@ public sealed class MafWorkflowFactory(
     public BuiltWorkflow Build(RunContext run)
     {
         var agentProvider = new MafAgentProvider(run, _chatClient, _llmOptions, _demo, _conversationStoreFactory());
-        var toolHandler = new ModuleToolHandler(run, _toolInvoker);
+        var toolHandler = new ModuleToolHandler(run, _toolInvoker, _mcpClientPool, _engineOptions, _toolHandlerLogger);
 
         var options = new DeclarativeWorkflowOptions(agentProvider)
         {

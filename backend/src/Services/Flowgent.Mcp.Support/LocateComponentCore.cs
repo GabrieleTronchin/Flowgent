@@ -1,4 +1,4 @@
-namespace Flowgent.Modules.Support.Tools;
+namespace Flowgent.Mcp.Support;
 
 using System.Text.RegularExpressions;
 
@@ -12,11 +12,9 @@ public sealed class LocateComponentException(string message) : Exception(message
 /// <summary>
 /// Pure, SDK-free implementation of <c>support.locateComponent</c>: finds the dummy-app source file mentioned
 /// in a support email (by file name or type name, earliest mention wins) and returns its module-relative path
-/// and content. Extracted verbatim from <c>LocateComponentTool</c> so the algorithm is single-sourced and can
-/// be hosted either by the module-SDK adapter or, later, by a standalone MCP server. Takes the resolved
-/// absolute <c>dummyAppsRoot</c> and the module-relative root prefix as explicit parameters (no SDK types),
-/// and signals validation failures with <see cref="LocateComponentException"/> instead of the SDK's
-/// <c>ToolException</c>.
+/// and content. Single source of the locate algorithm, hosted by the standalone <c>Flowgent.Mcp.Support</c> MCP
+/// server. Takes the resolved absolute <c>dummyAppsRoot</c> and the module-relative root prefix as explicit
+/// parameters (no SDK types), and signals validation failures with <see cref="LocateComponentException"/>.
 /// </summary>
 public static partial class LocateComponentCore
 {

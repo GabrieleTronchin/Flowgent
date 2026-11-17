@@ -20,6 +20,10 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <!-- FEAT-002: MCP client (over Streamable HTTP). Gate-0/FEAT-001 proved the client package
+         ModelContextProtocol.Core references NO Microsoft.AspNetCore.* assembly, so referencing it
+         here keeps DefinitionsAndRuntime_DoNotDependOnAspNetCore green (design §2.8). -->
+    <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
 
   <ItemGroup>

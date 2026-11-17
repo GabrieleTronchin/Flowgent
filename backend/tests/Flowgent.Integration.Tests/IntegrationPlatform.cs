@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using Flowgent.Contracts.Api;
 using Flowgent.Definitions.Model;
 using Flowgent.Fixtures.Module;
+using Flowgent.Mcp.Support;
 using Flowgent.Module.Sdk;
 using Flowgent.Modules.Support;
 using Flowgent.Testing;
@@ -27,6 +28,8 @@ public static class IntegrationPlatform
         PlatformHarness.StartAsync(options =>
         {
             options.AddModule(SupportHost.ModuleId, SupportHost.Create, SupportContentRoot, "/api/support/{**catch-all}");
+            options.AddMcpServer(SupportHost.ModuleId, SupportMcpHost.Create, Path.Combine("backend", "src", "Services", "Flowgent.Mcp.Support"));
+            options.ConfigureModule(SupportHost.ModuleId, SupportMcpOptions.EnvironmentVariable, Path.Combine(PlatformHarness.RepositoryRoot, "modules", "support", "dummy-apps"));
             options.AddModule(FixtureHost.ModuleId, FixtureHost.Create, FixtureContentRoot);
             options.WithGateway();
             configure?.Invoke(options);

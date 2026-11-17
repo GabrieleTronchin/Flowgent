@@ -2,7 +2,6 @@ namespace Flowgent.Modules.Support;
 
 using Flowgent.Module.Sdk;
 using Flowgent.Modules.Support.Endpoints;
-using Flowgent.Modules.Support.Tools;
 
 /// <summary>
 /// Builds the support module service. <c>Program.cs</c> and the in-process test harness both use it.
@@ -20,7 +19,6 @@ public static class SupportHost
 
         builder.AddServiceDefaults();
         builder.AddFlowgentModule();
-        builder.Services.AddModuleTool<LocateComponentTool>(LocateComponentTool.Name);
 
         var app = builder.Build();
 

@@ -22,9 +22,14 @@ public delegate WebApplication ServiceFactory(WebApplicationOptions options, Act
 /// <summary>A module service started by the harness.</summary>
 public sealed record ModuleRegistration(string Id, ServiceFactory Create, string ContentRoot, IReadOnlyList<string> GatewayRoutes);
 
+/// <summary>An MCP server started by the harness; the engine reaches it over in-process HTTP by <see cref="Id"/>.</summary>
+public sealed record McpServerRegistration(string Id, ServiceFactory Create, string ContentRoot);
+
 public sealed class PlatformOptions
 {
     internal List<ModuleRegistration> Modules { get; } = [];
+
+    internal List<McpServerRegistration> McpServers { get; } = [];
 
     internal Dictionary<string, string?> EngineSettings { get; } = new(StringComparer.Ordinal);
 
@@ -36,6 +41,17 @@ public sealed class PlatformOptions
     public PlatformOptions AddModule(string id, ServiceFactory create, string contentRoot, params string[] gatewayRoutes)
     {
         Modules.Add(new ModuleRegistration(id, create, Path.Combine(PlatformHarness.RepositoryRoot, contentRoot), gatewayRoutes));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a standalone MCP server; the engine reaches it over in-process HTTP at <c>http://{id}</c> (mapped to the
+    /// server's TestServer by the router) and resolves it from <c>Flowgent:McpServers[]</c> by the matching label.
+    /// <paramref name="contentRoot"/> is relative to the repository root.
+    /// </summary>
+    public PlatformOptions AddMcpServer(string id, ServiceFactory create, string contentRoot)
+    {
+        McpServers.Add(new McpServerRegistration(id, create, Path.Combine(PlatformHarness.RepositoryRoot, contentRoot)));
         return this;
     }
 
@@ -76,13 +92,15 @@ public sealed class PlatformHarness : IAsyncDisposable
     private static readonly Lazy<string> Root = new(FindRepositoryRoot);
     private readonly PlatformOptions _options;
     private readonly Dictionary<string, WebApplication> _modules;
+    private readonly Dictionary<string, WebApplication> _mcpServers;
 
-    private PlatformHarness(PlatformOptions options, HostRoutingHandler router, WebApplication engine, Dictionary<string, WebApplication> modules, WebApplication? gateway)
+    private PlatformHarness(PlatformOptions options, HostRoutingHandler router, WebApplication engine, Dictionary<string, WebApplication> modules, Dictionary<string, WebApplication> mcpServers, WebApplication? gateway)
     {
         _options = options;
         Router = router;
         Engine = engine;
         _modules = modules;
+        _mcpServers = mcpServers;
         Gateway = gateway;
         EngineClient = engine.GetTestClient();
         GatewayClient = gateway?.GetTestClient();
@@ -120,6 +138,12 @@ public sealed class PlatformHarness : IAsyncDisposable
             modules[module.Id] = await StartModuleServiceAsync(module, options.ModuleSettings.GetValueOrDefault(module.Id), router);
         }
 
+        var mcpServers = new Dictionary<string, WebApplication>(StringComparer.Ordinal);
+        foreach (var server in options.McpServers)
+        {
+            mcpServers[server.Id] = await StartMcpServerAsync(server, options.ModuleSettings.GetValueOrDefault(server.Id), router);
+        }
+
         var engineSettings = new Dictionary<string, string?>
         {
             ["Flowgent:InboxPollingIntervalSeconds"] = "0.05",
@@ -134,6 +158,15 @@ public sealed class PlatformHarness : IAsyncDisposable
             engineSettings[$"Flowgent:Modules:{i}:RefreshSeconds"] = "0.2";
         }
 
+        for (var i = 0; i < options.McpServers.Count; i++)
+        {
+            // Label is the id (the workflow's serverLabel); the router host is "{id}-mcp" so an MCP server and a module
+            // service can share the same id without colliding on one router host (the engine fetches the module package
+            // from http://{id} and the MCP tool from http://{id}-mcp).
+            engineSettings[$"Flowgent:McpServers:{i}:Label"] = options.McpServers[i].Id;
+            engineSettings[$"Flowgent:McpServers:{i}:Url"] = McpHost(options.McpServers[i].Id);
+        }
+
         foreach (var (key, value) in options.EngineSettings)
         {
             engineSettings[key] = value;
@@ -144,6 +177,10 @@ public sealed class PlatformHarness : IAsyncDisposable
             builder.WebHost.UseTestServer();
             builder.Configuration.AddInMemoryCollection(engineSettings);
             builder.Services.ConfigureHttpClientDefaults(http => http.ConfigurePrimaryHttpMessageHandler(router.CreateClientHandler));
+            // Override the production HttpMcpTransportFactory (registered with TryAdd) so the engine reaches the
+            // harness's in-process MCP TestServers over the router instead of a real socket (FEAT-003).
+            builder.Services.AddSingleton<Flowgent.Runtime.Maf.IMcpTransportFactory>(sp =>
+                new RoutedMcpTransportFactory(router, sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()));
         });
         await engine.StartAsync();
         router.Register("engine", engine.GetTestServer().CreateHandler());
@@ -171,7 +208,7 @@ public sealed class PlatformHarness : IAsyncDisposable
             await gateway.StartAsync();
         }
 
-        var harness = new PlatformHarness(options, router, engine, modules, gateway);
+        var harness = new PlatformHarness(options, router, engine, modules, mcpServers, gateway);
         await harness.RefreshModulesAsync();
         return harness;
     }
@@ -296,6 +333,12 @@ public sealed class PlatformHarness : IAsyncDisposable
             await module.StopAsync();
             await module.DisposeAsync();
         }
+
+        foreach (var server in _mcpServers.Values)
+        {
+            await server.StopAsync();
+            await server.DisposeAsync();
+        }
     }
 
     private static async Task<WebApplication> StartModuleServiceAsync(
@@ -319,6 +362,31 @@ public sealed class PlatformHarness : IAsyncDisposable
         router.Register(module.Id, app.GetTestServer().CreateHandler());
         return app;
     }
+
+    private static async Task<WebApplication> StartMcpServerAsync(
+        McpServerRegistration server,
+        IReadOnlyDictionary<string, string?>? serverSettings,
+        HostRoutingHandler router)
+    {
+        var settings = new Dictionary<string, string?>();
+        foreach (var (key, value) in serverSettings ?? new Dictionary<string, string?>())
+        {
+            settings[key] = value;
+        }
+
+        var app = server.Create(new WebApplicationOptions { EnvironmentName = "Testing", ContentRootPath = server.ContentRoot }, builder =>
+        {
+            builder.WebHost.UseTestServer();
+            builder.Configuration.AddInMemoryCollection(settings);
+            builder.Services.ConfigureHttpClientDefaults(http => http.ConfigurePrimaryHttpMessageHandler(router.CreateClientHandler));
+        });
+        await app.StartAsync();
+        router.Register(new Uri(McpHost(server.Id)).Host, app.GetTestServer().CreateHandler());
+        return app;
+    }
+
+    /// <summary>The in-process MCP URL (and router host) for a server id: distinct from the module host of the same id.</summary>
+    private static string McpHost(string id) => $"http://{id}-mcp";
 
     private static string FindRepositoryRoot()
     {

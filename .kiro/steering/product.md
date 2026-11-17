@@ -10,7 +10,7 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 
 - **Gateway** (`Flowgent.Gateway`, :5080): the only entry point for the dashboard and clients. Config-driven YARP routes: `/api/engine/**` and the gRPC-Web stream `/flowgent.RunMonitor/**` to the engine, `/api/modules/{id}/**` (plus per-module extra routes) to module services. Correlation id, `503` problem details when a target is down.
 - **Engine** (`Flowgent.Engine.Service`, :5081): pulls module packages, validates and compiles workflows, runs them. Owns runs, transition events, the inbox, human input, LLM access (Demo default, OpenAI-compatible), telemetry, the `/api/engine` API and the gRPC `RunMonitor` stream. Contains no domain code.
-- **Module services** (`modules/<id>/service`, on `Flowgent.Module.Sdk`): publish `definition/` at `GET /_module/package`, implement tools at `POST /_module/tools/{name}`, expose domain endpoints and submit inputs through `IEngineClient`.
+- **Module services** (`modules/<id>/service`, on `Flowgent.Module.Sdk`): publish `definition/` at `GET /_module/package`, expose domain endpoints and submit inputs through `IEngineClient`. Domain tools are served by **MCP servers** (Streamable HTTP), reached by the engine via `Flowgent:McpServers[]` (label → URL); the support demo's `locateComponent` ships as the standalone `Flowgent.Mcp.Support` server. The legacy in-process `POST /_module/tools/{name}` path remains as the fallback for labels not mapped to an MCP server.
 - **Dashboard** (`dashboard/`, :5173): generic React console; graph, forms, filters and badges come from the workflow definitions.
 - **AppHost** (`Flowgent.AppHost`): starts engine, enabled modules, gateway and dashboard; Aspire dashboard at :15080.
 
