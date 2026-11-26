@@ -75,10 +75,10 @@ Each submitted input becomes a **run** of one workflow. A run has a current step
 
 ### Execution
 
-- `MafWorkflowFactory` builds a fresh MAF **declarative** workflow **per run** from the workflow's YAML (`DeclarativeWorkflowBuilder.Build<JsonObject>`), bound to the run's `RunContext`. Concurrent runs never share state. All declarative types are confined to the `Flowgent.Runtime.Maf` seam.
+- `MafWorkflowFactory` builds a fresh MAF **declarative** workflow **per run** from the workflow's YAML (`DeclarativeWorkflowBuilder.Build<JsonObject>`), bound to the run's `RunContext`. Concurrent runs never share state. All declarative types are confined to the `Flowgent.Engine.Core.Maf` seam.
 - `MafRunDriver` runs the workflow with JSON checkpointing and translates the declarative event stream into neutral records: per-step `StepStarted`/`StepCompleted` read from `Global.<stepId>` run-state variables, HITL via `RequestInfoEvent`↔`HumanInputRegistry`, and one terminal transition whose outcome comes from the manifest `terminals[]`.
 - A step that fails (agent/LLM error, tool error, PowerFx error) ends the run as `Failed` with a descriptive reason; an expected module-tool failure surfaces its `StepFailedException` message (e.g. `Module '<id>' is unavailable…`).
-- Each agent call emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Runtime`) tagged with run, module, workflow and step.
+- Each agent call emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Engine.Core`) tagged with run, module, workflow and step.
 
 ### Persistence
 
@@ -110,7 +110,7 @@ nuget.config, global.json           # package source and SDK / test runner (repo
 graph TD
     Contracts[Flowgent.Contracts]
     Definitions[Flowgent.Definitions] --> Contracts
-    Runtime[Flowgent.Runtime] --> Definitions
+    Runtime[Flowgent.Engine.Core] --> Definitions
     Persistence[Flowgent.Persistence] --> Runtime
     EngineSvc[Flowgent.Engine.Service] --> Runtime & Persistence & Defaults
     Gateway[Flowgent.Gateway] --> Defaults[Flowgent.ServiceDefaults]

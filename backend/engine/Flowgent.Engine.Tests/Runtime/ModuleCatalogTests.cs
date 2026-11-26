@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.Modules;
+using Flowgent.Engine.Core.Modules;
 using Microsoft.Extensions.DependencyInjection;
 
 public class ModuleCatalogTests

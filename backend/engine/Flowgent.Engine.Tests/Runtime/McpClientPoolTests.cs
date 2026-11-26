@@ -1,7 +1,7 @@
 namespace Flowgent.Engine.Tests.Runtime;
 
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.Maf;
+using Flowgent.Engine.Core.Maf;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 

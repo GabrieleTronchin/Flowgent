@@ -55,7 +55,7 @@ Service-to-service calls go directly between services (service discovery), never
 graph TD
     Contracts[Flowgent.Contracts]
     Definitions[Flowgent.Definitions] --> Contracts
-    Runtime[Flowgent.Runtime] --> Definitions
+    Runtime[Flowgent.Engine.Core] --> Definitions
     Persistence[Flowgent.Persistence] --> Runtime
     EngineSvc[Flowgent.Engine.Service] --> Runtime & Persistence & Defaults
     Gateway[Flowgent.Gateway] --> Defaults[Flowgent.ServiceDefaults]
@@ -90,7 +90,7 @@ backend/
 │   ├── Engine/
 │   │   ├── Flowgent.Contracts/    # HTTP DTOs: module package, tools, intake, engine API
 │   │   ├── Flowgent.Definitions/  # YAML model, loader, validator, Scriban expressions, JSON Schema helpers
-│   │   ├── Flowgent.Runtime/      # compiler, step executors, run orchestrator, human input, inbox processor,
+│   │   ├── Flowgent.Engine.Core/      # compiler, step executors, run orchestrator, human input, inbox processor,
 │   │   │                          #   module catalog/client, LLM (chat client, demo, telemetry)
 │   │   └── Flowgent.Persistence/  # EF Core InMemory: runs, events, inbox
 │   ├── Services/
@@ -325,7 +325,7 @@ app.MapDefaultEndpoints();                                  // /health, /alive
 - `IEngineClient` (named client `flowgent-engine`, base address `Flowgent:EngineUrl`, default `http://engine`): `SubmitAsync(workflowId, input)` → `IntakeResult` (accepted with ids, invalid with errors, unavailable).
 - `ModuleDefinitionAssert.IsValid(path)` for module unit tests.
 
-### 5. Engine runtime (`Flowgent.Runtime`)
+### 5. Engine runtime (`Flowgent.Engine.Core`)
 
 #### Module catalog
 
@@ -377,7 +377,7 @@ return builder.Build();
 - `NotFound`: unknown run.
 - `Conflict`: run not awaiting input or already terminal.
 
-#### LLM (`Flowgent.Runtime/Llm`)
+#### LLM (`Flowgent.Engine.Core/Llm`)
 
 - `ChatClientSetup.AddFlowgentChatClient(config)`, ported from today:
   - `Flowgent:Llm: { Provider: Demo|OpenAI (default Demo), ModelName, ApiKey, Endpoint, DemoLatencyMs: 1500 }`.
@@ -737,7 +737,7 @@ builder.Build().Run();
 - ServiceDefaults (Aspire template, adapted):
   - `AddServiceDefaults()`: OpenTelemetry logs/traces/metrics (ASP.NET Core, HttpClient, runtime, sources `Flowgent.*` and `Microsoft.Agents.AI*` / `Experimental.Microsoft.Extensions.AI`), OTLP exporter when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, service discovery, standard resilience on HttpClients.
   - `MapDefaultEndpoints()`: `/health` and `/alive`, in all environments.
-- `Flowgent.Runtime` emits activities per run step (`ActivitySource("Flowgent.Runtime")`, tags: run id, module, workflow, step, kind).
+- `Flowgent.Engine.Core` emits activities per run step (`ActivitySource("Flowgent.Engine.Core")`, tags: run id, module, workflow, step, kind).
 
 ### 13. Dashboard
 

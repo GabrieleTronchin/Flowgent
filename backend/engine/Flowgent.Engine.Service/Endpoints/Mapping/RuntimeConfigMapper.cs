@@ -1,8 +1,8 @@
 namespace Flowgent.Engine.Service.Endpoints.Mapping;
 
 using Flowgent.Contracts.Api;
-using Flowgent.Runtime.Configuration;
-using Flowgent.Runtime.Llm;
+using Flowgent.Engine.Core.Configuration;
+using Flowgent.Engine.Core.Llm;
 
 public static class RuntimeConfigMapper
 {

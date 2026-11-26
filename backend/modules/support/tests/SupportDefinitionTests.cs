@@ -1,8 +1,8 @@
 namespace Flowgent.Modules.Support.Tests;
 
 using System.Text.Json.Nodes;
-using Flowgent.Runtime.Execution;
-using Flowgent.Runtime.Llm;
+using Flowgent.Engine.Core.Execution;
+using Flowgent.Engine.Core.Llm;
 
 /// <summary>
 /// Unit tests of the support workflow's Demo-mode behaviour and agent mapping, ported from the pre-migration

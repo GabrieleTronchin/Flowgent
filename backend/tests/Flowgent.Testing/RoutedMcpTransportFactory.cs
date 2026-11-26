@@ -1,6 +1,6 @@
 namespace Flowgent.Testing;
 
-using Flowgent.Runtime.Maf;
+using Flowgent.Engine.Core.Maf;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Client;
 

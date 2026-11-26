@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Engine.Service;
-using Flowgent.Runtime.Modules;
+using Flowgent.Engine.Core.Modules;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;

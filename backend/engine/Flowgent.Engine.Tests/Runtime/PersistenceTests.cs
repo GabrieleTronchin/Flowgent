@@ -6,7 +6,7 @@ using FsCheck.Fluent;
 using FsCheck.Xunit;
 using Flowgent.Contracts.Runs;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.Runs;
+using Flowgent.Engine.Core.Runs;
 using Microsoft.Extensions.DependencyInjection;
 
 public class PersistenceTests

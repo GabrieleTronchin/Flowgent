@@ -38,7 +38,7 @@ The AppHost can also override the provider without touching files: `dotnet run -
 Demo responses live in the engine's `DemoResponseProvider` (C#), not in the workflow YAML — migrated workflows carry **no** `demo:` block. The provider is keyed by `(workflowId, stepId)` and returns the JSON an agent step would have produced, computed from the rendered prompt (so a step's prompt keeps a stable, parseable shape, e.g. jokes `Tell a joke about: <topic>`, support `Subject: …\n\nBody: …`). When you add an agent step, add the matching key:
 
 ```csharp
-// Flowgent.Runtime/Llm/DemoResponseProvider.cs
+// Flowgent.Engine.Core/Llm/DemoResponseProvider.cs
 public JsonNode Resolve(string workflowId, string stepId, string renderedPrompt, RunContext run) =>
     (workflowId, stepId) switch
     {

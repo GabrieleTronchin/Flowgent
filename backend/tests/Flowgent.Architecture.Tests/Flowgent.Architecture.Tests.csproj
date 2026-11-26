@@ -20,7 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Flowgent.Contracts\Flowgent.Contracts.csproj" />
     <ProjectReference Include="..\..\shared\Flowgent.Definitions\Flowgent.Definitions.csproj" />
-    <ProjectReference Include="..\..\engine\Flowgent.Runtime\Flowgent.Runtime.csproj" />
+    <ProjectReference Include="..\..\engine\Flowgent.Engine.Core\Flowgent.Engine.Core.csproj" />
     <ProjectReference Include="..\..\engine\Flowgent.Persistence\Flowgent.Persistence.csproj" />
     <ProjectReference Include="..\..\engine\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
     <ProjectReference Include="..\..\gateway\Flowgent.Gateway\Flowgent.Gateway.csproj" />

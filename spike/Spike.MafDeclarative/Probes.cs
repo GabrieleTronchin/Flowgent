@@ -14,7 +14,7 @@ namespace Spike.MafDeclarative;
 ///   PROBE-B : the host can read a named Global.* variable from run state after the run.
 ///   PROBE-C : ParseJSON exists, supports record field access, and its malformed behavior.
 /// Also enumerates the [Experimental] diagnostic IDs on the declarative assemblies so the
-/// scoped NoWarn on Flowgent.Runtime.csproj can list the exact IDs.
+/// scoped NoWarn on Flowgent.Engine.Core.csproj can list the exact IDs.
 /// Run with:  dotnet run -- probes
 /// </summary>
 internal static class Probes

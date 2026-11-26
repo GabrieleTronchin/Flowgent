@@ -4,9 +4,9 @@ using Flowgent.Contracts.Api;
 using Flowgent.Definitions.Schemas;
 using Flowgent.Engine.Service.Endpoints.Mapping;
 using Flowgent.Engine.Service.Endpoints.Primitives;
-using Flowgent.Runtime.Configuration;
-using Flowgent.Runtime.Llm;
-using Flowgent.Runtime.Modules;
+using Flowgent.Engine.Core.Configuration;
+using Flowgent.Engine.Core.Llm;
+using Flowgent.Engine.Core.Modules;
 using Microsoft.Extensions.Options;
 
 /// <summary>Runtime configuration, modules, workflows and the module-envelope JSON Schemas.</summary>

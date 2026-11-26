@@ -2,8 +2,8 @@ namespace Flowgent.Engine.Tests.Runtime;
 
 using System.Text.Json.Nodes;
 using Flowgent.Definitions.Model;
-using Flowgent.Runtime.Llm;
-using Flowgent.Runtime.Maf;
+using Flowgent.Engine.Core.Llm;
+using Flowgent.Engine.Core.Maf;
 
 /// <summary>
 /// Unit tests for the pure, host-independent seam pieces: the Demo response provider's
@@ -113,7 +113,7 @@ public sealed class MafSeamUnitTests
         Assert.Equal("src/X.cs", globals["produce"]);
     }
 
-    private static Flowgent.Runtime.Execution.RunContext RunStub()
+    private static Flowgent.Engine.Core.Execution.RunContext RunStub()
     {
         var descriptor = new WorkflowDescriptor
         {
@@ -126,7 +126,7 @@ public sealed class MafSeamUnitTests
             Graph = new WorkflowGraphModel("x", [], []),
         };
         // ModuleDefinition is only needed for cross-step reads this stub does not exercise; use a loaded module.
-        return new Flowgent.Runtime.Execution.RunContext(Guid.NewGuid(), LoadStubModule(), descriptor, [], null, CancellationToken.None);
+        return new Flowgent.Engine.Core.Execution.RunContext(Guid.NewGuid(), LoadStubModule(), descriptor, [], null, CancellationToken.None);
     }
 
     private static Flowgent.Definitions.ModuleDefinition LoadStubModule()

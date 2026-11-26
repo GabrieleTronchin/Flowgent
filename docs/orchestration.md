@@ -74,7 +74,7 @@ Then give the engine `Flowgent__McpServers__0__Label=support` and `Flowgent__Mcp
 `Flowgent.ServiceDefaults` is shared by all services:
 
 - **Health**: `/health` (all checks) and `/alive` (liveness) in every environment. Health probes are excluded from traces.
-- **Traces**: ASP.NET Core and HttpClient instrumentation plus the sources `Flowgent.*` (one activity per run step from `Flowgent.Runtime`, LLM calls from `Flowgent.Llm`), `Microsoft.Agents.AI*` and `Experimental.Microsoft.Extensions.AI*`. Trace context flows from the gateway through the engine to module tools.
+- **Traces**: ASP.NET Core and HttpClient instrumentation plus the sources `Flowgent.*` (one activity per run step from `Flowgent.Engine.Core`, LLM calls from `Flowgent.Llm`), `Microsoft.Agents.AI*` and `Experimental.Microsoft.Extensions.AI*`. Trace context flows from the gateway through the engine to module tools.
 - **Metrics**: ASP.NET Core, HttpClient, runtime and the same `Flowgent.*` / Agent Framework meters.
 - **Logs**: OpenTelemetry logging with scopes and formatted messages.
 - **Export**: OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (the AppHost sets it, so everything shows up in the Aspire dashboard).

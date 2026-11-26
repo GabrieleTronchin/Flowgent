@@ -31,7 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Flowgent.Definitions\Flowgent.Definitions.csproj" />
     <ProjectReference Include="..\Flowgent.Persistence\Flowgent.Persistence.csproj" />
-    <ProjectReference Include="..\Flowgent.Runtime\Flowgent.Runtime.csproj" />
+    <ProjectReference Include="..\Flowgent.Engine.Core\Flowgent.Engine.Core.csproj" />
     <ProjectReference Include="..\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
   </ItemGroup>
 

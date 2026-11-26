@@ -4,7 +4,7 @@
     <Project Path="engine/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj" />
     <Project Path="engine/Flowgent.Engine.Tests/Flowgent.Engine.Tests.csproj" />
     <Project Path="engine/Flowgent.Persistence/Flowgent.Persistence.csproj" />
-    <Project Path="engine/Flowgent.Runtime/Flowgent.Runtime.csproj" />
+    <Project Path="engine/Flowgent.Engine.Core/Flowgent.Engine.Core.csproj" />
   </Folder>
   <Folder Name="/gateway/">
     <Project Path="gateway/Flowgent.Gateway/Flowgent.Gateway.csproj" />

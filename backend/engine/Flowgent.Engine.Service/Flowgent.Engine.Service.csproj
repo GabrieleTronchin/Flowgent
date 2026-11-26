@@ -12,7 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Flowgent.ServiceDefaults\Flowgent.ServiceDefaults.csproj" />
     <ProjectReference Include="..\Flowgent.Persistence\Flowgent.Persistence.csproj" />
-    <ProjectReference Include="..\Flowgent.Runtime\Flowgent.Runtime.csproj" />
+    <ProjectReference Include="..\Flowgent.Engine.Core\Flowgent.Engine.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

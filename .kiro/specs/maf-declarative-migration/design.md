@@ -29,12 +29,12 @@ A new app = a folder of MAF-declarative YAML definitions (mounted) + optionally 
 ## Component-level plan
 
 ### Keep (our value, re-wired)
-- `Flowgent.Runtime`: `RunOrchestrator` (adapt to run a MAF `Workflow` from `DeclarativeWorkflowBuilder`), `RunRecorder`, `RunStore`, `RunUpdateChannel`, `ModuleCatalog`, `InboxProcessor`, `LlmTelemetry`, `ChatClientSetup` (our provider).
+- `Flowgent.Engine.Core`: `RunOrchestrator` (adapt to run a MAF `Workflow` from `DeclarativeWorkflowBuilder`), `RunRecorder`, `RunStore`, `RunUpdateChannel`, `ModuleCatalog`, `InboxProcessor`, `LlmTelemetry`, `ChatClientSetup` (our provider).
 - `Flowgent.Persistence`, `Flowgent.Contracts` (API/gRPC), `Flowgent.Engine.Service`, `Flowgent.Gateway`, dashboard.
 
 ### Replace
 - `Flowgent.Definitions` (custom loader/model/validator/Scriban/YAML reader) → MAF declarative YAML + `DeclarativeWorkflowOptions` + PowerFx.
-- `Flowgent.Runtime/Execution/WorkflowCompiler.cs` + `StepExecutor`/`TerminalStepExecutor` + `Flowgent.Runtime/Steps/*` → gone; MAF builds the graph.
+- `Flowgent.Engine.Core/Execution/WorkflowCompiler.cs` + `StepExecutor`/`TerminalStepExecutor` + `Flowgent.Engine.Core/Steps/*` → gone; MAF builds the graph.
 
 ### New
 - `ResponseAgentProvider` implementation bridging MAF → our run model, agent resolution (from `ModuleCatalog`/config), telemetry hook, and conversation store backed by our persistence (not just in-memory as in the spike).

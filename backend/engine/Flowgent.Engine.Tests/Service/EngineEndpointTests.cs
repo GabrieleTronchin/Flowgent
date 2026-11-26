@@ -127,7 +127,7 @@ public class EngineEndpointTests
     {
         await using var host = await EngineTestHost.StartAsync();
         host.Modules.DownModules.Add("demo");
-        await host.Services.GetService<Flowgent.Runtime.Modules.ModuleCatalogService>()!.RefreshAllAsync();
+        await host.Services.GetService<Flowgent.Engine.Core.Modules.ModuleCatalogService>()!.RefreshAllAsync();
 
         var response = await host.Client.PostAsJsonAsync("/api/engine/workflows/hello/runs", new { text = "x" });
 

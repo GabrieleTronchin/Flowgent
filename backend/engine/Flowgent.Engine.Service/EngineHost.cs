@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using Flowgent.Engine.Service.Endpoints.Primitives;
 using Flowgent.Engine.Service.Grpc;
 using Flowgent.Persistence;
-using Flowgent.Runtime;
+using Flowgent.Engine.Core;
 
 /// <summary>
 /// Builds the engine application. <c>Program.cs</c> and the in-process test harness both use it.

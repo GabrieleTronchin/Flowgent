@@ -1,6 +1,6 @@
 namespace Flowgent.Persistence;
 
-using Flowgent.Runtime.Runs;
+using Flowgent.Engine.Core.Runs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
