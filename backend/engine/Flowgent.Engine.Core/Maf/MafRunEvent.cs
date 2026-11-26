@@ -26,11 +26,3 @@ public abstract record MafRunEvent
     /// <summary>The workflow failed (an executor error or a workflow-level error).</summary>
     public sealed record Failed(string? StepId, string Reason) : MafRunEvent;
 }
-
-/// <summary>Decision supplied to resume a human-input gate; serialized to the <c>{decision, reason}</c> JSON the YAML parses.</summary>
-public sealed record MafHumanDecision(bool Approved, string? Reason)
-{
-    public string Decision => Approved ? "approved" : "rejected";
-
-    public JsonObject ToJson() => new() { ["decision"] = Decision, ["reason"] = Reason };
-}

@@ -6,18 +6,6 @@ using Flowgent.Definitions.Schemas;
 using Flowgent.Engine.Core.Modules;
 using Flowgent.Engine.Core.Runs;
 
-/// <summary>Outcome of an intake request.</summary>
-public abstract record IntakeResult
-{
-    public sealed record Accepted(Guid MessageId, Guid RunId) : IntakeResult;
-
-    public sealed record Invalid(string Message, IReadOnlyList<SchemaError> Errors) : IntakeResult;
-
-    public sealed record NotFound(string Message) : IntakeResult;
-
-    public sealed record Unavailable(string Message) : IntakeResult;
-}
-
 /// <summary>
 /// Generic intake: validates the input against the workflow input schema, then stores the inbox message and the
 /// queued run together. The inbox processor starts the run asynchronously.
@@ -81,4 +69,16 @@ public sealed partial class IntakeService(IModuleCatalog catalog, IRunStore stor
 
     [GeneratedRegex(@"\{([^{}]+)\}")]
     private static partial Regex FieldPlaceholder();
+}
+
+/// <summary>Outcome of an intake request.</summary>
+public abstract record IntakeResult
+{
+    public sealed record Accepted(Guid MessageId, Guid RunId) : IntakeResult;
+
+    public sealed record Invalid(string Message, IReadOnlyList<SchemaError> Errors) : IntakeResult;
+
+    public sealed record NotFound(string Message) : IntakeResult;
+
+    public sealed record Unavailable(string Message) : IntakeResult;
 }

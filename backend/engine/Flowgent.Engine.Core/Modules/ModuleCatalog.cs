@@ -9,46 +9,6 @@ using Flowgent.Engine.Core.Maf;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-/// <summary>Current state of a configured module.</summary>
-public sealed record ModuleState(
-    string Id,
-    string Url,
-    ModuleStatus Status,
-    ModuleDefinition? Definition,
-    IReadOnlyList<DefinitionErrorInfo> Errors,
-    DateTimeOffset? LastLoadedAt,
-    string? LastError)
-{
-    public bool IsAvailable => Status == ModuleStatus.Available && Definition is not null;
-
-    public ModuleInfo ToInfo() => new(
-        Id,
-        Definition?.Manifest.Name ?? Id,
-        Definition?.Manifest.Description,
-        Status,
-        Definition?.Version,
-        Definition?.Workflows.Select(w => w.Id).ToList() ?? [],
-        Errors,
-        LastLoadedAt,
-        LastError);
-}
-
-/// <summary>A workflow descriptor and the module definition (version) it belongs to.</summary>
-public sealed record MafWorkflowHandle(ModuleState Module, ModuleDefinition Definition, WorkflowDescriptor Workflow)
-{
-    public bool IsAvailable => Module.IsAvailable;
-}
-
-/// <summary>Modules known to the engine and their loaded definitions.</summary>
-public interface IModuleCatalog
-{
-    IReadOnlyList<ModuleState> Modules { get; }
-
-    ModuleState? FindModule(string moduleId);
-
-    MafWorkflowHandle? FindWorkflow(string workflowId);
-}
-
 /// <summary>
 /// Thread-safe catalog. Definitions are replaced atomically when a module publishes a new version; runs keep
 /// the <see cref="ModuleDefinition"/> they started with. Conflicting modules are marked <see cref="ModuleStatus.Invalid"/>.

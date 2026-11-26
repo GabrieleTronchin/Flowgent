@@ -1,15 +1,7 @@
 namespace Flowgent.Engine.Core.Matching;
 
 using System.Collections.Concurrent;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-
-/// <summary>
-/// A single regex rule and the output to select when it matches. Retained replacement for the
-/// custom-format <c>RuleDefinition</c> (which is deleted with the step model in a later feature):
-/// <see cref="RuleMatcher"/> works against this type, not the definition model.
-/// </summary>
-public sealed record MatchRule(string Pattern, JsonNode? Output);
 
 /// <summary>
 /// Ordered, regex-only rule matching. Retained after the <c>Steps/*</c> handlers are deleted;

@@ -82,12 +82,3 @@ public sealed class RunContext
         }
     }
 }
-
-/// <summary>Output yielded by terminal steps.</summary>
-public sealed record RunOutcome(string StepId, WorkflowOutcome Outcome, string? Message, JsonNode? Output);
-
-/// <summary>A step failed for an expected reason (validation, rule, tool or LLM error); the run ends as Failed.</summary>
-public sealed class StepFailedException(string stepId, string message, Exception? inner = null) : Exception(message, inner)
-{
-    public string StepId { get; } = stepId;
-}

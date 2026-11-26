@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 
 public static class ModuleSdkExtensions
 {
@@ -128,22 +127,5 @@ public static class ModuleSdkExtensions
     private sealed class ModuleToolRegistryHolder
     {
         public ModuleToolRegistry Registry { get; } = new();
-    }
-}
-
-/// <summary>Assertions for module unit tests.</summary>
-public static class ModuleDefinitionAssert
-{
-    /// <summary>Loads a definition folder and throws with every error when it is invalid.</summary>
-    public static Definitions.ModuleDefinition IsValid(string definitionPath)
-    {
-        var result = Definitions.ModuleLoader.LoadFromDirectory(definitionPath);
-        if (!result.IsValid)
-        {
-            throw new InvalidOperationException("The module definition is invalid:" + Environment.NewLine +
-                string.Join(Environment.NewLine, result.BlockingErrors.Select(e => $"  {e.File}:{e.Line} [{e.StepId}] {e.Message}")));
-        }
-
-        return result.Module!;
     }
 }

@@ -9,27 +9,6 @@ using Flowgent.Contracts.Modules;
 using Flowgent.Engine.Core.Configuration;
 using Microsoft.Extensions.Options;
 
-/// <summary>Result of a package request.</summary>
-public abstract record PackageFetchResult
-{
-    public sealed record Changed(ModulePackage Package) : PackageFetchResult;
-
-    public sealed record NotModified : PackageFetchResult;
-
-    public sealed record Failed(string Error) : PackageFetchResult;
-}
-
-/// <summary>A tool call failed; <see cref="Exception.Message"/> is suitable for the run detail.</summary>
-public sealed class ToolInvocationException(string message, Exception? inner = null) : Exception(message, inner);
-
-/// <summary>Calls module services through the Module SDK contracts (package and tools).</summary>
-public interface IModuleClient
-{
-    Task<PackageFetchResult> FetchPackageAsync(string moduleId, string? knownVersion, CancellationToken ct);
-
-    Task<JsonNode?> InvokeToolAsync(string moduleId, string toolName, ToolInvocationRequest request, TimeSpan timeout, CancellationToken ct);
-}
-
 internal sealed class ModuleClient(IHttpClientFactory httpClientFactory, IOptions<EngineOptions> options) : IModuleClient
 {
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

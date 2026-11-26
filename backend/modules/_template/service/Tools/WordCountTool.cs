@@ -2,10 +2,6 @@ namespace Flowgent.Modules.Template.Tools;
 
 using Flowgent.Module.Sdk;
 
-public sealed record WordCountInput(string Text);
-
-public sealed record WordCountOutput(int Words);
-
 /// <summary><c>template.wordCount</c>: counts the whitespace-separated words of a text.</summary>
 public sealed class WordCountTool : ModuleTool<WordCountInput, WordCountOutput>
 {
@@ -17,3 +13,7 @@ public sealed class WordCountTool : ModuleTool<WordCountInput, WordCountOutput>
     protected override Task<WordCountOutput> InvokeAsync(WordCountInput input, ToolInvocation invocation, CancellationToken ct) =>
         Task.FromResult(new WordCountOutput(Count(input.Text)));
 }
+
+public sealed record WordCountInput(string Text);
+
+public sealed record WordCountOutput(int Words);

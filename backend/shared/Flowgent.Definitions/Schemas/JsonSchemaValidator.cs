@@ -4,12 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Json.Schema;
 
-/// <summary>A schema violation: JSON pointer of the offending value and a readable message.</summary>
-public sealed record SchemaError(string Pointer, string Message)
-{
-    public override string ToString() => Pointer.Length == 0 ? Message : $"{Pointer}: {Message}";
-}
-
 /// <summary>Validates JSON values against JSON Schemas (draft 2020-12) and returns flat, readable errors.</summary>
 public static class JsonSchemaValidator
 {
@@ -72,4 +66,10 @@ public static class JsonSchemaValidator
 
         return errors.Distinct().ToList();
     }
+}
+
+/// <summary>A schema violation: JSON pointer of the offending value and a readable message.</summary>
+public sealed record SchemaError(string Pointer, string Message)
+{
+    public override string ToString() => Pointer.Length == 0 ? Message : $"{Pointer}: {Message}";
 }

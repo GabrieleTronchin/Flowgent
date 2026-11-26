@@ -2,19 +2,6 @@ namespace Flowgent.Engine.Core.Runs;
 
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Flowgent.Contracts.Runs;
-
-/// <summary>A run transition published to stream subscribers (gRPC).</summary>
-public sealed record RunUpdate(
-    Guid RunId,
-    string ModuleId,
-    string WorkflowId,
-    string? StepId,
-    RunStatus Status,
-    RunEventKind Kind,
-    DateTimeOffset Timestamp,
-    string? Detail,
-    string? Title);
 
 /// <summary>
 /// Fans run updates out to every subscriber. Each subscriber has its own bounded channel (oldest updates are

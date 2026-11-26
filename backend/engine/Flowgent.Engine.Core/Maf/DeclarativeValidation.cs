@@ -9,17 +9,6 @@ using Flowgent.Contracts.Api;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// Trial-builds each workflow descriptor's declarative YAML so a malformed document is reported at load time.\r\n/// Lives in the seam (it needs the
-/// declarative builder); <see cref="Flowgent.Engine.Core.Modules.ModuleCatalog"/> injects it so the Definitions layer stays
-/// declarative-free.
-/// </summary>
-public interface IDeclarativeDefinitionValidator
-{
-    /// <summary>Trial-builds each descriptor; returns one <see cref="DefinitionErrorInfo"/> per workflow that fails to build.</summary>
-    IReadOnlyList<DefinitionErrorInfo> Validate(string moduleId, IReadOnlyList<WorkflowDescriptor> workflows);
-}
-
-/// <summary>
 /// Default <see cref="IDeclarativeDefinitionValidator"/>: builds each descriptor YAML with a no-op agent provider and
 /// no-op MCP handler. A build exception becomes a <see cref="DefinitionErrorInfo"/> pointing at the workflow file; the
 /// line is best-effort (null, since the builder gives no position).

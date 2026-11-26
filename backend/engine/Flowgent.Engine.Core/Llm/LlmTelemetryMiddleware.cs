@@ -1,57 +1,9 @@
 namespace Flowgent.Engine.Core.Llm;
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using Flowgent.Contracts.Api;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-
-/// <summary>In-memory store of LLM calls (Agents page: tokens, calls, latency).</summary>
-public sealed class LlmTelemetryStore
-{
-    private readonly ConcurrentQueue<LlmCallInfo> _entries = new();
-
-    public void Record(LlmCallInfo entry)
-    {
-        ArgumentNullException.ThrowIfNull(entry);
-        _entries.Enqueue(entry);
-    }
-
-    public IReadOnlyList<LlmCallInfo> GetCalls(string? moduleId = null) =>
-        _entries.Where(e => moduleId is null || e.ModuleId == moduleId).ToList();
-
-    public AgentTelemetry GetAgentTelemetry(string agentId)
-    {
-        var entries = _entries.Where(e => e.AgentId == agentId).ToList();
-        if (entries.Count == 0)
-        {
-            return new AgentTelemetry(agentId, 0, 0, 0, 0, null);
-        }
-
-        return new AgentTelemetry(
-            agentId,
-            entries.Sum(e => e.PromptTokens),
-            entries.Sum(e => e.CompletionTokens),
-            entries.Count,
-            entries.Average(e => e.LatencyMs),
-            entries.OrderByDescending(e => e.Timestamp).First());
-    }
-
-    public TelemetrySummary GetSummary(string? moduleId = null)
-    {
-        var entries = GetCalls(moduleId);
-        if (entries.Count == 0)
-        {
-            return new TelemetrySummary(0, 0, 0, 0);
-        }
-
-        return new TelemetrySummary(
-            entries.Sum(e => e.PromptTokens + e.CompletionTokens),
-            entries.Count,
-            entries.Average(e => e.LatencyMs),
-            (double)entries.Count(e => !e.Success) / entries.Count);
-    }
-}
 
 /// <summary>
 /// Records every LLM call in <see cref="LlmTelemetryStore"/> and strips the engine-internal attribution keys
@@ -137,13 +89,4 @@ public sealed class LlmTelemetryMiddleware(
         public LlmCallInfo Entry(string model, int prompt, int completion, long latency, bool success, string? error) =>
             new(model, prompt, completion, latency, success, DateTimeOffset.UtcNow, error, AgentId, ModuleId, WorkflowId, RunId, StepId);
     }
-}
-
-/// <summary>
-/// Removes the demo response key before a real provider is called (Demo mode keeps it for <see cref="DemoChatClient"/>).
-/// </summary>
-internal sealed class StripDemoResponseChatClient(IChatClient innerClient) : DelegatingChatClient(innerClient)
-{
-    public override Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-        base.GetResponseAsync(messages, LlmTelemetryMiddleware.Strip(options, keepDemo: false), cancellationToken);
 }

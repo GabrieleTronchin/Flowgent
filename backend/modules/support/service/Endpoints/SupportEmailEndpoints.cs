@@ -3,9 +3,6 @@ namespace Flowgent.Modules.Support.Endpoints;
 using Flowgent.Contracts.Api;
 using Flowgent.Module.Sdk;
 
-/// <summary>A support email, as accepted by <c>POST /api/support/emails</c> (property names are case-insensitive).</summary>
-public sealed record IncomingEmail(string? Sender, string? Subject, string? Body);
-
 public static class SupportEmailEndpoints
 {
     public const string RequiredMessage = "Subject and Body are required.";
@@ -43,3 +40,6 @@ public static class SupportEmailEndpoints
         };
     }
 }
+
+/// <summary>A support email, as accepted by <c>POST /api/support/emails</c> (property names are case-insensitive).</summary>
+public sealed record IncomingEmail(string? Sender, string? Subject, string? Body);

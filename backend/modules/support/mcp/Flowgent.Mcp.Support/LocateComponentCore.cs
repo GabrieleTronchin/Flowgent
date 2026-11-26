@@ -2,13 +2,6 @@ namespace Flowgent.Mcp.Support;
 
 using System.Text.RegularExpressions;
 
-/// <summary>The result of locating a component: the module-relative <see cref="Path"/> and its <see cref="Snippet"/>.</summary>
-/// <param name="Path">Relative to the support module folder, e.g. <c>dummy-apps/application-a/src/Controllers/OrderController.cs</c>.</param>
-public sealed record LocateResult(bool Found, string Component, string Path, string Language, string? Snippet);
-
-/// <summary>Raised when the application folder is malformed or does not resolve to a known dummy app.</summary>
-public sealed class LocateComponentException(string message) : Exception(message);
-
 /// <summary>
 /// Pure, SDK-free implementation of <c>support.locateComponent</c>: finds the dummy-app source file mentioned
 /// in a support email (by file name or type name, earliest mention wins) and returns its module-relative path
