@@ -26,7 +26,7 @@ spike/
 .idea/
 
 # Test projects (not needed to publish the services or build the SPA)
-backend/tests/
+tests/
 **/*.Tests/
 modules/**/tests/
 # ...but keep the support demo's dummy-apps fixtures: the support-mcp tool ships

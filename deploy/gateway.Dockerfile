@@ -9,10 +9,12 @@ WORKDIR /src
 # Copy the nuget.org-only feed config FIRST so restore is deterministic.
 COPY nuget.config ./
 
-COPY backend/ ./backend/
+COPY Directory.Build.props Directory.Packages.props ./
+COPY shared/ ./shared/
+COPY gateway/ ./gateway/
 
-RUN dotnet restore backend/src/Services/Flowgent.Gateway/Flowgent.Gateway.csproj
-RUN dotnet publish backend/src/Services/Flowgent.Gateway/Flowgent.Gateway.csproj \
+RUN dotnet restore gateway/Flowgent.Gateway/Flowgent.Gateway.csproj
+RUN dotnet publish gateway/Flowgent.Gateway/Flowgent.Gateway.csproj \
     -c Release -o /app/publish --no-restore
 
 # ---- runtime stage ----

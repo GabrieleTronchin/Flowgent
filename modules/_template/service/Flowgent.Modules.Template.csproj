@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\backend\src\AppHost\Flowgent.ServiceDefaults\Flowgent.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\..\..\backend\src\Sdk\Flowgent.Module.Sdk\Flowgent.Module.Sdk.csproj" />
+    <ProjectReference Include="..\..\..\shared\Flowgent.ServiceDefaults\Flowgent.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\shared\Flowgent.Module.Sdk\Flowgent.Module.Sdk.csproj" />
   </ItemGroup>
 
   <ItemGroup>

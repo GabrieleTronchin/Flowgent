@@ -10,14 +10,16 @@ WORKDIR /src
 # probes the authenticated user-level feed.
 COPY nuget.config ./
 
-# Central package management lives under backend/ (Directory.Build.props,
-# Directory.Packages.props, backend/nuget.config). Copy the backend source tree
+# Central package management lives at the repo root (Directory.Build.props,
+# Directory.Packages.props). Copy it with the source trees the engine needs
 # (bin/obj/tests are excluded by deploy/.dockerignore) so transitive project
 # references resolve, then restore + publish the target service.
-COPY backend/ ./backend/
+COPY Directory.Build.props Directory.Packages.props ./
+COPY shared/ ./shared/
+COPY engine/ ./engine/
 
-RUN dotnet restore backend/src/Services/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj
-RUN dotnet publish backend/src/Services/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj \
+RUN dotnet restore engine/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj
+RUN dotnet publish engine/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj \
     -c Release -o /app/publish --no-restore
 
 # ---- runtime stage ----

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.MTP" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <!-- Referenced only to load the assemblies whose dependencies are checked. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\Flowgent.Contracts\Flowgent.Contracts.csproj" />
+    <ProjectReference Include="..\..\shared\Flowgent.Definitions\Flowgent.Definitions.csproj" />
+    <ProjectReference Include="..\..\engine\Flowgent.Runtime\Flowgent.Runtime.csproj" />
+    <ProjectReference Include="..\..\engine\Flowgent.Persistence\Flowgent.Persistence.csproj" />
+    <ProjectReference Include="..\..\engine\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
+    <ProjectReference Include="..\..\gateway\Flowgent.Gateway\Flowgent.Gateway.csproj" />
+    <ProjectReference Include="..\..\shared\Flowgent.Module.Sdk\Flowgent.Module.Sdk.csproj" />
+    <ProjectReference Include="..\..\modules\support\service\Flowgent.Modules.Support.csproj" />
+    <ProjectReference Include="..\..\modules\_template\service\Flowgent.Modules.Template.csproj" />
+    <ProjectReference Include="..\Fixtures\Flowgent.Fixtures.Module\Flowgent.Fixtures.Module.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

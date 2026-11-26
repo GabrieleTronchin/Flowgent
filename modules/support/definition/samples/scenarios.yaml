@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../../backend/schemas/samples.schema.json
+# yaml-language-server: $schema=../../../../shared/Flowgent.Definitions/Schemas/samples.schema.json
 #
 # Single source of the support scenarios. The dashboard templates come from these samples (engine API) and
 # modules/support/service/support.http is generated from them (see SupportHttpFileTests).

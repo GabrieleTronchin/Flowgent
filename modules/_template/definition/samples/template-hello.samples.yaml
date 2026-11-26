@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../../backend/schemas/samples.schema.json
+# yaml-language-server: $schema=../../../../shared/Flowgent.Definitions/Schemas/samples.schema.json
 #
 # Sample inputs shown by the dashboard for the template-hello workflow.
 samples:

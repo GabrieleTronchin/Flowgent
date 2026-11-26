@@ -1,5 +1,5 @@
 # Template module requests. They go through the gateway: start everything with the AppHost and the template enabled
-#   dotnet run --project backend/src/AppHost/Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
+#   dotnet run --project Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
 
 @HostAddress = http://localhost:5080
 

@@ -9,10 +9,12 @@ WORKDIR /src
 # Copy the nuget.org-only feed config FIRST so restore is deterministic.
 COPY nuget.config ./
 
-COPY backend/ ./backend/
+COPY Directory.Build.props Directory.Packages.props ./
+COPY shared/ ./shared/
+COPY modules/support/mcp/ ./modules/support/mcp/
 
-RUN dotnet restore backend/src/Services/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj
-RUN dotnet publish backend/src/Services/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj \
+RUN dotnet restore modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj
+RUN dotnet publish modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj \
     -c Release -o /app/publish --no-restore
 
 # ---- runtime stage ----

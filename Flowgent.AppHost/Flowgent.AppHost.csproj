@@ -1,0 +1,23 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <UserSecretsId>flowgent-apphost</UserSecretsId>
+    <!-- Orchestration dependencies come from NuGet (no Aspire CLI needed): dotnet run is enough. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\engine\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
+    <ProjectReference Include="..\gateway\Flowgent.Gateway\Flowgent.Gateway.csproj" />
+    <ProjectReference Include="..\modules\support\service\Flowgent.Modules.Support.csproj" />
+    <ProjectReference Include="..\modules\_template\service\Flowgent.Modules.Template.csproj" />
+    <ProjectReference Include="..\modules\jokes\service\Flowgent.Modules.Jokes.csproj" />
+  </ItemGroup>
+
+</Project>

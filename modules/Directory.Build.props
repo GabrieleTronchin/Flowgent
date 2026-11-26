@@ -1,6 +1,0 @@
-<Project>
-
-  <!-- Module projects live outside backend/: reuse the shared build settings of backend/. -->
-  <Import Project="..\backend\Directory.Build.props" />
-
-</Project>

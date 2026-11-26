@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Description>In-process platform harness (engine, modules, gateway on TestServers) for module and platform tests.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="ModelContextProtocol" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\engine\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
+    <ProjectReference Include="..\..\gateway\Flowgent.Gateway\Flowgent.Gateway.csproj" />
+    <ProjectReference Include="..\..\shared\Flowgent.Module.Sdk\Flowgent.Module.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

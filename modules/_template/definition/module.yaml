@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../backend/schemas/module.schema.json
+# yaml-language-server: $schema=../../../shared/Flowgent.Definitions/Schemas/module.schema.json
 #
 # Template module: copy modules/_template to modules/<your-id> and follow README.md.
 id: template

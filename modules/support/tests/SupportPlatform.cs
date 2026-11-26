@@ -29,7 +29,7 @@ public static class SupportPlatform
             // The locateComponent tool is now served by the standalone support MCP server (FEAT-003). It carries the
             // workflow's serverLabel "support"; the dummy-apps root is the module's real dummy-apps folder so every
             // located path/component/snippet value is identical to the pre-MCP SDK tool.
-            options.AddMcpServer(SupportHost.ModuleId, SupportMcpHost.Create, Path.Combine("backend", "src", "Services", "Flowgent.Mcp.Support"));
+            options.AddMcpServer(SupportHost.ModuleId, SupportMcpHost.Create, Path.Combine("modules", "support", "mcp", "Flowgent.Mcp.Support"));
             options.ConfigureModule(SupportHost.ModuleId, SupportMcpOptions.EnvironmentVariable, Path.Combine(PlatformHarness.RepositoryRoot, "modules", "support", "dummy-apps"));
 
             options.WithGateway();

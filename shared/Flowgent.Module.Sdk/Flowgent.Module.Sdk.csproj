@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Module SDK: publishes a module's definitions to the Flowgent engine, exposes tools and submits inputs.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Flowgent.Contracts\Flowgent.Contracts.csproj" />
+    <ProjectReference Include="..\Flowgent.Definitions\Flowgent.Definitions.csproj" />
+  </ItemGroup>
+
+</Project>

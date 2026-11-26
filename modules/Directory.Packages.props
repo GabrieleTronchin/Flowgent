@@ -1,6 +1,0 @@
-<Project>
-
-  <!-- Module projects live outside backend/: package versions are managed centrally in backend/. -->
-  <Import Project="..\backend\Directory.Packages.props" />
-
-</Project>
