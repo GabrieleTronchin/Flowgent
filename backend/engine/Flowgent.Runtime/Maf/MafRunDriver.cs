@@ -10,9 +10,9 @@ using DefModel = Flowgent.Definitions.Model;
 using RunContext = Flowgent.Runtime.Execution.RunContext;
 
 /// <summary>
-/// Drives one MAF declarative run (design §8, §11) and translates the declarative event stream into neutral
+/// Drives one MAF declarative run and translates the declarative event stream into neutral
 /// <see cref="MafRunEvent"/> records, so <c>RunOrchestrator</c> never sees a declarative type. It runs the workflow
-/// with JSON checkpointing (the PROBE-B mechanism) so the host can read each step's <c>Global.&lt;stepId&gt;</c> JSON
+/// with JSON checkpointing so the host can read each step's <c>Global.&lt;stepId&gt;</c> JSON
 /// value from run state and surface it as a <see cref="MafRunEvent.StepCompleted"/>; it bridges a <c>RequestInfoEvent</c>
 /// human-input gate by invoking the supplied decision resolver and replying with an
 /// <see cref="DeclEvents.ExternalInputResponse"/> carrying the <c>{decision, reason}</c> JSON.
@@ -107,7 +107,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
     }
 
     /// <summary>
-    /// Builds the terminal event from the run-state <c>Global.*</c> variables (design §8). A migrated terminal writes
+    /// Builds the terminal event from the run-state <c>Global.*</c> variables. A migrated terminal writes
     /// three reserved globals via trailing <c>SetVariable</c>: <c>Global.__terminalId</c> (the reached terminal action
     /// id), <c>Global.__message</c> (the terminal message/detail, verbatim) and optionally <c>Global.__finalOutput</c>
     /// (the structured JSON a success terminal exposes as <c>FinalOutput</c>). The success/failure outcome is taken from
@@ -146,10 +146,10 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
 
     /// <summary>
     /// Surfaces newly-produced step outputs from run state as <c>StepStarted</c>+<c>StepCompleted</c> events, in
-    /// deterministic workflow order (design §8, Gap 2): step-output globals (<c>Global.&lt;stepId&gt;</c>) are ordered by
+    /// deterministic workflow order: step-output globals (<c>Global.&lt;stepId&gt;</c>) are ordered by
     /// the descriptor graph node sequence so the event log follows the pipeline regardless of checkpoint-file order.
-    /// A sibling <c>Global.&lt;stepId&gt;__detail</c> string supplies the step's detail (Gap 1); <c>Global.assignedAgentId</c>
-    /// records the dynamically assigned agent (F3); reserved terminal globals (<c>__terminalId</c>/<c>__message</c>/
+    /// A sibling <c>Global.&lt;stepId&gt;__detail</c> string supplies the step's detail; <c>Global.assignedAgentId</c>
+    /// records the dynamically assigned agent; reserved terminal globals (<c>__terminalId</c>/<c>__message</c>/
     /// <c>__finalOutput</c>) are consumed by <see cref="ToCompleted"/> and never surfaced as steps.
     /// </summary>
     private async Task SurfaceOutputsAsync(
@@ -205,7 +205,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
     }
 
     /// <summary>
-    /// Reads the persisted <c>Global.*</c> variables from the JSON checkpoint files (PROBE-B): scope keys of the form
+    /// Reads the persisted <c>Global.*</c> variables from the JSON checkpoint files: scope keys of the form
     /// <c>"&lt;actionId&gt;|@Global|&lt;name&gt;"</c> carry each variable's serialized value. Best-effort: files held open
     /// by the live store are skipped.
     /// </summary>

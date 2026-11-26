@@ -9,8 +9,7 @@ using Flowgent.Contracts.Api;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// Trial-builds each workflow descriptor's declarative YAML so a malformed document is reported at load time
-/// (design §4.3), the replacement for the deleted custom step-graph validation. Lives in the seam (it needs the
+/// Trial-builds each workflow descriptor's declarative YAML so a malformed document is reported at load time.\r\n/// Lives in the seam (it needs the
 /// declarative builder); <see cref="Flowgent.Runtime.Modules.ModuleCatalog"/> injects it so the Definitions layer stays
 /// declarative-free.
 /// </summary>

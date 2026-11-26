@@ -125,7 +125,7 @@ public sealed class ModuleCatalog : IModuleCatalog
 
             var definition = result.Module!;
 
-            // Trial-build each declarative workflow (design §4.3); a malformed document marks the module Invalid.
+            // Trial-build each declarative workflow; a malformed document marks the module Invalid.
             var buildErrors = _validator.Validate(moduleId, definition.Workflows);
             if (buildErrors.Count > 0)
             {

@@ -6,7 +6,7 @@ using Flowgent.Definitions.Model;
 
 /// <summary>
 /// Projects a workflow's declarative YAML plus its manifest <c>terminals[]</c> into a <see cref="WorkflowGraphModel"/>
-/// for the dashboard (design §10). The logical steps the dashboard shows are the actions that snapshot their output to
+/// for the dashboard. The logical steps the dashboard shows are the actions that snapshot their output to
 /// <c>Global.&lt;stepId&gt;</c> via a trailing <c>&lt;stepId&gt;_snapshot</c> SetVariable (dashboard kind taken from the
 /// action with id <c>&lt;stepId&gt;</c>); all other actions (input/parse tools, detail/terminal plumbing SetVariables,
 /// ConditionGroups, EndConversation) are excluded. Terminal nodes and their success/failure outcome come from the

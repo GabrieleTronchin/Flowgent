@@ -5,8 +5,7 @@ using ModelContextProtocol.Client;
 /// <summary>
 /// Production <see cref="IMcpTransportFactory"/>: a Streamable-HTTP <see cref="HttpClientTransport"/> over the named
 /// <c>mcp</c> <see cref="IHttpClientFactory"/> client. The <see cref="System.Net.Http.HttpClient"/> is owned by the
-/// factory, not the transport (<c>ownsHttpClient: false</c>), so pooling/resilience stay with the factory — the
-/// injectable-HttpClient shape Gate-0/FEAT-001 proved end to end (spike <c>HttpMcpToolHandler</c>).
+/// factory, not the transport (<c>ownsHttpClient: false</c>), so pooling/resilience stay with the factory.
 /// </summary>
 public sealed class HttpMcpTransportFactory(IHttpClientFactory httpClientFactory) : IMcpTransportFactory
 {

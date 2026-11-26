@@ -5,7 +5,7 @@ using Flowgent.Runtime.Configuration;
 using Microsoft.Extensions.Options;
 
 /// <summary>
-/// Primary definition source (design §4.1): reads a module's definition folder from a mounted volume
+/// Primary definition source: reads a module's definition folder from a mounted volume
 /// (<c>Flowgent:Definitions:Path</c>) and builds a <c>ModulePackage</c> with the same
 /// <see cref="ModuleLoader.ReadPackage"/>/<see cref="ModuleLoader.ComputeVersion"/> used by the HTTP path, so the
 /// version/ETag semantics are byte-identical. Returns <c>NotModified</c> when the computed version matches the

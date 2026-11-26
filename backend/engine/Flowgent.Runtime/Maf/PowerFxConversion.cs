@@ -3,9 +3,9 @@ namespace Flowgent.Runtime.Maf;
 using System.Text.Json.Nodes;
 
 /// <summary>
-/// Converts values across the PowerFx boundary as JSON strings (design §11). Every value the host reads out of a
+/// Converts values across the PowerFx boundary as JSON strings. Every value the host reads out of a
 /// run (a <c>Global.&lt;stepId&gt;</c> variable) or injects into it (a demo output, the intake object) crosses as a
-/// JSON-serialized string, read with the spike-proven <c>First(...).Value</c> accessor on the PowerFx side; there is
+/// JSON-serialized string, read with the <c>First(...).Value</c> accessor on the PowerFx side; there is
 /// no <c>FormulaValue</c> ↔ <c>JsonNode</c> record binding. These helpers are the single place that serialization
 /// happens so the shape stays consistent with the authored workflow YAML.
 /// </summary>
@@ -31,7 +31,7 @@ public static class PowerFxConversion
         }
         catch (System.Text.Json.JsonException)
         {
-            // A non-JSON string surfaces verbatim (the PROBE-C `.Value` path): carry it as a JSON string value.
+            // A non-JSON string surfaces verbatim (PowerFx has no ParseJSON, so the `.Value` accessor returns it as is): carry it as a JSON string value.
             return JsonValue.Create(value);
         }
     }

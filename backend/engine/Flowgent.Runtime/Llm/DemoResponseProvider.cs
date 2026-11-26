@@ -6,7 +6,7 @@ using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.Matching;
 
 /// <summary>
-/// Computes the Demo-mode JSON response for an <c>llm</c> step, keyed by <c>(workflowId, stepId)</c> (design §7).
+/// Computes the Demo-mode JSON response for an <c>llm</c> step, keyed by <c>(workflowId, stepId)</c>.
 /// Pure and unit-testable: the demo behaviour that used to live in each workflow's <c>demo:</c> block (Scriban) is
 /// relocated here in C#, so the migrated declarative YAML carries no <c>demo:</c>. The agent provider calls
 /// <see cref="Resolve"/> in Demo mode and attaches the result with <see cref="LlmCallAttribution.WithDemoResponse"/>

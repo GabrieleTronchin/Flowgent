@@ -21,7 +21,7 @@ public sealed class EngineOptions
     /// <summary>
     /// MCP servers the engine reaches domain tools on over Streamable HTTP (section <c>Flowgent:McpServers</c>).
     /// Each entry maps a workflow <c>serverLabel</c> to a server URL; a tool whose label is mapped here is routed
-    /// over HTTP, an unmapped label falls back to the legacy in-process invoker (FEAT-002, design §2.2).
+    /// over HTTP, an unmapped label falls back to the legacy in-process invoker.
     /// The reserved label <c>flowgent</c> (ordinal-ignore-case) is never HTTP-routable and such entries are skipped.
     /// </summary>
     public List<McpServerOptions> McpServers { get; set; } = [];

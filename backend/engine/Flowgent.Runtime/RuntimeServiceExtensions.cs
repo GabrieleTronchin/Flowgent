@@ -46,7 +46,7 @@ public static class RuntimeServiceExtensions
         services.AddSingleton<HumanInputRegistry>();
         services.AddSingleton<HumanInputService>();
 
-        // MAF declarative seam (design §15): tool invoker, agent provider (per-run via the factory), MCP tool handler,
+        // MAF declarative seam: tool invoker, agent provider (per-run via the factory), MCP tool handler,
         // Demo response provider, conversation store, trial-build validator, graph projector, workflow factory and run
         // driver. The MAF path drives runs; the custom-format step handlers and compiler have been removed.
         services.AddSingleton<ModuleToolInvoker>();
@@ -58,7 +58,7 @@ public static class RuntimeServiceExtensions
         services.AddSingleton<MafWorkflowFactory>();
         services.AddSingleton<MafRunDriver>();
 
-        // FEAT-002: MCP-over-HTTP. The pool caches one McpClient per server URL; the transport factory builds a
+        // MCP-over-HTTP. The pool caches one McpClient per server URL; the transport factory builds a
         // Streamable-HTTP transport over the named "mcp" IHttpClientFactory client (ownsHttpClient:false), with
         // per-call timeouts (so no client-level timeout) like the per-module clients.
         services.TryAddSingleton<IMcpTransportFactory, HttpMcpTransportFactory>();

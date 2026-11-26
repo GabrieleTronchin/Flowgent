@@ -5,7 +5,7 @@ using Microsoft.Extensions.AI;
 
 /// <summary>
 /// Default in-memory <see cref="IConversationStore"/>, held for the run lifetime (one instance per run, registered as
-/// a transient/scoped-per-run dependency of <see cref="MafAgentProvider"/>). Mirrors the spike provider's tiny
+/// a transient/scoped-per-run dependency of <see cref="MafAgentProvider"/>). Just a tiny
 /// in-memory map; a persistence-backed store can replace it without touching the provider.
 /// </summary>
 public sealed class RunConversationStore : IConversationStore

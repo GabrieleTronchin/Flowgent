@@ -9,7 +9,7 @@ using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.Modules;
 
 /// <summary>
-/// Builds one MAF declarative <see cref="Workflow"/> per run (design §8) by wrapping
+/// Builds one MAF declarative <see cref="Workflow"/> per run by wrapping
 /// <see cref="DeclarativeWorkflowBuilder"/>.Build&lt;JsonObject&gt; over the run's raw YAML, with
 /// <see cref="DeclarativeWorkflowOptions"/> carrying the per-run <see cref="MafAgentProvider"/> and
 /// <see cref="ModuleToolHandler"/>. A fresh workflow per run is required: the framework takes exclusive ownership and
@@ -56,7 +56,7 @@ public sealed class MafWorkflowFactory(
     }
 
     /// <summary>
-    /// PROBE-C-selected input shaping (<c>ParseJSON</c> absent): the input object crosses as one JSON string in the
+    /// Input shaping (PowerFx has no <c>ParseJSON</c>): the input object crosses as one JSON string in the
     /// trigger message; the workflow YAML reads the fields it needs as named <c>Global.*</c> variables.
     /// </summary>
     private static ChatMessage MapInput(JsonObject input) => new(ChatRole.User, input.ToJsonString());

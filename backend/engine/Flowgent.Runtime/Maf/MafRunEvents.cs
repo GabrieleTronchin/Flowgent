@@ -5,7 +5,7 @@ using Flowgent.Definitions.Model;
 
 /// <summary>
 /// Neutral run events the <see cref="MafRunDriver"/> emits from the declarative stream, so <c>RunOrchestrator</c>
-/// never sees a <c>Microsoft.Agents.AI.Workflows.Declarative</c> type (design §8, NFR-1). Each declarative event
+/// never sees a <c>Microsoft.Agents.AI.Workflows.Declarative</c> type. Each declarative event
 /// (<c>MessageActivityEvent</c>, <c>WorkflowOutputEvent</c>, <c>WorkflowErrorEvent</c>, <c>RequestInfoEvent</c>,
 /// per-action events) is translated into one of these records before it crosses the seam boundary.
 /// </summary>

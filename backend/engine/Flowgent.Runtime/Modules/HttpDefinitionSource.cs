@@ -1,7 +1,7 @@
 namespace Flowgent.Runtime.Modules;
 
 /// <summary>
-/// Secondary definition source (design §4.1): wraps the existing pull-model <see cref="IModuleClient.FetchPackageAsync"/>
+/// Secondary definition source: wraps the existing pull-model <see cref="IModuleClient.FetchPackageAsync"/>
 /// (ETag <c>If-None-Match</c>) with no behaviour change.
 /// </summary>
 public sealed class HttpDefinitionSource(IModuleClient client) : IDefinitionSource

@@ -12,8 +12,7 @@ using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
 /// <summary>
-/// The seam's <see cref="IMcpToolHandler"/> (design §2.2, §5.2, §12), patterned on
-/// <c>spike/Spike.MafDeclarative/SpikeMcpToolHandler.cs</c> + <c>HttpMcpToolHandler.cs</c>. The declarative
+/// The seam's <see cref="IMcpToolHandler"/>. The declarative
 /// <c>InvokeMcpTool</c> action calls this with the <c>serverLabel</c>/<c>toolName</c>/arguments from the YAML; the
 /// handler resolves the route in a strict order:
 /// <list type="number">
@@ -25,7 +24,7 @@ using ModelContextProtocol.Protocol;
 /// </list>
 /// Both branches return the tool output as exactly ONE non-numeric JSON string in one <see cref="TextContent"/>. The
 /// non-numeric invariant is mandatory: a bare top-level number crashes the <c>InvokeMcpTool</c> PowerFx binding with
-/// "Unsupported element type: Double" (spike F4), so a bare number is wrapped.
+/// "Unsupported element type: Double", so a bare number is wrapped.
 /// </summary>
 public sealed class ModuleToolHandler : IMcpToolHandler
 {
@@ -51,17 +50,17 @@ public sealed class ModuleToolHandler : IMcpToolHandler
 
     /// <summary>
     /// Reserved built-in tool name a workflow calls to read the run's intake input as a JSON-object string.
-    /// PowerFx has no <c>ParseJSON</c> (PROBE-C), so a workflow cannot split the trigger message text into fields;
+    /// PowerFx has no <c>ParseJSON</c>, so a workflow cannot split the trigger message text into fields;
     /// instead it invokes this tool (<c>serverLabel: flowgent</c>) whose JSON-object-string result parses to a record
-    /// read as <c>First(Local.x).&lt;field&gt;</c> (PROBE-A). Faithful: it reuses the same proven MCP string boundary.
+    /// read as <c>First(Local.x).&lt;field&gt;</c>. It reuses the same MCP string boundary as every other tool.
     /// </summary>
     public const string InputToolName = "flowgent.input";
 
     /// <summary>
     /// Reserved built-in tool a workflow calls to turn an arbitrary JSON string (e.g. an agent's structured answer) into
     /// a PowerFx record: it echoes the <c>payload</c> argument verbatim as a JSON-object string read as
-    /// <c>First(Local.x).&lt;field&gt;</c> (PROBE-A). This is the ParseJSON-free way to read a field out of a JSON string
-    /// (PROBE-C: no <c>ParseJSON</c>); faithful because it reuses the same proven MCP string boundary.
+    /// <c>First(Local.x).&lt;field&gt;</c>. This is the ParseJSON-free way to read a field out of a JSON string
+    /// (PowerFx has no <c>ParseJSON</c>), reusing the same MCP string boundary as every other tool.
     /// </summary>
     public const string ParseToolName = "flowgent.parse";
 
@@ -110,7 +109,7 @@ public sealed class ModuleToolHandler : IMcpToolHandler
     }
 
     /// <summary>
-    /// The MCP-over-HTTP branch (design §2.2–§2.4.1): validates the input, calls the bare wire tool name through a
+    /// The MCP-over-HTTP branch: validates the input, calls the bare wire tool name through a
     /// pooled <see cref="McpClient"/> under the effective timeout, evicts-and-reconnects once on a session/transport
     /// failure, then validates the output. <c>callerId</c> is the module-qualified tool name (mirrors the in-process
     /// path, which uses the tool name as the caller step id for failure attribution).
@@ -187,7 +186,7 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         }
     }
 
-    /// <summary>Reads the single returned <see cref="TextContentBlock"/> payload as a <see cref="JsonNode"/> (NIT N2).</summary>
+    /// <summary>Reads the single returned <see cref="TextContentBlock"/> payload as a <see cref="JsonNode"/>.</summary>
     private static JsonNode? ReadOutput(CallToolResult result)
     {
         var text = result.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text;

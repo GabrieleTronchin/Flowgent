@@ -8,8 +8,8 @@ using Flowgent.Runtime.Execution;
 using Flowgent.Runtime.Llm;
 
 /// <summary>
-/// Production <see cref="ResponseAgentProvider"/> over the engine's <see cref="IChatClient"/> (design §6), one instance
-/// per run, patterned on <c>spike/Spike.MafDeclarative/SpikeAgentProvider.cs</c>. The declarative
+/// Production <see cref="ResponseAgentProvider"/> over the engine's <see cref="IChatClient"/>, one instance
+/// per run. The declarative
 /// <c>InvokeAzureAgent</c> action resolves an agent through this provider rather than Azure AI Foundry: it builds a
 /// <see cref="ChatClientAgent"/> on the engine chat client,
 /// attributes the call for telemetry, and — in Demo mode — attaches the <see cref="DemoResponseProvider"/> output.

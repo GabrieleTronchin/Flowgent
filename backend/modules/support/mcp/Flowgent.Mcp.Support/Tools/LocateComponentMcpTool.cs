@@ -10,7 +10,7 @@ using ModelContextProtocol.Server;
 /// The <c>locateComponent</c> MCP tool (bare wire name): a thin adapter over the pure <see cref="LocateComponentCore"/>.
 /// It reads the dummy-apps root from <see cref="SupportMcpOptions"/> (bound from <c>SUPPORT_DUMMYAPPS_ROOT</c>),
 /// delegates to the core algorithm, and returns the <see cref="LocateResult"/> as a single camelCase JSON object
-/// string (<c>{found,component,path,language,snippet}</c>, NIT N1). A <see cref="LocateComponentException"/> maps to an
+/// string (<c>{found,component,path,language,snippet}</c>). A <see cref="LocateComponentException"/> maps to an
 /// MCP error result (<see cref="CallToolResult.IsError"/>) carrying the verbatim message, so the engine's HTTP branch
 /// surfaces the same failure reason the SDK adapter used to raise.
 /// </summary>

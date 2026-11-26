@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 
 /// <summary>
-/// Caches one connected <see cref="McpClient"/> per resolved MCP server URL (FEAT-002, design §2.3). First-connect to a
+/// Caches one connected <see cref="McpClient"/> per resolved MCP server URL. First-connect to a
 /// URL is guarded by a per-URL <see cref="Lazy{T}"/> of a <see cref="Task{TResult}"/> so concurrent callers share one
 /// session; a connect failure is never cached (the failed entry is removed, so the next caller retries). The pool is
 /// the only place the MCP client is created or disposed, so the handler can <see cref="Evict"/> a broken session and
