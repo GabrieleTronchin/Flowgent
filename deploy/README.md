@@ -66,7 +66,9 @@ docker run --rm -p 8080:8080 -e Gateway__Engine__Address=http://engine:8080 flow
 - Port: `80` (nginx serving the built SPA).
 - nginx uses a minimal SPA fallback (`try_files $uri /index.html`). The gateway
   reverse-proxy block is intentionally **not** wired this round (no compose
-  networking yet); the SPA talks to the gateway via its own configuration.
+  networking yet). As a result the container cannot reach the gateway today: the SPA
+  calls same-origin `/api` and `/flowgent.RunMonitor/` paths that nginx does not
+  forward. A runtime-configurable proxy is still to do.
 
 ```bash
 docker run --rm -p 8080:80 flowgent-dashboard:local
@@ -94,8 +96,8 @@ docker run --rm -p 8080:8080 flowgent-support-mcp:local
 - Push to `master` → a floating `edge` tag.
 - Pull requests → build only (validation), no push.
 
-The first intended release tag is **`v0.1.0-alpha.1`**. Do not create the git
-tag as part of this change; tag the release when ready and CI will publish the
+The first intended release tag is **`v0.1.0-alpha.1`**. It has not been created yet:
+tag the release when ready and CI will publish the
 versioned images.
 
 ## Scope / next round

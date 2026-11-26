@@ -50,7 +50,7 @@ The read routes of the original application (`/api/support/issues`, `/api/suppor
 |-------|---------------------|---------|
 | `GET /api/modules/support` | yes | Module summary: id, name, description, version, valid, workflows |
 | `GET /_module/package` | no (engine only) | Definition files and version |
-| `POST /_module/tools/support.locateComponent` | no (engine only) | The component lookup tool |
+| `POST /_module/tools/{name}` | no (engine only) | Generic SDK tool route; the support module registers no tools. `locateComponent` runs on the standalone MCP server `Flowgent.Mcp.Support`, mapped by the engine through `Flowgent:McpServers[]` (label `support`). |
 | `GET /health`, `GET /alive` | no | Health checks on port 5082 |
 
 ## `support.http`

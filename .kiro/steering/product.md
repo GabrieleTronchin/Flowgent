@@ -16,10 +16,11 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 
 ## Workflow model
 
-- A module has `module.yaml` (id, config, agents, tools, workflow and sample files), `workflows/*.yaml`, `prompts/`, `schemas/` and `samples/`.
-- A workflow has an id, version, input JSON Schema, a start step and steps. Step kinds: `llm` (structured output validated against a schema, `demo:` response), `rule` (ordered regex/expression rules), `map` (lookups and computed values), `human-input` (approve/reject), `tool` (module service call), `http` (external API), `terminal` (success or failure).
-- Transitions: `next` or ordered `transitions` with Scriban `when` conditions (first true wins, no condition = default). Templates use Scriban with `input`, `steps.<id>`, `config`, `run` (and `agent` in llm prompts, `output` in map steps).
-- Definitions are validated at load time (format schema, references, reachability, templates, agents, tools, samples); invalid modules are reported with file/step/line and not loaded.
+- A module has `module.yaml` (id, config, agents, tools, workflow descriptors and sample files), `workflows/*.yaml`, `prompts/`, `schemas/` and `samples/`.
+- A workflow is a **Microsoft Agent Framework declarative** document (`kind: Workflow`, a `trigger` with ordered `actions`) referenced by a descriptor in `module.yaml` (id, version, input JSON Schema, title template, `terminals` with a `success` or `failure` outcome). Actions in use: `InvokeAzureAgent` (LLM step, resolved by agent name through the engine's `IChatClient`), `InvokeMcpTool` (domain tool), `SetVariable`, `ConditionGroup` and `GotoAction` (branching), `Question` (human approval), `SendActivity` and `EndConversation` (terminals).
+- Expressions are PowerFx (`=Expr`); results are read with `First(Local.x).<field>`. Two built-in tools under `serverLabel: flowgent` (`flowgent.input`, `flowgent.parse`) cover the JSON parsing PowerFx lacks.
+- Tools are reached by `serverLabel`: a label mapped in `Flowgent:McpServers[]` goes to a standalone MCP server over Streamable HTTP; any other label uses the module service's `POST /_module/tools/{name}`.
+- Definitions are validated at load time (module envelope JSON Schema, references, samples, and a trial build with the declarative builder); invalid modules are reported with file and message and not loaded.
 
 ## Runs
 
@@ -28,13 +29,19 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 - `RunStatus`: `Queued`, `Running`, `AwaitingInput`, `Completed`, `Failed`, `Cancelled` (last three terminal). Each run has a current step id.
 - Every transition updates the run and appends an event in one `SaveChanges` (dual-write), then is published on the gRPC stream.
 - Human input: `GET /api/engine/human-inputs`, `POST .../{runId}/approve|reject` (`204`/`404`/`409`); abort `POST /api/engine/runs/{runId}/abort` ends the run `Failed` with `Aborted by user`.
-- Demo mode (default): `llm` steps answer from their YAML `demo:` block; no API key needed.
+- Demo mode (default): agent steps answer from the engine's `DemoResponseProvider` (keyed by workflow and step id); no API key needed.
 
 ## Modules in the repository
 
 - `backend/modules/support`: reference module and regression suite (support-email triage with human approval). Domain details live in `backend/modules/support/README.md` and `backend/modules/support/docs/`; do not describe them in platform documentation.
+- `backend/modules/support/mcp/Flowgent.Mcp.Support`: standalone MCP server that serves support's `locateComponent` tool (example of a domain MCP server).
+- `backend/modules/jokes`: tiny example module (one agent step), enabled in the AppHost.
 - `backend/modules/_template`: minimal module to copy (`template-hello`), disabled in the AppHost by default.
-- `backend/tests/Fixtures/Flowgent.Fixtures.Module`: test-only module covering every step kind.
+- `backend/tests/Fixtures/Flowgent.Fixtures.Module`: test-only module used by the integration tests (agent, tool, routing and human-approval flows).
+
+## Container images
+
+`deploy/` has four Dockerfiles (engine, gateway, dashboard, support-mcp; the last is an example module, not core) and `.github/workflows/images.yml`, which publishes them to GHCR on `v*` tags (a floating `edge` tag on master). The first release, `v0.1.0-alpha.1`, is not tagged yet. Product maturity is **beta**; the release channel is **alpha**. There is no `docker compose` yet, and the dashboard image does not proxy to the gateway yet.
 
 ## Documentation
 
@@ -45,4 +52,4 @@ Platform docs are in `docs/` (architecture, workflow reference, expressions, mod
 - The engine and gateway never reference module projects or domain types; enforced by `Flowgent.Architecture.Tests`.
 - Module services reference only the SDK, contracts, definitions and service defaults.
 - Expected failures use result types (`IntakeResult`, `EngineSubmitResult`, `HumanInputResult`, step failures with descriptive reasons); exceptions are for unexpected errors.
-- No authentication: the gateway is the only intended public entry point. Secrets (`Flowgent:Llm:ApiKey`, `Flowgent:Secrets:*`) come from configuration and are never returned by any endpoint.
+- No authentication: the gateway is the only intended public entry point. Secrets (`Flowgent:Llm:ApiKey`) come from configuration and are never returned by any endpoint.

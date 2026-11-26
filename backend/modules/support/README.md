@@ -57,7 +57,9 @@ The `approval` step pauses the run in `AwaitingInput` with the review title `Pro
 
 | Where | Setting | Value |
 |-------|---------|-------|
-| `definition/module.yaml` | `config.dummyAppsRoot` | `dummy-apps`: folder of the sample applications, relative to `backend/modules/support`. Used by the tool, so prompts and generated paths never hard-code it. |
+| `definition/module.yaml` | `config.dummyAppsRoot` | `dummy-apps`: folder of the sample applications, relative to `backend/modules/support`. Kept as module metadata: the `locateComponent` tool itself reads `SUPPORT_DUMMYAPPS_ROOT` (below). |
+| `Flowgent.Mcp.Support` (environment) | `SUPPORT_DUMMYAPPS_ROOT` | Absolute path of the dummy apps that `locateComponent` searches. The container image `flowgent-support-mcp` sets `/app/dummy-apps`. |
+| Engine | `Flowgent:McpServers[]` | `{ Label: "support", Url: <MCP server address> }` maps the workflow's `serverLabel: support` to the MCP server. The AppHost does not start or map it yet; see [Orchestration](../../../docs/orchestration.md). |
 | `service/appsettings.json` | `Flowgent:Module:DefinitionPath` | `../definition` |
 | `service/appsettings.json` | `Flowgent:Module:EngineUrl` | `http://localhost:5081` (the AppHost sets `http://engine`) |
 | `service/Properties/launchSettings.json` | port | `5082` |
@@ -67,7 +69,7 @@ The LLM provider is an engine setting (`Flowgent:Llm`): see the platform's [Demo
 
 ## Demo responses
 
-In Demo mode (the default) every `llm` step answers from its `demo:` block, so all scenarios run offline: classification by keyword rules, severity by keywords (`injection`/`security` → Critical, `exception`/`crash` → High, else Medium), and placeholder root cause and diff texts prefixed with `[Demo]`. Details: [Demo responses](docs/demo-responses.md).
+In Demo mode (the default) every agent step answers from the engine's `DemoResponseProvider` (keyed by workflow and step id), so all scenarios run offline: classification by keyword rules, severity by keywords (`injection`/`security` → Critical, `exception`/`crash` → High, else Medium), and placeholder root cause and diff texts prefixed with `[Demo]`. Details: [Demo responses](docs/demo-responses.md).
 
 ## Dummy apps and scenarios
 
@@ -104,7 +106,8 @@ backend/modules/support/
 │   ├── prompts/                          # classify, resolve, generate-code (system + user)
 │   ├── schemas/                          # input, classification, resolution, pull request, tool input/output
 │   └── samples/scenarios.yaml            # the ten scenarios
-├── service/                              # Flowgent.Modules.Support: SupportHost, email endpoints, LocateComponentTool, support.http
+├── service/                              # Flowgent.Modules.Support: SupportHost, email endpoints, support.http
+├── mcp/Flowgent.Mcp.Support/             # standalone MCP server: locateComponent (LocateComponentCore)
 ├── tests/                                # Flowgent.Modules.Support.Tests
 ├── dummy-apps/application-a|b/           # sample applications and BugScenarios.md
 └── docs/                                 # this module's documentation

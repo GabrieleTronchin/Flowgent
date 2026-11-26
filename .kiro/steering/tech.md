@@ -10,13 +10,13 @@
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| Microsoft.Agents.AI / .OpenAI / .Workflows | 1.27.0 | Workflow execution (WorkflowBuilder, executors), `IChatClient` integration |
-| Aspire.AppHost.Sdk, Aspire.Hosting.JavaScript | 13.6.4 | Local orchestration (AppHost, Vite dashboard) |
+| Microsoft.Agents.AI / .OpenAI / .Workflows / .Workflows.Declarative | 1.27.0 | Declarative workflows (YAML actions, PowerFx), run execution, `IChatClient` integration |
+| ModelContextProtocol (+ .AspNetCore) | 1.4.2 | MCP client in the engine, MCP server in `Flowgent.Mcp.Support` (Streamable HTTP) |
+| Aspire.AppHost.Sdk, Aspire.Hosting.JavaScript | 13.6.5 | Local orchestration (AppHost, Vite dashboard) |
 | Microsoft.Extensions.ServiceDiscovery (+ .Yarp) | 10.11.0 | Service discovery, gateway destination resolution |
 | Microsoft.Extensions.Http.Resilience | 10.11.0 | Resilience handlers and per-module retries |
 | Yarp.ReverseProxy | 2.3.0 | Gateway |
 | YamlDotNet | 18.1.0 | YAML definitions |
-| Scriban | 7.5.3 | Templates and expressions (sandboxed) |
 | JsonSchema.Net | 9.6.0 | Definition, input, LLM output and tool schema validation |
 | OpenTelemetry (Hosting, OTLP, ASP.NET Core, Http, Runtime) | 1.20.x | Logs, traces, metrics |
 | Microsoft.EntityFrameworkCore(.InMemory) | 10.0.14 | Engine persistence (runs, events, inbox) |
@@ -63,18 +63,24 @@ cd dashboard && npm run typecheck
 cd dashboard && npm run test -- --run
 cd dashboard && npm run build
 cd dashboard && npm run generate     # regenerate src/gen from backend/engine/protos/run_monitor.proto
+
+# Container images (build context = repository root)
+docker build -f deploy/engine.Dockerfile      -t flowgent-engine:local .
+docker build -f deploy/gateway.Dockerfile     -t flowgent-gateway:local .
+docker build -f deploy/dashboard.Dockerfile   -t flowgent-dashboard:local .
+docker build -f deploy/support-mcp.Dockerfile -t flowgent-support-mcp:local .
 ```
 
 ## Configuration
 
-- Engine (`Flowgent` section): `EnableVisualization` (gRPC stream + agents endpoint), `SequentialProcessing`, `InboxPollingIntervalSeconds`, `DefaultToolTimeoutSeconds`, `Modules[] { Id, Url, Enabled, RefreshSeconds, TimeoutSeconds, Retries, RetryDelayMilliseconds }`, `Secrets:<moduleId>:<key>` (http step headers).
+- Engine (`Flowgent` section): `EnableVisualization` (gRPC stream + agents endpoint), `SequentialProcessing`, `InboxPollingIntervalSeconds`, `DefaultToolTimeoutSeconds`, `Modules[] { Id, Url, Enabled, RefreshSeconds, TimeoutSeconds, Retries, RetryDelayMilliseconds }`, `McpServers[] { Label, Url }` (workflow `serverLabel` → MCP server URL), `Definitions.Path` (mounted module definitions, `<Path>/<moduleId>/`).
 - LLM (`Flowgent:Llm`): `Provider` (`Demo` default | `OpenAI`), `ModelName` (`gpt-4o-mini`), `ApiKey`, optional `Endpoint` (any OpenAI-compatible server), `DemoLatencyMs` (1500). Keep the key in the git-ignored `appsettings.Development.json` of the engine or in environment variables. `GET /api/engine/config` exposes only `sequentialProcessing`, `demoMode`, `llmProvider`, `llmModel`.
 - Module SDK (`Flowgent:Module`): `DefinitionPath` (`../definition`), `EngineUrl` (`http://localhost:5081`), `FailOnInvalidDefinition` (false).
 - Gateway (`Gateway`): `Engine:Address`, `Modules[] { Id, Address, ExtraRoutes[] }`, `StreamActivityTimeout`.
 - AppHost: `AppHost:Modules:<id>:Enabled`, `AppHost:LlmProvider`.
-- Ports (launch profiles, also used by Aspire): gateway 5080, engine 5081, support 5082, template 5083, dashboard 5173.
+- Ports (launch profiles, also used by Aspire): gateway 5080, engine 5081, support 5082, template 5083, jokes 5084, dashboard 5173. The support MCP server has no fixed port yet.
 
-## Code Style (.editorconfig enforced)
+## Code Style (`backend/.editorconfig` enforced)
 
 - File-scoped namespaces (enforced as error)
 - 4-space indentation, LF line endings, final newline required

@@ -23,7 +23,7 @@ The complete, runnable example is the template module: [`backend/modules/_templa
 id: notes
 name: Notes
 description: Summarises notes.
-config:                       # free-form, available as config.* in templates; never secrets
+config:                       # free-form module settings; read by in-process tools (ToolInvocation.Module.Config), not available inside workflow expressions; never secrets
   maxSummaryWords: 30
 agents:                       # used for attribution, status and the agent the workflow addresses
   - id: notes_writer

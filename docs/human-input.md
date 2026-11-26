@@ -1,6 +1,6 @@
 # Human input
 
-[← README](../README.md) · [Workflow reference](workflow-reference.md#human-input) · [Engine API](engine-api.md#human-input)
+[← README](../README.md) · [Workflow reference](workflow-reference.md#action-kinds) · [Engine API](engine-api.md#human-input)
 
 A human-input gate pauses a run until someone approves or rejects it. The engine handles it generically, so every workflow uses the same endpoints and the same dashboard page.
 

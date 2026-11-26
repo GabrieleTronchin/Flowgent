@@ -64,7 +64,7 @@ At startup the SDK validates the module envelope (`module.yaml`: agents, tool/sa
 
 ## Tools
 
-A tool is C# code the workflow runs over MCP. Declare it in `module.yaml` with its input and output schemas, then implement it:
+A tool can be C# code hosted by the module service itself (the **in-process route**: the engine reaches it through `POST /_module/tools/{name}`). Declare it in `module.yaml` with its input and output schemas, then implement it. To serve tools from a separate MCP server instead, see [Serving tools from a standalone MCP server](#serving-tools-from-a-standalone-mcp-server).
 
 ```csharp
 public sealed record WordCountInput(string Text);
@@ -84,7 +84,7 @@ public sealed class WordCountTool : ModuleTool<WordCountInput, WordCountOutput>
 
 ### Calling a tool from a workflow
 
-A workflow invokes a tool with the declarative `InvokeMcpTool` action, where `serverLabel` is the module id and `toolName` is the declared tool name. The engine's MCP tool handler routes the call to the module service (today over the SDK's `/_module/tools` endpoint) and returns the result as a JSON string, read back with `First(Local.x).<field>`:
+A workflow invokes a tool with the declarative `InvokeMcpTool` action, where `toolName` is the declared tool name and `serverLabel` selects the target: a label mapped in `Flowgent:McpServers[]` goes to that MCP server, any other label (here the module id) goes to the module service's `/_module/tools` endpoint. The engine's MCP tool handler returns the result as a JSON string, read back with `First(Local.x).<field>`:
 
 ```yaml
 - kind: InvokeMcpTool
@@ -100,6 +100,21 @@ A workflow invokes a tool with the declarative `InvokeMcpTool` action, where `se
 > Tool results must be a non-numeric JSON string or object — a bare top-level number crashes the PowerFx binding. The handler wraps a bare number automatically, but prefer returning an object.
 
 The engine also exposes two reserved built-in tools under `serverLabel: flowgent`, since PowerFx has no `ParseJSON`: `flowgent.input` returns the run's intake input as a record, and `flowgent.parse` turns a JSON string (e.g. an agent's structured answer) into a record — both read with `First(Local.x).<field>`. See [`backend/modules/_template/definition/workflows/template-hello.yaml`](../backend/modules/_template/definition/workflows/template-hello.yaml) for all three in use.
+
+### Serving tools from a standalone MCP server
+
+A tool does not have to live in the module service. The engine can call a separate MCP server over Streamable HTTP; the support demo does this with `backend/modules/support/mcp/Flowgent.Mcp.Support`, which serves `locateComponent`. Prefer this route for new domain tools: the tool is an ordinary web project with no dependency on the module SDK.
+
+1. Create a web project that references only `ModelContextProtocol.AspNetCore` and `Flowgent.ServiceDefaults`, and expose the tools with `AddMcpServer().WithHttpTransport().WithTools<...>()` and `MapMcp()`.
+2. Register each tool under its **bare** name (`locateComponent`). Keep declaring the qualified name (`support.locateComponent`) and its input/output schemas in `module.yaml`: the engine strips the `<label>.` prefix on the wire and validates input and output against the declared schemas.
+3. Return a single JSON object as text (camelCase) and report expected failures with an MCP error result (`isError`).
+4. Map the workflow's `serverLabel` to the server URL in the **engine** configuration (environment form: `Flowgent__McpServers__0__Label`, `Flowgent__McpServers__0__Url`):
+
+```json
+{ "Flowgent": { "McpServers": [ { "Label": "support", "Url": "http://support-mcp:8080" } ] } }
+```
+
+Routing rules: a label listed in `McpServers` goes to that server; a label that is not listed falls back to the module service's `/_module/tools/{name}`; the label `flowgent` is reserved for the in-process built-ins and is ignored if configured. A failed call reconnects once, then the step fails with `MCP server '<label>' unavailable`. There is no authentication, so keep MCP servers on a private network and keep credentials out of the URL.
 
 ## Domain endpoints
 

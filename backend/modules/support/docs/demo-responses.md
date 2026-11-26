@@ -2,7 +2,7 @@
 
 [← Support module](../README.md) · [Pipeline](pipeline.md) · [Platform: Demo mode](../../../../docs/demo-mode.md)
 
-In Demo mode (`Flowgent:Llm:Provider = Demo`, the default) the three `llm` steps answer from the `demo:` blocks in [`support-email.yaml`](../definition/workflows/support-email.yaml). Responses are deterministic and all generated texts start with `[Demo]`. Routing, agent assignment and the component lookup are not simulated: they run exactly as with a real model.
+In Demo mode (`Flowgent:Llm:Provider = Demo`, the default) the three agent steps (`classify`, `resolve`, `generate_code`) answer from the engine's `DemoResponseProvider` (C#, keyed by workflow and step id); [`support-email.yaml`](../definition/workflows/support-email.yaml) carries no `demo:` block. Responses are deterministic and all generated texts start with `[Demo]`. Routing, agent assignment and the component lookup are not simulated: they run exactly as with a real model.
 
 ## Classification (`classify`)
 

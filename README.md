@@ -3,13 +3,13 @@
 ![CI](https://github.com/GabrieleTronchin/Flowgent/actions/workflows/ci.yml/badge.svg)
 ![Dashboard CI](https://github.com/GabrieleTronchin/Flowgent/actions/workflows/dashboard-ci.yml/badge.svg)
 ![Status](https://img.shields.io/badge/status-beta-orange)
-![Release](https://img.shields.io/badge/release-v0.1.0--alpha.1-orange)
+![Release](https://img.shields.io/badge/next%20release-v0.1.0--alpha.1-orange)
 ![.NET](https://img.shields.io/badge/.NET-10.0-blueviolet)
 ![License](https://img.shields.io/github/license/GabrieleTronchin/Flowgent)
 
 **A configurable agentic system: define LLM workflows, plug in your own domain logic, and watch the engine work from a control dashboard.**
 
-> ⚠️ **Beta.** Flowgent is in early development. It runs and the images below are published, but APIs, workflow formats, configuration keys and image contents can still change between releases. Not production-ready yet. The first published images are tagged `v0.1.0-alpha.1`.
+> ⚠️ **Beta.** Flowgent is in early development. It runs, and the container images below build from the repository's Dockerfiles, but they are **not published yet**: the first alpha release (`v0.1.0-alpha.1`) has not been tagged. APIs, workflow formats, configuration keys and image contents can still change between releases. Not production-ready yet.
 
 ---
 
@@ -31,7 +31,7 @@ Three things it is built around:
 
 ## How to use it (container images)
 
-The platform ships as four stock container images on GitHub Container Registry. This round covers running the images directly; a one-command `docker compose` example comes in the next round.
+The platform is packaged as four stock container images, published to GitHub Container Registry when the first alpha release is tagged. This round covers running the images directly; a one-command `docker compose` example comes in the next round.
 
 **Core platform** (domain-agnostic, reusable):
 
@@ -48,14 +48,15 @@ The platform ships as four stock container images on GitHub Container Registry. 
 | `ghcr.io/gabrieletronchin/flowgent-support-mcp` | the support demo's `locateComponent` domain tool over MCP | 8080 |
 
 ```bash
-# pull the pre-release images
+# available once v0.1.0-alpha.1 is tagged and published (the :alpha tag does not exist yet);
+# until then build the images locally, see deploy/README.md
 docker pull ghcr.io/gabrieletronchin/flowgent-engine:alpha
 docker pull ghcr.io/gabrieletronchin/flowgent-gateway:alpha
 docker pull ghcr.io/gabrieletronchin/flowgent-dashboard:alpha
 docker pull ghcr.io/gabrieletronchin/flowgent-support-mcp:alpha
 ```
 
-The engine runs in **Demo mode** by default — no API key, every workflow answers offline from the responses declared in its YAML — so you can try the whole thing without a model. See [`deploy/README.md`](deploy/README.md) for each image's environment variables, ports and a stand-alone `docker run` per image, and for the versioning scheme.
+The engine runs in **Demo mode** by default — no API key, every workflow answers offline from the engine's built-in demo responses — so you can try the whole thing without a model. See [`deploy/README.md`](deploy/README.md) for each image's environment variables, ports and a stand-alone `docker run` per image, and for the versioning scheme.
 
 ## What you see in the dashboard
 
@@ -70,9 +71,10 @@ The dashboard adapts to the selected workflow and streams the engine's state liv
 
 ## Status & roadmap
 
-Flowgent is **beta / early**. What works today: the engine runs declarative workflows end-to-end in Demo mode, domain tools are reached over MCP-over-HTTP, the four images build and publish to GHCR, and the dashboard streams run state. Known rough edges and next steps:
+Flowgent is **beta / early**. What works today: the engine runs declarative workflows end-to-end in Demo mode, domain tools are reached over MCP-over-HTTP, the four images build locally and a GHCR publish workflow is in place (it runs on release tags; nothing is tagged yet), and the dashboard streams run state. Known rough edges and next steps:
 
 - A one-command `docker compose` example wiring all four images together (next round).
+- The AppHost does not start the support MCP server yet (see [Orchestration](docs/orchestration.md)), and the dashboard image has no gateway proxy yet.
 - Expect changes to workflow formats, config keys and APIs before 1.0.
 - A couple of integration tests have documented timing flakiness, tracked separately.
 

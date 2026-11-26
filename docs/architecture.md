@@ -11,8 +11,9 @@ graph LR
     Browser[Dashboard<br/>Vite :5173] -->|/api/**, gRPC-Web| GW[Gateway<br/>YARP :5080]
     Client[HTTP clients / .http files] --> GW
     GW -->|"/api/engine/**<br/>/flowgent.RunMonitor/**"| ENG[Engine service :5081]
-    GW -->|"/api/modules/{id}/**<br/>+ extra routes"| MOD[Module services<br/>support :5082, template :5083]
-    ENG -->|"GET /_module/package<br/>POST /_module/tools/{name}"| MOD
+    GW -->|"/api/modules/{id}/**<br/>+ extra routes"| MOD[Module services<br/>support :5082, template :5083, jokes :5084]
+    ENG -->|"GET /_module/package<br/>(fallback: POST /_module/tools/{name})"| MOD
+    ENG -->|"MCP over Streamable HTTP<br/>Flowgent:McpServers"| MCP[Domain MCP servers<br/>e.g. Flowgent.Mcp.Support]
     MOD -->|"POST /api/engine/workflows/{id}/runs"| ENG
     ENG -->|IChatClient| LLM[(Demo / OpenAI-compatible)]
     MOD -->|module tools reach| EXT[(External APIs / data)]
@@ -23,7 +24,8 @@ graph LR
 |-----------|---------|----------------|
 | Gateway | `Flowgent.Gateway` | Single public entry point. Config-driven YARP routes, gRPC-Web passthrough, correlation id, `503` problem details. See [Gateway](gateway.md). |
 | Engine service | `Flowgent.Engine.Service` | Pulls module packages, validates and compiles workflows, runs them on Microsoft Agent Framework Workflows. Owns runs, events, inbox, human input, LLM access (Demo or OpenAI-compatible), telemetry, the `/api/engine` API and the gRPC run stream. |
-| Module services | `backend/modules/<id>/service` (on `Flowgent.Module.Sdk`) | Own one domain: `module.yaml`, workflows, prompts, schemas, samples, tools (HTTP operations called by `tool` steps) and domain endpoints. |
+| Module services | `backend/modules/<id>/service` (on `Flowgent.Module.Sdk`) | Own one domain: `module.yaml`, workflows, prompts, schemas, samples, declared tools, optional legacy in-process tools (the fallback route below) and domain endpoints. |
+| MCP servers | `backend/modules/<id>/mcp/...` (on `ModelContextProtocol.AspNetCore`) | Serve a module's domain tools over Streamable HTTP, e.g. the support demo's `Flowgent.Mcp.Support` (`locateComponent`). Reached by the engine through `Flowgent:McpServers[]`. |
 | Dashboard | `dashboard/` | Generic React console. Calls only the gateway. See [Dashboard](dashboard.md). |
 | AppHost | `Flowgent.AppHost` | .NET Aspire host: starts everything with one command and shows logs, traces and metrics. See [Orchestration](orchestration.md). |
 
@@ -36,11 +38,12 @@ Modules and the engine talk only through the HTTP contracts in `Flowgent.Contrac
 | Direction | Endpoint | Purpose |
 |-----------|----------|---------|
 | Engine → module | `GET /_module/package` | All definition files as text plus a version (SHA-256 of the files). Served with `ETag`; the engine polls with `If-None-Match` and gets `304` while nothing changed. |
-| Engine → module | `POST /_module/tools/{name}` | Invokes a tool. Body `{ runId, moduleId, workflowId, stepId, input }`, response `{ output }` or `{ error }` (`404` unknown tool, `400` expected tool failure, `500` unexpected error). |
+| Engine → MCP server | MCP `tools/call` over Streamable HTTP | Invokes a domain tool on the server mapped to the workflow's `serverLabel` in `Flowgent:McpServers[]` (`{ Label, Url }`). The engine sends the bare tool name (`locateComponent`), validates input and output against the module's declared schemas, and reconnects once on a session failure. |
+| Engine → module (fallback) | `POST /_module/tools/{name}` | Invokes a tool for a label that is not mapped to an MCP server. Body `{ runId, moduleId, workflowId, stepId, input }`, response `{ output }` or `{ error }` (`404` unknown tool, `400` expected tool failure, `500` unexpected error). |
 | Module → engine | `POST /api/engine/workflows/{id}/runs` | Generic intake, used by domain endpoints (`IEngineClient`). |
 | Clients → module | `GET /api/modules/{id}` | Module summary (id, name, description, version, valid, workflows). |
 
-The engine never loads module code: custom logic runs in the module process and is reached over HTTP. `/_module/*` is meant for the private network; the gateway does not route it.
+The engine never loads module code: custom logic runs in a separate process and is reached over HTTP. A workflow's `InvokeMcpTool` action carries a `serverLabel`: if `Flowgent:McpServers[]` maps that label to a URL, the call goes to that MCP server; otherwise it falls back to the module's `POST /_module/tools/{name}`. The label `flowgent` is reserved for two in-process built-ins (`flowgent.input`, `flowgent.parse`) and can never be mapped. `/_module/*` is meant for the private network; the gateway does not route it.
 
 ## Module catalog
 
@@ -63,7 +66,7 @@ Each submitted input becomes a **run** of one workflow. A run has a current step
 |-------------|---------|
 | `Queued` | Saved by the intake, waiting for the inbox processor. |
 | `Running` | Steps are executing. |
-| `AwaitingInput` | Paused on a `human-input` step. |
+| `AwaitingInput` | Paused at a human-approval gate (a declarative `Question` action). |
 | `Completed` | Ended on a `success` terminal step. |
 | `Failed` | Ended on a `failure` terminal step, a step failure, or an abort. |
 | `Cancelled` | Stopped by engine shutdown. |
@@ -113,6 +116,7 @@ graph TD
     Gateway[Flowgent.Gateway] --> Defaults[Flowgent.ServiceDefaults]
     Sdk[Flowgent.Module.Sdk] --> Contracts & Definitions
     Modules[Module services] --> Sdk & Defaults
+    McpSupport[Flowgent.Mcp.Support] --> Defaults
     Testing[Flowgent.Testing] --> EngineSvc & Gateway & Sdk
 ```
 
@@ -121,11 +125,12 @@ graph TD
 - `Contracts` has no project references; `Definitions` references only `Contracts`.
 - Engine projects and the gateway never reference `backend/modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
 - Module services reference only `Flowgent.Module.Sdk`, `Flowgent.Contracts`, `Flowgent.Definitions` and `Flowgent.ServiceDefaults`.
+- `Flowgent.Mcp.Support` references only `Flowgent.ServiceDefaults` and the MCP package.
 - `Definitions` and `Runtime` do not depend on ASP.NET Core.
 - Engine sources and the proto contain no domain terms of the support module.
 
 ## Security notes
 
 - There is no end-user or service-to-service authentication. The gateway is the only intended public entry point; engine and module ports, including `/_module/*`, must stay on a private network.
-- Secrets (`Flowgent:Llm:ApiKey`, `Flowgent:Secrets:*`) are read from configuration only and never returned by any endpoint. Keep them in user secrets, environment variables or the git-ignored `appsettings.Development.json`.
+- Secrets (`Flowgent:Llm:ApiKey`) are read from configuration only and never returned by any endpoint. Keep them in user secrets, environment variables or the git-ignored `appsettings.Development.json`.
 - Workflow expressions are PowerFx evaluated by the MAF declarative builder (see [Expressions](expressions.md)); module-tool calls validate input/output against the declared schemas.

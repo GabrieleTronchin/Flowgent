@@ -18,6 +18,7 @@ dotnet run --project backend/host
 | Engine | http://localhost:5081 |
 | Support module | http://localhost:5082 |
 | Template module (when enabled) | http://localhost:5083 |
+| Jokes module | http://localhost:5084 |
 
 Requirements: the .NET 10 SDK and Node.js 20.19+ (the AppHost runs `npm run dev` for the dashboard; run `npm install` in `dashboard/` once). The `http` launch profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`, so no development certificate is needed. Aspire packages come from NuGet; no Aspire CLI or workload is required.
 
@@ -56,6 +57,17 @@ cd dashboard && npm run dev                                           # :5173
 ```
 
 Start them in any order: the engine retries the modules, the gateway answers `503` while a target is down.
+
+### Support MCP server
+
+The support workflow calls `support.locateComponent` on the standalone MCP server `Flowgent.Mcp.Support` (see [Module authoring](module-authoring.md#serving-tools-from-a-standalone-mcp-server)). **The AppHost does not start this server yet and the engine's default configuration does not map it**, so a support run fails at its `locate_component` step unless you start and map the server yourself:
+
+```bash
+# set SUPPORT_DUMMYAPPS_ROOT to the absolute path of backend/modules/support/dummy-apps first
+dotnet run --project backend/modules/support/mcp/Flowgent.Mcp.Support --urls http://localhost:5085   # example port
+```
+
+Then give the engine `Flowgent__McpServers__0__Label=support` and `Flowgent__McpServers__0__Url=http://localhost:5085`. The container image `flowgent-support-mcp` already sets `SUPPORT_DUMMYAPPS_ROOT` for you.
 
 ## Observability
 

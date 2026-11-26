@@ -96,5 +96,7 @@ Every transition (including `Queued`) is published. The stream returns `Unavaila
 | `InboxPollingIntervalSeconds` | `5` (`1` in `appsettings.json`) | Inbox polling interval. |
 | `DefaultToolTimeoutSeconds` | `30` | Tool timeout when neither the tool nor the module sets one. |
 | `Modules[]` | — | `{ Id, Url, Enabled, RefreshSeconds, TimeoutSeconds, Retries, RetryDelayMilliseconds }`; see [Module authoring](module-authoring.md#registering-the-module). |
+| `McpServers[]` | `[]` | `{ Label, Url }`: maps a workflow `serverLabel` to an MCP server (Streamable HTTP). Labels that are not listed use the module's `/_module/tools` route; `flowgent` is reserved. See [Module authoring](module-authoring.md#serving-tools-from-a-standalone-mcp-server). |
+| `Definitions.Path` | — | Folder of mounted module definitions, one sub-folder per module id (`<Path>/<moduleId>/`). A module whose folder exists there is loaded from disk; otherwise the engine fetches `GET /_module/package`. |
 | `Llm` | — | LLM provider; see [Demo mode](demo-mode.md). |
 
