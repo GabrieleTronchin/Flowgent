@@ -1,0 +1,101 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AppHost (whole platform)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/host/bin/Debug/net10.0/Flowgent.AppHost.dll",
+      "cwd": "${workspaceFolder}/backend/host",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/host/Properties/launchSettings.json",
+      "console": "integratedTerminal",
+      "launchSettingsProfile": "http"
+    },
+    {
+      "name": "Engine :5081",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/engine/Flowgent.Engine.Service/bin/Debug/net10.0/Flowgent.Engine.Service.dll",
+      "cwd": "${workspaceFolder}/backend/engine/Flowgent.Engine.Service",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/engine/Flowgent.Engine.Service/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Gateway :5080",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/gateway/Flowgent.Gateway/bin/Debug/net10.0/Flowgent.Gateway.dll",
+      "cwd": "${workspaceFolder}/backend/gateway/Flowgent.Gateway",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/gateway/Flowgent.Gateway/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Support module :5082",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/modules/support/service/bin/Debug/net10.0/Flowgent.Modules.Support.dll",
+      "cwd": "${workspaceFolder}/backend/modules/support/service",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/support/service/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Template module :5083",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/modules/_template/service/bin/Debug/net10.0/Flowgent.Modules.Template.dll",
+      "cwd": "${workspaceFolder}/backend/modules/_template/service",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/_template/service/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Jokes module :5084",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/modules/jokes/service/bin/Debug/net10.0/Flowgent.Modules.Jokes.dll",
+      "cwd": "${workspaceFolder}/backend/modules/jokes/service",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/jokes/service/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Support MCP :5085",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/backend/modules/support/mcp/Flowgent.Mcp.Support/bin/Debug/net10.0/Flowgent.Mcp.Support.dll",
+      "cwd": "${workspaceFolder}/backend/modules/support/mcp/Flowgent.Mcp.Support",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/support/mcp/Flowgent.Mcp.Support/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Dashboard :5173",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/dashboard"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Standalone: engine + support + support MCP + gateway",
+      "configurations": [
+        "Engine :5081",
+        "Support module :5082",
+        "Support MCP :5085",
+        "Gateway :5080"
+      ],
+      "stopAll": true
+    }
+  ]
+}

@@ -18,6 +18,7 @@
     <ProjectReference Include="..\modules\support\service\Flowgent.Modules.Support.csproj" />
     <ProjectReference Include="..\modules\_template\service\Flowgent.Modules.Template.csproj" />
     <ProjectReference Include="..\modules\jokes\service\Flowgent.Modules.Jokes.csproj" />
+    <ProjectReference Include="..\modules\support\mcp\Flowgent.Mcp.Support\Flowgent.Mcp.Support.csproj" />
   </ItemGroup>
 
 </Project>
