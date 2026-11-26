@@ -73,16 +73,10 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         string? connectionName,
         CancellationToken cancellationToken = default)
     {
-        // (1) Reserved built-ins by tool name, served in-process — unchanged.
-        if (string.Equals(toolName, InputToolName, StringComparison.Ordinal))
+        // (1) Reserved built-ins by tool name, served in-process.
+        if (TryServeBuiltIn(toolName, arguments) is { } builtIn)
         {
-            return new McpServerToolResultContent($"mcp-{Guid.NewGuid():N}") { Outputs = [new TextContent(Serialize(_run.Input))] };
-        }
-
-        if (string.Equals(toolName, ParseToolName, StringComparison.Ordinal))
-        {
-            var payload = arguments is not null && arguments.TryGetValue("payload", out var p) ? p?.ToString() : null;
-            return new McpServerToolResultContent($"mcp-{Guid.NewGuid():N}") { Outputs = [new TextContent(string.IsNullOrEmpty(payload) ? "null" : payload)] };
+            return builtIn;
         }
 
         var input = ToJsonInput(arguments);
@@ -91,7 +85,7 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         if (serverLabel is not null && _labelToUrl.TryGetValue(serverLabel, out var url))
         {
             var result = await InvokeOverHttpAsync(url, serverLabel, toolName, input, cancellationToken).ConfigureAwait(false);
-            return new McpServerToolResultContent($"mcp-{Guid.NewGuid():N}") { Outputs = [new TextContent(Serialize(result))] };
+            return TextResult(Serialize(result));
         }
 
         // (3) Unmapped label → the legacy in-process invoker (keeps the existing "not declared" failure).
@@ -105,7 +99,27 @@ public sealed class ModuleToolHandler : IMcpToolHandler
             stepTimeoutSeconds: null,
             cancellationToken).ConfigureAwait(false);
 
-        return new McpServerToolResultContent($"mcp-{Guid.NewGuid():N}") { Outputs = [new TextContent(Serialize(inProcess))] };
+        return TextResult(Serialize(inProcess));
+    }
+
+    private static McpServerToolResultContent TextResult(string text) =>
+        new($"mcp-{Guid.NewGuid():N}") { Outputs = [new TextContent(text)] };
+
+    /// <summary>Serves the reserved <c>flowgent.*</c> tools in-process; returns null for any other tool name.</summary>
+    private McpServerToolResultContent? TryServeBuiltIn(string toolName, IDictionary<string, object?>? arguments)
+    {
+        if (string.Equals(toolName, InputToolName, StringComparison.Ordinal))
+        {
+            return TextResult(Serialize(_run.Input));
+        }
+
+        if (string.Equals(toolName, ParseToolName, StringComparison.Ordinal))
+        {
+            var payload = arguments is not null && arguments.TryGetValue("payload", out var p) ? p?.ToString() : null;
+            return TextResult(string.IsNullOrEmpty(payload) ? "null" : payload);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -130,34 +144,11 @@ public sealed class ModuleToolHandler : IMcpToolHandler
             ?? _engineOptions.DefaultToolTimeoutSeconds;
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds)));
-        var callToken = timeoutCts.Token;
-
-        var args = ToWireArguments(input);
 
         CallToolResult callResult;
         try
         {
-            var client = await ConnectAsync(url, serverLabel, callerId, callToken).ConfigureAwait(false);
-            try
-            {
-                callResult = await client.CallToolAsync(wireToolName, args, cancellationToken: callToken).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException && ex is not StepFailedException)
-            {
-                // Call-time session/transport failure → evict and reconnect exactly once, then retry the single call.
-                // A second failure is terminal: it surfaces as a StepFailedException (no further retry).
-                _logger.LogWarning(ex, "MCP call to '{Label}' ({Tool}) failed; evicting and reconnecting once.", serverLabel, wireToolName);
-                _pool.Evict(url);
-                var retryClient = await ConnectAsync(url, serverLabel, callerId, callToken).ConfigureAwait(false);
-                try
-                {
-                    callResult = await retryClient.CallToolAsync(wireToolName, args, cancellationToken: callToken).ConfigureAwait(false);
-                }
-                catch (Exception retryEx) when (retryEx is not OperationCanceledException && retryEx is not StepFailedException)
-                {
-                    throw new StepFailedException(callerId, $"MCP tool '{toolName}' failed after reconnect: {retryEx.Message}", retryEx);
-                }
-            }
+            callResult = await CallWithReconnectAsync(url, serverLabel, toolName, wireToolName, ToWireArguments(input), timeoutCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
@@ -172,6 +163,50 @@ public sealed class ModuleToolHandler : IMcpToolHandler
         var output = ReadOutput(callResult);
         ToolValidation.ValidateOutput(_run.Module, tool, output, callerId, toolName);
         return output;
+    }
+
+    /// <summary>
+    /// Calls the tool once; on a call-time session/transport failure evicts the pooled client, reconnects exactly once
+    /// and retries the single call. A second failure is terminal (no further retry).
+    /// </summary>
+    private async Task<CallToolResult> CallWithReconnectAsync(
+        string url,
+        string serverLabel,
+        string toolName,
+        string wireToolName,
+        IReadOnlyDictionary<string, object?>? args,
+        CancellationToken callToken)
+    {
+        var client = await ConnectAsync(url, serverLabel, toolName, callToken).ConfigureAwait(false);
+        try
+        {
+            return await client.CallToolAsync(wireToolName, args, cancellationToken: callToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && ex is not StepFailedException)
+        {
+            _logger.LogWarning(ex, "MCP call to '{Label}' ({Tool}) failed; evicting and reconnecting once.", serverLabel, wireToolName);
+            _pool.Evict(url);
+            return await RetryCallAsync(url, serverLabel, toolName, wireToolName, args, callToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<CallToolResult> RetryCallAsync(
+        string url,
+        string serverLabel,
+        string toolName,
+        string wireToolName,
+        IReadOnlyDictionary<string, object?>? args,
+        CancellationToken callToken)
+    {
+        var retryClient = await ConnectAsync(url, serverLabel, toolName, callToken).ConfigureAwait(false);
+        try
+        {
+            return await retryClient.CallToolAsync(wireToolName, args, cancellationToken: callToken).ConfigureAwait(false);
+        }
+        catch (Exception retryEx) when (retryEx is not OperationCanceledException && retryEx is not StepFailedException)
+        {
+            throw new StepFailedException(toolName, $"MCP tool '{toolName}' failed after reconnect: {retryEx.Message}", retryEx);
+        }
     }
 
     private async Task<McpClient> ConnectAsync(string url, string serverLabel, string callerId, CancellationToken ct)

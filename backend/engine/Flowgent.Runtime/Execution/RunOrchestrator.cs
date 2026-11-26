@@ -66,6 +66,13 @@ public sealed class RunOrchestrator(
         logger.LogInformation("Starting run {RunId} of workflow {WorkflowId} (module {ModuleId}, version {Version})",
             runId, handle.Workflow.Id, handle.Module.Id, handle.Definition.Version);
 
+        return await ExecuteRunAsync(run, runCts, hostToken);
+    }
+
+    /// <summary>Runs the workflow and maps cancellation and unexpected errors to terminal transitions.</summary>
+    private async Task<RunExecutionResult> ExecuteRunAsync(RunContext run, CancellationTokenSource runCts, CancellationToken hostToken)
+    {
+        var runId = run.RunId;
         try
         {
             return await RunWorkflowAsync(run, runCts.Token, hostToken);
@@ -157,31 +164,43 @@ public sealed class RunOrchestrator(
     /// </summary>
     private static ReviewPayload ReviewFromPrompt(string? prompt, string stepId)
     {
-        if (!string.IsNullOrWhiteSpace(prompt))
+        if (!string.IsNullOrWhiteSpace(prompt) && TryParseReview(prompt, stepId) is { } structured)
         {
-            try
-            {
-                if (System.Text.Json.Nodes.JsonNode.Parse(prompt) is System.Text.Json.Nodes.JsonObject obj)
-                {
-                    var title = obj.TryGetPropertyValue("title", out var t) && t is not null ? t.GetValue<string>() : $"Approve step '{stepId}'?";
-                    var fields = obj.TryGetPropertyValue("fields", out var f) && f is System.Text.Json.Nodes.JsonArray array
-                        ? array.OfType<System.Text.Json.Nodes.JsonObject>()
-                            .Select(field => new ReviewField(
-                                field.TryGetPropertyValue("label", out var l) && l is not null ? l.GetValue<string>() : "",
-                                field.TryGetPropertyValue("value", out var v) && v is not null ? v.GetValue<string>() : null))
-                            .ToList()
-                        : [];
-                    return new ReviewPayload(title, fields);
-                }
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                // Not a structured review; fall through to the plain-prompt title.
-            }
+            return structured;
         }
 
         return new ReviewPayload(prompt ?? $"Approve step '{stepId}'?", []);
     }
+
+    private static ReviewPayload? TryParseReview(string prompt, string stepId)
+    {
+        System.Text.Json.Nodes.JsonObject? obj;
+        try
+        {
+            obj = System.Text.Json.Nodes.JsonNode.Parse(prompt) as System.Text.Json.Nodes.JsonObject;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not a structured review; the caller falls back to the plain-prompt title.
+            return null;
+        }
+
+        if (obj is null)
+        {
+            return null;
+        }
+
+        var title = StringProperty(obj, "title") ?? $"Approve step '{stepId}'?";
+        var fields = obj.TryGetPropertyValue("fields", out var f) && f is System.Text.Json.Nodes.JsonArray array
+            ? array.OfType<System.Text.Json.Nodes.JsonObject>()
+                .Select(field => new ReviewField(StringProperty(field, "label") ?? "", StringProperty(field, "value")))
+                .ToList()
+            : [];
+        return new ReviewPayload(title, fields);
+    }
+
+    private static string? StringProperty(System.Text.Json.Nodes.JsonObject obj, string name) =>
+        obj.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<string>() : null;
 
     private async Task<RunExecutionResult> CompleteAsync(RunContext run, MafRunEvent.Completed outcome)
     {

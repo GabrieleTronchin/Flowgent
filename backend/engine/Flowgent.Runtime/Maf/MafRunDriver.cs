@@ -72,12 +72,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
                     break;
 
                 case RequestInfoEvent request:
-                    var (stepId, prompt) = DescribeRequest(request.Request);
-                    await onEvent(new MafRunEvent.AwaitingInput(stepId, prompt)).ConfigureAwait(false);
-                    var decision = await resolveDecision(stepId, prompt, ct).ConfigureAwait(false);
-                    var answer = new DeclEvents.ExternalInputResponse(
-                        new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, decision.ToJson().ToJsonString()));
-                    await execution.SendResponseAsync(request.Request.CreateResponse(answer)).ConfigureAwait(false);
+                    await AnswerHumanInputAsync(execution, request, onEvent, resolveDecision, ct).ConfigureAwait(false);
                     break;
 
                 case SuperStepCompletedEvent step when step.CompletionInfo?.Checkpoint is not null:
@@ -97,11 +92,27 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         // Surface any final-step outputs produced in the last super-step, then read the terminal from run state.
         await SurfaceOutputsAsync(run, checkpointDir, reportedOutputs, onEvent, ct).ConfigureAwait(false);
 
-        if (terminal is not null)
-        {
-            return terminal;
-        }
+        return terminal ?? await ReadTerminalAsync(run, checkpointDir, ct).ConfigureAwait(false);
+    }
 
+    /// <summary>Asks the resolver for the human decision on a gate and sends it back to the paused workflow.</summary>
+    private static async Task AnswerHumanInputAsync(
+        StreamingRun execution,
+        RequestInfoEvent request,
+        Func<MafRunEvent, Task> onEvent,
+        ResolveDecisionAsync resolveDecision,
+        CancellationToken ct)
+    {
+        var (stepId, prompt) = DescribeRequest(request.Request);
+        await onEvent(new MafRunEvent.AwaitingInput(stepId, prompt)).ConfigureAwait(false);
+        var decision = await resolveDecision(stepId, prompt, ct).ConfigureAwait(false);
+        var answer = new DeclEvents.ExternalInputResponse(
+            new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, decision.ToJson().ToJsonString()));
+        await execution.SendResponseAsync(request.Request.CreateResponse(answer)).ConfigureAwait(false);
+    }
+
+    private static async Task<MafRunEvent> ReadTerminalAsync(RunContext run, DirectoryInfo checkpointDir, CancellationToken ct)
+    {
         MafRunEvent? completed = ToCompleted(run, await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false));
         return completed ?? new MafRunEvent.Failed(run.CurrentStepId, "Workflow completed without producing a result.");
     }
@@ -126,12 +137,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
 
         var outcome = ResolveOutcome(run.Workflow, terminalId);
 
-        string? message = null;
-        if (globals.TryGetValue("__message", out var rawMessage) && PowerFxConversion.FromJsonString(rawMessage) is JsonValue mv && mv.TryGetValue<string>(out var m))
-        {
-            message = m;
-        }
-
+        var message = ReadStringGlobal(globals, "__message");
         var finalOutput = globals.TryGetValue("__finalOutput", out var rawOut) ? PowerFxConversion.FromJsonString(rawOut) : null;
         return new MafRunEvent.Completed(terminalId, outcome, message, finalOutput);
     }
@@ -162,8 +168,8 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         var globals = await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false);
 
         // Assigned agent first so StepCompleted snapshots carry it.
-        if (globals.TryGetValue("assignedAgentId", out var rawAgent) && reported.Add("assignedAgentId")
-            && PowerFxConversion.FromJsonString(rawAgent) is JsonValue v && v.TryGetValue<string>(out var agentId) && !string.IsNullOrWhiteSpace(agentId))
+        if (globals.ContainsKey("assignedAgentId") && reported.Add("assignedAgentId")
+            && ReadStringGlobal(globals, "assignedAgentId") is { } agentId && !string.IsNullOrWhiteSpace(agentId))
         {
             run.AssignAgent(agentId);
         }
@@ -175,22 +181,34 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
 
         foreach (var name in stepNames)
         {
-            if (!reported.Add(name))
+            if (reported.Add(name))
             {
-                continue;
+                await ReportStepAsync(run, name, globals, onEvent).ConfigureAwait(false);
             }
-
-            var node = PowerFxConversion.FromJsonString(globals[name]);
-            var detail = globals.TryGetValue($"{name}__detail", out var rawDetail)
-                && PowerFxConversion.FromJsonString(rawDetail) is JsonValue dv && dv.TryGetValue<string>(out var d)
-                ? d
-                : null;
-
-            run.SetOutput(name, node);
-            await onEvent(new MafRunEvent.StepStarted(name)).ConfigureAwait(false);
-            await onEvent(new MafRunEvent.StepCompleted(name, node, detail)).ConfigureAwait(false);
         }
     }
+
+    private static async Task ReportStepAsync(
+        RunContext run,
+        string name,
+        IReadOnlyDictionary<string, string> globals,
+        Func<MafRunEvent, Task> onEvent)
+    {
+        var node = PowerFxConversion.FromJsonString(globals[name]);
+        var detail = ReadStringGlobal(globals, $"{name}__detail");
+
+        run.SetOutput(name, node);
+        await onEvent(new MafRunEvent.StepStarted(name)).ConfigureAwait(false);
+        await onEvent(new MafRunEvent.StepCompleted(name, node, detail)).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads a global whose value is a JSON string, or null when it is absent or not a string.</summary>
+    private static string? ReadStringGlobal(IReadOnlyDictionary<string, string> globals, string key) =>
+        globals.TryGetValue(key, out var raw)
+        && PowerFxConversion.FromJsonString(raw) is JsonValue value
+        && value.TryGetValue<string>(out var text)
+            ? text
+            : null;
 
     /// <summary>True for a step-output global (not a reserved terminal global, a <c>__detail</c> sibling or the agent id).</summary>
     private static bool IsStepOutput(string name) =>
