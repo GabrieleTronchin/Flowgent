@@ -1,7 +1,7 @@
 namespace Flowgent.Engine.Service;
 
 using System.Text.Json.Serialization;
-using Flowgent.Engine.Service.Endpoints;
+using Flowgent.Engine.Service.Endpoints.Primitives;
 using Flowgent.Engine.Service.Grpc;
 using Flowgent.Persistence;
 using Flowgent.Runtime;
@@ -22,6 +22,7 @@ public static class EngineHost
         builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddProblemDetails();
         builder.Services.AddGrpc();
+        builder.Services.AddEndpoints(typeof(EngineHost).Assembly);
 
         builder.Services.AddFlowgentRuntime(builder.Configuration);
         builder.Services.AddFlowgentPersistence();
@@ -30,7 +31,7 @@ public static class EngineHost
 
         app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
         app.MapGrpcService<RunMonitorService>();
-        app.MapEngineEndpoints();
+        app.MapEndpoints();
         app.MapDefaultEndpoints();
 
         return app;

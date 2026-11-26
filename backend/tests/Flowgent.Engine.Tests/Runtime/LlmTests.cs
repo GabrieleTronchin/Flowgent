@@ -5,7 +5,7 @@ using FsCheck;
 using FsCheck.Fluent;
 using FsCheck.Xunit;
 using Flowgent.Contracts.Runs;
-using Flowgent.Engine.Service.Endpoints;
+using Flowgent.Engine.Service.Endpoints.Mapping;
 using Flowgent.Engine.Tests.Helpers;
 using Flowgent.Runtime.Configuration;
 using Flowgent.Runtime.Llm;
@@ -108,7 +108,7 @@ public class LlmTests
     [Fact]
     public void RuntimeConfig_NeverExposesSecretsOrEndpoint()
     {
-        var info = EngineEndpoints.BuildConfig(new EngineOptions(), new LlmOptions
+        var info = RuntimeConfigMapper.BuildConfig(new EngineOptions(), new LlmOptions
         {
             Provider = "OpenAI",
             ModelName = "gemini-flash",
@@ -127,7 +127,7 @@ public class LlmTests
     [Fact]
     public void RuntimeConfig_DemoReportsSimulatedModel()
     {
-        var info = EngineEndpoints.BuildConfig(new EngineOptions { SequentialProcessing = true }, new LlmOptions { Provider = "demo" });
+        var info = RuntimeConfigMapper.BuildConfig(new EngineOptions { SequentialProcessing = true }, new LlmOptions { Provider = "demo" });
 
         Assert.True(info.DemoMode);
         Assert.True(info.SequentialProcessing);
