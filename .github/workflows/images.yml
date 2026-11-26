@@ -25,15 +25,23 @@ jobs:
           - name: engine
             dockerfile: deploy/engine.Dockerfile
             image: flowgent-engine
+            title: Flowgent Engine
+            description: "Flowgent engine — domain-agnostic workflow runtime (MAF declarative) that runs YAML workflows and reaches domain tools over MCP."
           - name: gateway
             dockerfile: deploy/gateway.Dockerfile
             image: flowgent-gateway
+            title: Flowgent Gateway
+            description: "Flowgent gateway — single ingress (YARP) for the dashboard and clients."
           - name: dashboard
             dockerfile: deploy/dashboard.Dockerfile
             image: flowgent-dashboard
+            title: Flowgent Dashboard
+            description: "Flowgent dashboard — generic React console for monitoring any module."
           - name: support-mcp
             dockerfile: deploy/support-mcp.Dockerfile
             image: flowgent-support-mcp
+            title: Flowgent Support MCP (example)
+            description: "Flowgent example MCP server — the support demo's locateComponent domain tool over Streamable HTTP. An EXAMPLE of how to write a domain module, not part of the core platform."
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +70,12 @@ jobs:
             type=match,pattern=v\d+\.\d+\.\d+-([0-9A-Za-z]+).*,group=1
             # On a push to the default branch (master): a floating 'edge' tag
             type=edge,branch=master
+          # The generated title/description are the generic repository ones. Override them with the
+          # per-image curated text (identical to the LABELs in each deploy/*.Dockerfile, which only
+          # apply to local builds), so the core platform vs example module distinction is kept.
+          labels: |
+            org.opencontainers.image.title=${{ matrix.title }}
+            org.opencontainers.image.description=${{ matrix.description }}
           flavor: |
             latest=false
 
