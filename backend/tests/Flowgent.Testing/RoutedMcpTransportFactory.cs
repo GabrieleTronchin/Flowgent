@@ -8,7 +8,7 @@ using ModelContextProtocol.Client;
 /// The in-process test counterpart of <c>HttpMcpTransportFactory</c>: it builds a Streamable-HTTP
 /// <see cref="HttpClientTransport"/> whose <see cref="System.Net.Http.HttpClient"/> routes through the harness
 /// <see cref="HostRoutingHandler"/> (so <c>http://{id}</c> reaches the MCP server's TestServer), with
-/// <c>ownsHttpClient:false</c> — the shape Gate-0/FEAT-001 proved end to end. Registered in the engine the harness
+/// <c>ownsHttpClient:false</c> so pooling stays with the factory. Registered in the engine the harness
 /// builds, overriding the production <see cref="IMcpTransportFactory"/>, so <c>SupportParityTests</c> exercises
 /// <c>locate_component</c> over in-process HTTP without a real port.
 /// </summary>

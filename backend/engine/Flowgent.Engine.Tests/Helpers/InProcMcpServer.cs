@@ -6,9 +6,9 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 /// <summary>
-/// A real in-process MCP server wired to the client over in-memory pipes (no network, no port), used by the FEAT-002
-/// handler/pool tests. It exposes one tool whose behaviour the test controls (the returned text, an <c>isError</c>
-/// result, or a call counter). Mirrors the spike's in-memory server, but the client half is created by the pool under
+/// A real in-process MCP server wired to the client over in-memory pipes (no network, no port), used by the
+/// MCP handler/pool tests. It exposes one tool whose behaviour the test controls (the returned text, an <c>isError</c>
+/// result, or a call counter). The client half is created by the pool under
 /// test; this type only produces the <see cref="IClientTransport"/> the pool connects over.
 /// </summary>
 public sealed class InProcMcpServer : IAsyncDisposable

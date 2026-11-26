@@ -87,7 +87,7 @@ public class DependencyRulesTests
     [Fact]
     public void SupportMcpServer_ReferencesOnlyServiceDefaultsAndTheMcpPackage()
     {
-        // FEAT-003: the standalone support MCP server is intentionally NOT a module service and NOT an engine project.
+        // The standalone support MCP server is intentionally NOT a module service and NOT an engine project.
         // Its only project reference is ServiceDefaults, and its only NuGet dependency is the MCP ASP.NET Core package;
         // it must never reach the Module SDK, contracts, definitions, runtime or any engine/service project.
         string[] forbidden =
@@ -163,7 +163,7 @@ public class DependencyRulesTests
         var assembly = Assembly.Load("Flowgent.Runtime");
 
         // Only types in Flowgent.Runtime.Maf may depend on Microsoft.Agents.AI.Workflows.Declarative; every other
-        // namespace exchanges plain .NET types with the seam (AC-4, design §13).
+        // namespace exchanges plain .NET types with the seam.
         var result = Types.InAssembly(assembly)
             .That().ResideInNamespace("Flowgent.Runtime")
             .And().DoNotResideInNamespace("Flowgent.Runtime.Maf")

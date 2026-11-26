@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 /// <summary>
-/// FEAT-002 unit tests for the strict resolution order of <see cref="ModuleToolHandler"/> and the MCP-over-HTTP branch,
+/// Unit tests for the strict resolution order of <see cref="ModuleToolHandler"/> and the MCP-over-HTTP branch,
 /// driven through a fake <see cref="IMcpTransportFactory"/> over in-memory pipes (no network). Covers: reserved
 /// built-ins served in-process; a mapped label routed to the HTTP branch; the reserved <c>flowgent</c> label rejected;
 /// an unmapped label falling back to the legacy in-process invoker; bare-name wire translation with qualified schema

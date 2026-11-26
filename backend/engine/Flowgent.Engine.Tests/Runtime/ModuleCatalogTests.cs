@@ -32,7 +32,7 @@ public class ModuleCatalogTests
     public async Task InvalidPackage_IsReportedWithErrorsAndWorkflowsAreNotExposed()
     {
         // A malformed declarative workflow is reported by the MAF trial-build validator wired into the catalog
-        // (design §4.3): point a GotoAction at a non-existent action id so DeclarativeWorkflowBuilder.Build throws
+        // by pointing a GotoAction at a non-existent action id, so DeclarativeWorkflowBuilder.Build throws
         // resolving the edge. The workflow is not exposed.
         await using var engine = await TestEngine.StartAsync(f => f.Replace("workflows/hello.yaml", "actionId: long_final", "actionId: no_such_action"));
         var catalog = engine.Services.GetRequiredService<IModuleCatalog>();

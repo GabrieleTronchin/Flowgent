@@ -9,12 +9,12 @@ using Flowgent.Runtime.Maf;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// FEAT-003 anti-risk smoke exercise of the MAF declarative seam: build a workflow through
-/// <see cref="MafWorkflowFactory"/> and run it through <see cref="MafRunDriver"/> in Demo mode, confirming the probe
-/// verdicts recorded by FEAT-001 hold in the real seam — a terminal/output event surfaces (PROBE-B: the host reads a
+/// Smoke test of the MAF declarative seam: build a workflow through
+/// <see cref="MafWorkflowFactory"/> and run it through <see cref="MafRunDriver"/> in Demo mode, confirming that
+/// a terminal/output event surfaces (the host reads a
 /// <c>Global.*</c> variable from run state via the JSON checkpoint), an <c>InvokeMcpTool</c> JSON-string result is read
-/// back (PROBE-A/F4), and a <c>Question</c>+<c>ConditionGroup</c> human-input gate resumes (F5). This is a seam check,
-/// not the full module migration (FEAT-004).
+/// back, and a <c>Question</c>+<c>ConditionGroup</c> human-input gate resumes. This is a seam check,
+/// not a full module migration.
 /// </summary>
 public sealed class MafSeamSmokeTests
 {
@@ -50,7 +50,7 @@ public sealed class MafSeamSmokeTests
 
         Assert.IsType<MafRunEvent.Completed>(terminal);
         Assert.Equal(WorkflowOutcome.Success, ((MafRunEvent.Completed)terminal).Outcome);
-        // PROBE-B: the Global.produce variable was recovered from run state and surfaced as a step output.
+        // The Global.produce variable was recovered from run state and surfaced as a step output.
         var produce = events.OfType<MafRunEvent.StepCompleted>().FirstOrDefault(e => e.StepId == "produce");
         Assert.NotNull(produce);
         Assert.Equal(true, produce!.Output?["ok"]?.GetValue<bool>());

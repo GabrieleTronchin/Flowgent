@@ -44,7 +44,7 @@ public class EngineEndpointTests
     [Fact]
     public async Task Modules_InvalidModuleShowsValidationErrors()
     {
-        // A malformed declarative workflow is reported by the MAF trial build (design §4.3): a GotoAction to a
+        // A malformed declarative workflow is reported by the MAF trial build: a GotoAction to a
         // non-existent action id makes DeclarativeWorkflowBuilder.Build throw. The error names the workflow file; the
         // builder gives no step id or line (documented behavior change from the custom validator).
         await using var host = await EngineTestHost.StartAsync(f => f.Replace("workflows/hello.yaml", "actionId: long_final", "actionId: no_such_action"));

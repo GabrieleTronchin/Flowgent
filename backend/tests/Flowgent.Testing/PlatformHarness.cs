@@ -178,7 +178,7 @@ public sealed class PlatformHarness : IAsyncDisposable
             builder.Configuration.AddInMemoryCollection(engineSettings);
             builder.Services.ConfigureHttpClientDefaults(http => http.ConfigurePrimaryHttpMessageHandler(router.CreateClientHandler));
             // Override the production HttpMcpTransportFactory (registered with TryAdd) so the engine reaches the
-            // harness's in-process MCP TestServers over the router instead of a real socket (FEAT-003).
+            // harness's in-process MCP TestServers over the router instead of a real socket.
             builder.Services.AddSingleton<Flowgent.Runtime.Maf.IMcpTransportFactory>(sp =>
                 new RoutedMcpTransportFactory(router, sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()));
         });

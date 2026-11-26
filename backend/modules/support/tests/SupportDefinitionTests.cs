@@ -6,7 +6,7 @@ using Flowgent.Runtime.Llm;
 
 /// <summary>
 /// Unit tests of the support workflow's Demo-mode behaviour and agent mapping, ported from the pre-migration
-/// SupportDefinitionTests (FEAT-002 had disabled this file with <c>#if false</c> because it was built on the deleted
+/// SupportDefinitionTests (that file was disabled because it was built on the deleted
 /// custom step model). The behaviour that used to live in the workflow <c>demo:</c> blocks and <c>rule</c>/<c>map</c>
 /// steps now lives in <see cref="DemoResponseProvider"/> (classification keyword rules, severity, pull-request paths)
 /// and in the declarative support YAML (routing, category→role mapping); the routing single/both/no-application and

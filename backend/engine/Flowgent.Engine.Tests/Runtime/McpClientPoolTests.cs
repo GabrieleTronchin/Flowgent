@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 
 /// <summary>
-/// FEAT-002 unit tests for <see cref="McpClientPool"/>: one cached client per URL, a single session when callers race
+/// Unit tests for <see cref="McpClientPool"/>: one cached client per URL, a single session when callers race
 /// the first connect, and <see cref="McpClientPool.Evict"/> dropping the cached client. All over in-memory pipes.
 /// </summary>
 public sealed class McpClientPoolTests

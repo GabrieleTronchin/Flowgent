@@ -7,7 +7,7 @@ using Flowgent.Definitions.Model;
 using Flowgent.Engine.Tests.Helpers;
 
 /// <summary>
-/// Module-envelope loading after the MAF declarative migration (design §4.3, §15, §18 AC-16). The custom step-format
+/// Module-envelope loading after the MAF declarative migration. The custom step-format
 /// validator (DefinitionValidator) is deleted: the loader no longer parses or step-validates the workflow document
 /// (unknown step kind, unreachable step, template/condition/regex, terminal-with-next, duplicate step ids, etc.).
 /// Those checks are gone as a documented behavior change — a malformed declarative workflow is now reported by the
