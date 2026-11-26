@@ -25,7 +25,7 @@ backend/
 │   ├── Flowgent.Engine.Service/     # EngineHost, endpoints/ (one IEndpoint class per resource), RunMonitorService (gRPC), engine.http
 │   ├── Flowgent.Engine.Core/        # Runs/ (core: Intake, Execution, Store, HumanInput), Modules/ (Catalog, Client, Sources, Tools),
 │   │                                #   Maf/ (everything that touches Microsoft Agent Framework: Building, Execution, Mcp), Llm/ (chat client, Demo, telemetry),
-│   │                                #   Configuration/ (options), RuntimeServiceExtensions (DI wiring)
+│   │                                #   Configuration/ (options), RuntimeServiceExtensions (DI wiring), README.md (run path)
 │   ├── Flowgent.Persistence/        # EF Core InMemory EngineDbContext, EfRunStore (dual-write), EfInboxStore
 │   ├── Flowgent.Engine.Tests/       # definitions, runtime, persistence, LLM, endpoints (+ FsCheck properties)
 │   └── protos/run_monitor.proto     # gRPC contract (engine + dashboard codegen)
@@ -72,10 +72,10 @@ New modules start from `backend/modules/_template` (see its README and `docs/mod
 ## Dependency rules (Flowgent.Architecture.Tests)
 
 - `Contracts` has no project references; `Definitions` references only `Contracts`.
-- `Runtime` → `Definitions`; `Persistence` → `Runtime`; `Engine.Service` → `Runtime`, `Persistence`, `ServiceDefaults`; `Gateway` → `ServiceDefaults`; `Module.Sdk` → `Contracts`, `Definitions`; `Testing` → `Engine.Service`, `Gateway`, `Module.Sdk`.
+- `Engine.Core` → `Definitions`; `Persistence` → `Engine.Core`; `Engine.Service` → `Engine.Core`, `Persistence`, `ServiceDefaults`; `Gateway` → `ServiceDefaults`; `Module.Sdk` → `Contracts`, `Definitions`; `Testing` → `Engine.Service`, `Gateway`, `Module.Sdk`.
 - Engine projects and the gateway never reference `backend/modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
 - Module services reference only `Module.Sdk`, `Contracts`, `Definitions`, `ServiceDefaults`; `Flowgent.Mcp.Support` references only `ServiceDefaults` and the MCP package.
-- `Definitions` and `Runtime` do not depend on ASP.NET Core; only `Flowgent.Engine.Core.Maf` references the declarative workflows package.
+- `Definitions` and `Engine.Core` do not depend on ASP.NET Core; only `Flowgent.Engine.Core.Maf` references the declarative workflows package.
 - Engine sources and the proto contain no support-domain terms.
 
 ## Key patterns
