@@ -34,8 +34,8 @@ public sealed class MafWorkflowFactory(
     private readonly Llm.LlmOptions _llmOptions = llmOptions.Value;
     private readonly Func<IConversationStore> _conversationStoreFactory = conversationStoreFactory;
 
-    /// <summary>The agent provider and MCP handler built for a run; kept so the caller can read run state they mutate.</summary>
-    public sealed record BuiltWorkflow(Workflow Workflow, MafAgentProvider AgentProvider, ModuleToolHandler ToolHandler);
+    /// <summary>The declarative workflow built for one run.</summary>
+    public sealed record BuiltWorkflow(Workflow Workflow);
 
     public BuiltWorkflow Build(RunContext run)
     {
@@ -52,7 +52,7 @@ public sealed class MafWorkflowFactory(
             options,
             MapInput);
 
-        return new BuiltWorkflow(workflow, agentProvider, toolHandler);
+        return new BuiltWorkflow(workflow);
     }
 
     /// <summary>

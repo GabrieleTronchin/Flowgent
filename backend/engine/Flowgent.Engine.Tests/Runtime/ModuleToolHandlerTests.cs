@@ -207,7 +207,7 @@ public sealed class ModuleToolHandlerTests
         var failing = new FailableTransport(serverA.ClientTransport);
 
         var factory = new FakeMcpTransportFactory(failing, serverB.ClientTransport);
-        await using var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        await using var pool = new McpClientPool(factory);
         var (handler, _) = Handler(pool, factory, mappedLabel: MappedLabel, module: TestModules.LoadValid(), url: MappedUrl);
 
         // Warm the first client (handshake succeeds), then flip it to fail on the next send (the tool call).
@@ -237,7 +237,7 @@ public sealed class ModuleToolHandlerTests
         module ??= TestModules.LoadValid();
 
         var factory = transport is null ? new FakeMcpTransportFactory() : new FakeMcpTransportFactory(transport);
-        var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        var pool = new McpClientPool(factory);
 
         var engineOptions = new EngineOptions();
         if (mappedLabel is not null)

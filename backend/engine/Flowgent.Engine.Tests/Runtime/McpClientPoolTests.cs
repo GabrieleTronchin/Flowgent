@@ -19,7 +19,7 @@ public sealed class McpClientPoolTests
     {
         await using var server = new InProcMcpServer("count", _ => new InProcMcpServer.ToolReply("{}"));
         var factory = new FakeMcpTransportFactory(server.ClientTransport);
-        await using var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        await using var pool = new McpClientPool(factory);
 
         var first = await pool.GetAsync(Url, Label, CancellationToken.None);
         var second = await pool.GetAsync(Url, Label, CancellationToken.None);
@@ -33,7 +33,7 @@ public sealed class McpClientPoolTests
     {
         await using var server = new InProcMcpServer("count", _ => new InProcMcpServer.ToolReply("{}"));
         var factory = new FakeMcpTransportFactory(server.ClientTransport);
-        await using var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        await using var pool = new McpClientPool(factory);
 
         var tasks = Enumerable.Range(0, 8).Select(_ => pool.GetAsync(Url, Label, CancellationToken.None)).ToArray();
         var clients = await Task.WhenAll(tasks);
@@ -48,7 +48,7 @@ public sealed class McpClientPoolTests
         await using var serverA = new InProcMcpServer("count", _ => new InProcMcpServer.ToolReply("{}"));
         await using var serverB = new InProcMcpServer("count", _ => new InProcMcpServer.ToolReply("{}"));
         var factory = new FakeMcpTransportFactory(serverA.ClientTransport, serverB.ClientTransport);
-        await using var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        await using var pool = new McpClientPool(factory);
 
         var first = await pool.GetAsync(Url, Label, CancellationToken.None);
         pool.Evict(Url);
@@ -64,7 +64,7 @@ public sealed class McpClientPoolTests
         await using var healthy = new InProcMcpServer("count", _ => new InProcMcpServer.ToolReply("{}"));
         // First connect has no transport (factory throws); the second succeeds.
         var factory = new ThrowOnceTransportFactory(healthy.ClientTransport);
-        await using var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        await using var pool = new McpClientPool(factory);
 
         await Assert.ThrowsAnyAsync<Exception>(() => pool.GetAsync(Url, Label, CancellationToken.None));
         var client = await pool.GetAsync(Url, Label, CancellationToken.None); // retries, now succeeds

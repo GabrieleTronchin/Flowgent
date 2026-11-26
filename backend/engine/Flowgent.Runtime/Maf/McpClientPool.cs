@@ -1,9 +1,7 @@
 namespace Flowgent.Runtime.Maf;
 
 using System.Collections.Concurrent;
-using Flowgent.Runtime.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 
 /// <summary>
@@ -13,18 +11,11 @@ using ModelContextProtocol.Client;
 /// the only place the MCP client is created or disposed, so the handler can <see cref="Evict"/> a broken session and
 /// ask for a fresh one.
 /// </summary>
-public sealed class McpClientPool(IMcpTransportFactory transportFactory, ILoggerFactory loggerFactory) : IAsyncDisposable
+public sealed class McpClientPool(IMcpTransportFactory transportFactory) : IAsyncDisposable
 {
     private readonly IMcpTransportFactory _transportFactory = transportFactory;
-    private readonly ILoggerFactory _loggerFactory = loggerFactory;
     private readonly ConcurrentDictionary<string, Lazy<Task<McpClient>>> _clients = new(StringComparer.Ordinal);
 
-    /// <summary>Kept so DI can resolve the pool with <see cref="IOptions{TOptions}"/> even though the pool reads no option here (parity with the design ctor and future resolution needs).</summary>
-    public McpClientPool(IOptions<EngineOptions> engineOptions, IMcpTransportFactory transportFactory, ILoggerFactory loggerFactory)
-        : this(transportFactory, loggerFactory)
-    {
-        _ = engineOptions;
-    }
 
     /// <summary>
     /// Returns the cached client for <paramref name="url"/>, connecting one on first use. On a connect failure the
