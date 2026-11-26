@@ -6,7 +6,9 @@ using System.Text.Json;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Fixtures.Module;
+using Flowgent.Runtime.Execution;
 using Flowgent.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// The fixture service stops: the engine reports it unavailable, rejects its new inputs, fails its in-flight tool
@@ -51,21 +53,21 @@ public class ModuleDownTests
     [Fact]
     public async Task StoppedModule_FailsTheInFlightToolStep()
     {
-        // A slow demo LLM keeps the run in its first (agent) step long enough to stop the module before the run reaches
-        // its tool steps. The latency is generous so the stop reliably lands during 'draft' even under test-suite load.
+        // A slow demo LLM keeps the run in its first (agent) step, 'draft', while the module is stopped.
+        // The API cannot tell us that 'draft' is in flight: steps are surfaced only after they complete (from the MAF
+        // checkpoint), and the run stays Queued until then. So wait on the engine's RunRegistry (the workflow has
+        // started) while no step output exists yet, then stop the module: the stop always lands during 'draft'.
         await using var platform = await IntegrationPlatform.StartAsync(o => o.ConfigureEngine("Flowgent:Llm:DemoLatencyMs", "8000"));
+        var registry = platform.Engine.Services.GetRequiredService<RunRegistry>();
         var runId = await platform.SubmitFixtureFlowAsync("in flight");
-        await platform.WaitForRunAsync(runId, r => r is { Status: RunStatus.Running, CurrentStepId: "draft" });
+        await platform.WaitForRunAsync(runId, r => registry.IsRunning(runId) && r.StepOutputs.Count == 0);
 
         await platform.StopModuleAsync(FixtureHost.ModuleId);
+        Assert.False((await platform.GetRunAsync(runId)).StepOutputs.ContainsKey("draft"), "The module must stop while 'draft' is in flight.");
         var run = await platform.WaitForTerminalAsync(runId);
 
-        Assert.Equal(RunStatus.Failed, run.Status);
-        // The in-flight run fails at the first module-tool step that hits the stopped service. Both reverse and echo
-        // are now module tools reached through InvokeMcpTool (echo was an http step before the MAF migration; the
-        // declarative HTTP action is unproven, so the echo "external API" is bridged as fixture.echo). Which of the two
-        // is in flight when the stop lands is a timing detail; the business contract is the descriptive failure.
-        Assert.Contains(run.CurrentStepId, new[] { "reverse", "echo" });
+        // The run fails at the first module-tool step after 'draft', with a descriptive reason.
+        Assert.Equal((RunStatus.Failed, "reverse"), (run.Status, run.CurrentStepId));
         Assert.StartsWith("Module 'fixture' is unavailable", run.Detail);
     }
 

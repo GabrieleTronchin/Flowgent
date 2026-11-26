@@ -37,9 +37,7 @@ public sealed class MultiModuleIsolationTests : IAsyncLifetime
         Assert.Equal(["fixture_writer", "fixture_reviewer"], fixtureAgents.Select(a => a.AgentId));
     }
 
-    // TODO(flaky): samples the transient agent "Working" state at one instant under concurrent load;
-    // flaps on CI. Re-enable after asserting on terminal state or adding a WaitForAgentStatus helper.
-    [Fact(Skip = "Flaky: transient agent-Working snapshot. See TODO.")]
+    [Fact]
     public async Task ConcurrentRuns_StayIsolatedPerModule()
     {
         // Submit both modules' runs at the same time.
@@ -58,7 +56,8 @@ public sealed class MultiModuleIsolationTests : IAsyncLifetime
         Assert.All(fixtureInputs, i => Assert.Equal(("fixture", FixtureHost.FlowWorkflowId, "review"), (i.ModuleId, i.WorkflowId, i.StepId)));
         Assert.All(supportInputs, i => Assert.Equal(("support", SupportHost.WorkflowId, "approval"), (i.ModuleId, i.WorkflowId, i.StepId)));
 
-        var workingFixtureAgents = (await _platform.GetAsync<List<AgentInfo>>("/api/engine/agents?moduleId=fixture")).Where(a => a.Status == "Working").ToList();
+        // The agent assignment is reported asynchronously after the run pauses: wait for it instead of sampling once.
+        var workingFixtureAgents = await WaitForWorkingFixtureAgentsAsync();
         Assert.Equal(["fixture_reviewer"], workingFixtureAgents.Select(a => a.AgentId));
         Assert.Contains(workingFixtureAgents[0].CurrentRunId!.Value, fixtureRuns);
 
@@ -104,6 +103,23 @@ public sealed class MultiModuleIsolationTests : IAsyncLifetime
         Assert.Equal(FixtureRuns, fixtureTelemetry.TotalCalls);
         Assert.Equal(FixtureRuns, writer.TotalCalls);
         Assert.Equal("fixture", writer.LastCall!.ModuleId);
+    }
+
+    private async Task<List<AgentInfo>> WaitForWorkingFixtureAgentsAsync(int timeoutMs = 30_000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (true)
+        {
+            var working = (await _platform.GetAsync<List<AgentInfo>>("/api/engine/agents?moduleId=fixture"))
+                .Where(a => a.Status == "Working")
+                .ToList();
+            if (working.Count > 0 || DateTime.UtcNow >= deadline)
+            {
+                return working;
+            }
+
+            await Task.Delay(50);
+        }
     }
 
     [Fact]
