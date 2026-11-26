@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Engine.Tests.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 public class EngineEndpointTests
 {

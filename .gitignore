@@ -368,3 +368,7 @@ appsettings.Development.json
 # Agent pipeline working artifacts (scratch output of workflow runs; the curated
 # record lives in .kiro/specs). Not part of the project source.
 .agents/
+
+# Visual Studio-generated launch profiles for test projects (they are not web apps, no profile needed)
+backend/**/*Tests/Properties/launchSettings.json
+backend/tests/Fixtures/**/Properties/launchSettings.json
