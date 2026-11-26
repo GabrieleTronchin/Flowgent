@@ -4,9 +4,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 /// <summary>
-/// Ordered, regex-only rule matching. Retained after the <c>Steps/*</c> handlers are deleted;
-/// used by the Demo response provider to pick a demo output. The Scriban <c>When</c> branch of the
-/// old matcher is dropped (no module uses it); the regex cache and options are preserved verbatim.
+/// Finds which ordered regex rules match a value. Used by the Demo response provider to choose a canned answer.
 /// </summary>
 public static class RuleMatcher
 {

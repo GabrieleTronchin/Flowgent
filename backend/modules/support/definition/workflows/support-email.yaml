@@ -4,7 +4,7 @@ trigger:
   id: support-email
   actions:
 
-    # Read the intake input (subject/body) as a record (ParseJSON-free; PROBE-A via the built-in input tool).
+    # Read the intake input (subject/body) as a record (the built-in input tool echoes it back, so no JSON parsing function is needed).
     - kind: InvokeMcpTool
       id: read_input
       serverUrl: inproc://flowgent
@@ -204,8 +204,8 @@ trigger:
       value: =MessageText(Local.resolveMsg)
 
     # ── approval (human-input -> Question + ConditionGroup) ─────────────────────────────────────────────
-    # The review is rendered as a JSON object the seam turns into the dashboard ReviewPayload (title + labelled fields).
-    # Build the review as a JSON object the seam turns into the dashboard ReviewPayload. Field values are quote-sanitised
+    # The review is rendered as a JSON object the engine turns into the dashboard ReviewPayload (title + labelled fields).
+    # Build the review as a JSON object the engine turns into the dashboard ReviewPayload. Field values are quote-sanitised
     # (double quotes -> single) so an LLM/Demo value containing a quote cannot break the JSON.
     - kind: SetVariable
       id: review_component

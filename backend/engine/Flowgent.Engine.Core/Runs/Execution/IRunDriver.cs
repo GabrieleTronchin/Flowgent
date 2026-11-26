@@ -2,8 +2,8 @@ namespace Flowgent.Engine.Core.Runs.Execution;
 
 /// <summary>
 /// Runs one workflow from start to finish for <see cref="RunOrchestrator"/> and reports what happens as
-/// <see cref="RunEvent"/> records. The only implementation today is <c>MafRunDriver</c>, which runs the workflow on
-/// Microsoft Agent Framework; the interface keeps the orchestrator free of any framework type.
+/// <see cref="RunEvent"/> records. The only implementation today is <c>MafRunDriver</c>, which uses Microsoft Agent
+/// Framework (MAF). Going through this interface keeps the orchestrator free of any MAF type.
 /// </summary>
 public interface IRunDriver
 {

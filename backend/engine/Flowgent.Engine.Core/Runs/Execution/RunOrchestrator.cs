@@ -10,10 +10,9 @@ using Microsoft.Extensions.Logging;
 using RunStatus = Flowgent.Contracts.Runs.RunStatus;
 
 /// <summary>
-/// Executes queued runs: hands each run to the <see cref="IRunDriver"/> (which builds and runs the workflow), records per-step
-/// transitions through <see cref="RunRecorder"/> and exactly one terminal transition (Completed, Failed or Cancelled)
-/// via the dual-write <see cref="IRunStore"/>. The gRPC RunMonitor shape, RunStatus set and current-step-id are
-/// preserved because the orchestrator still drives RunRecorder/RunStore.
+/// Runs one queued workflow from start to finish. It asks the <see cref="IRunDriver"/> to build and run the workflow,
+/// records each step through <see cref="RunRecorder"/>, and writes exactly one final state (Completed, Failed or Cancelled)
+/// to the <see cref="IRunStore"/>. It also pauses the run when a step needs a human decision.
 /// </summary>
 public sealed class RunOrchestrator(
     IModuleCatalog catalog,

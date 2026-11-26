@@ -9,12 +9,9 @@ using Microsoft.Agents.AI.Workflows.Declarative;
 using Microsoft.Extensions.AI;
 
 /// <summary>
-/// Production <see cref="ResponseAgentProvider"/> over the engine's <see cref="IChatClient"/>, one instance
-/// per run. The declarative
-/// <c>InvokeAzureAgent</c> action resolves an agent through this provider rather than Azure AI Foundry: it builds a
-/// <see cref="ChatClientAgent"/> on the engine chat client,
-/// attributes the call for telemetry, and — in Demo mode — attaches the <see cref="DemoResponseProvider"/> output.
-/// Conversation/message storage is delegated to a pluggable <see cref="IConversationStore"/>.
+/// Answers the LLM steps (<c>InvokeAzureAgent</c> actions) of one run. Instead of calling Azure AI Foundry, it builds an
+/// agent on the engine chat client, tags the call for telemetry and, in Demo mode, returns the canned answer from
+/// <see cref="DemoResponseProvider"/>. Conversation messages are kept in an <see cref="IConversationStore"/>.
 /// </summary>
 public sealed class MafAgentProvider : ResponseAgentProvider
 {

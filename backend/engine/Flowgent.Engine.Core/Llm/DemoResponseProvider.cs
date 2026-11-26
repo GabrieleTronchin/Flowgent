@@ -100,7 +100,7 @@ public sealed partial class DemoResponseProvider
     }
 
     // The resolve/generate_code demos read their inputs from the rendered prompt (not RunContext) so they do not depend
-    // on when the seam surfaces prior-step outputs from run state. The migrated resolve prompt renders
+    // on when MAF reports prior-step outputs from run state. The migrated resolve prompt renders
     // "Subject: ..\n\nBody: ..\n\nComponent: .." and generate_code renders "Component: ..\n\nProposedFix: ..\n\nPath: ..".
     private static JsonObject Resolve(string renderedPrompt)
     {

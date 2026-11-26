@@ -4,7 +4,7 @@ trigger:
   id: fixture-rules
   actions:
 
-    # Read the intake input (text) as a record (ParseJSON-free; built-in input tool, PROBE-A).
+    # Read the intake input (text) as a record (the built-in input tool echoes it back, so no JSON parsing function is needed).
     - kind: InvokeMcpTool
       id: read_input
       serverUrl: inproc://flowgent

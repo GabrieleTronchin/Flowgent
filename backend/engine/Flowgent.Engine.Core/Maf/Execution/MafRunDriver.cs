@@ -11,12 +11,11 @@ using Microsoft.Extensions.Logging;
 using Flowgent.Engine.Core.Runs.Execution;
 
 /// <summary>
-/// Drives one MAF declarative run and translates the declarative event stream into neutral
-/// <see cref="RunEvent"/> records, so <c>RunOrchestrator</c> never sees a declarative type. It runs the workflow
-/// with JSON checkpointing so the host can read each step's <c>Global.&lt;stepId&gt;</c> JSON
-/// value from run state and surface it as a <see cref="RunEvent.StepCompleted"/>; it bridges a <c>RequestInfoEvent</c>
-/// human-input gate by invoking the supplied decision resolver and replying with an
-/// <see cref="DeclEvents.ExternalInputResponse"/> carrying the <c>{decision, reason}</c> JSON.
+/// Runs one workflow on Microsoft Agent Framework (MAF) and turns the framework events into plain <see cref="RunEvent"/>
+/// records, so <c>RunOrchestrator</c> never sees a MAF type. It saves a checkpoint after each step so the output of a
+/// step (<c>Global.&lt;stepId&gt;</c>) can be read back and reported as <see cref="RunEvent.StepCompleted"/>. When the
+/// workflow asks a human for input, it calls the supplied decision callback and sends the answer
+/// (<c>{decision, reason}</c>) back to the workflow as an <see cref="DeclEvents.ExternalInputResponse"/>.
 /// </summary>
 public sealed class MafRunDriver(MafWorkflowFactory factory, ILogger<MafRunDriver> logger) : IRunDriver
 {

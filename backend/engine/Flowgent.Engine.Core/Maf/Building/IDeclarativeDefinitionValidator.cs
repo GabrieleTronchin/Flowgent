@@ -8,9 +8,9 @@ using Flowgent.Contracts.Api;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// Trial-builds each workflow descriptor's declarative YAML so a malformed document is reported at load time.\r\n/// Lives in the seam (it needs the
-/// declarative builder); <see cref="Flowgent.Engine.Core.Modules.Catalog.ModuleCatalog"/> injects it so the Definitions layer stays
-/// declarative-free.
+/// Checks that each workflow YAML of a module can really be built, so a broken document is reported when the module is
+/// loaded and not when a run starts. It lives with the MAF code because it needs the MAF builder; <see cref="Flowgent.Engine.Core.Modules.Catalog.ModuleCatalog"/>
+/// uses it through this interface so the Definitions project does not need MAF.
 /// </summary>
 public interface IDeclarativeDefinitionValidator
 {

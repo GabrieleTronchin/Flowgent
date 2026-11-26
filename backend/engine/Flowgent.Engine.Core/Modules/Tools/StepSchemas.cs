@@ -7,9 +7,8 @@ using Flowgent.Definitions.Schemas;
 using Flowgent.Engine.Core.Runs.Execution;
 
 /// <summary>
-/// Validates step/tool inputs and outputs against JSON Schemas with consistent failure messages.
-/// Retained (moved out of <c>Steps/*</c>) so it survives the step-handler deletion; used by
-/// <see cref="ModuleToolInvoker"/> and the remaining step handlers.
+/// Checks a step or tool input/output against a JSON schema and fails the step with a consistent message.
+/// Used by <see cref="ModuleToolInvoker"/>.
 /// </summary>
 public static class StepSchemas
 {

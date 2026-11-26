@@ -4,8 +4,8 @@ using System.Text.Json.Nodes;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// What happens during a run, as reported by an <see cref="IRunDriver"/>. The orchestrator reacts to these events
-/// and never sees any workflow-framework type: the driver translates the framework's own events into these records.
+/// Everything that can happen during a run, as reported by an <see cref="IRunDriver"/>. The orchestrator reacts to
+/// these events and never sees a workflow-framework type: the driver turns the framework events into these records.
 /// </summary>
 public abstract record RunEvent
 {

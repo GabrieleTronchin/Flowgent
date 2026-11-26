@@ -13,19 +13,14 @@ using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
 /// <summary>
-/// The seam's <see cref="IMcpToolHandler"/>. The declarative
-/// <c>InvokeMcpTool</c> action calls this with the <c>serverLabel</c>/<c>toolName</c>/arguments from the YAML; the
-/// handler resolves the route in a strict order:
+/// Runs the tool steps (<c>InvokeMcpTool</c> actions) of one run. It picks where to send the call, in this order:
 /// <list type="number">
-/// <item>reserved built-ins by tool name (<see cref="InputToolName"/>/<see cref="ParseToolName"/>) served in-process;</item>
-/// <item>a <c>serverLabel</c> mapped in <see cref="EngineOptions.McpServers"/> → the MCP-over-HTTP branch (an entry whose
-/// label is the reserved <c>flowgent</c>, ordinal-ignore-case, is logged and skipped — never HTTP-routable);</item>
-/// <item>an unmapped label → the legacy in-process <see cref="ModuleToolInvoker"/> (which raises the existing
-/// <c>Tool '&lt;name&gt;' is not declared.</c> failure when the tool is truly absent).</item>
+/// <item>built-in tools <see cref="InputToolName"/> and <see cref="ParseToolName"/> are answered inside the engine;</item>
+/// <item>a <c>serverLabel</c> listed in <see cref="EngineOptions.McpServers"/> goes to that MCP server over HTTP (the
+/// reserved label <c>flowgent</c> is never routed over HTTP);</item>
+/// <item>any other label goes to <see cref="ModuleToolInvoker"/>, which calls the module service directly.</item>
 /// </list>
-/// Both branches return the tool output as exactly ONE non-numeric JSON string in one <see cref="TextContent"/>. The
-/// non-numeric invariant is mandatory: a bare top-level number crashes the <c>InvokeMcpTool</c> PowerFx binding with
-/// "Unsupported element type: Double", so a bare number is wrapped.
+/// Every path returns the result as one non-numeric JSON string: MAF fails on a bare top-level number, so numbers are wrapped.
 /// </summary>
 public sealed class ModuleToolHandler : IMcpToolHandler
 {

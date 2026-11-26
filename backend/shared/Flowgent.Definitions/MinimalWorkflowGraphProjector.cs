@@ -3,9 +3,8 @@ namespace Flowgent.Definitions;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// Default projector used when no declarative-aware projector is injected (e.g. the Module SDK validation path).
-/// Produces a minimal graph with one node per declared terminal and no edges. The real projection (action-kind
-/// nodes, condition-labelled edges) is supplied by the Runtime seam.
+/// Fallback projector for callers that have no MAF-aware one (for example the Module SDK validation). It returns one node
+/// per declared end state and no edges. The full graph comes from the projector in Engine.Core.
 /// </summary>
 public sealed class MinimalWorkflowGraphProjector : IWorkflowGraphProjector
 {

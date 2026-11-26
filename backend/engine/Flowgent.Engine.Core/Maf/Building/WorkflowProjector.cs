@@ -5,13 +5,11 @@ using Flowgent.Definitions;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// Projects a workflow's declarative YAML plus its manifest <c>terminals[]</c> into a <see cref="WorkflowGraphModel"/>
-/// for the dashboard. The logical steps the dashboard shows are the actions that snapshot their output to
-/// <c>Global.&lt;stepId&gt;</c> via a trailing <c>&lt;stepId&gt;_snapshot</c> SetVariable (dashboard kind taken from the
-/// action with id <c>&lt;stepId&gt;</c>); all other actions (input/parse tools, detail/terminal plumbing SetVariables,
-/// ConditionGroups, EndConversation) are excluded. Terminal nodes and their success/failure outcome come from the
-/// manifest <c>terminals[]</c>, never inferred from the YAML. Lives in the seam (it parses the declarative document);
-/// <see cref="ModuleLoader"/> depends only on <see cref="IWorkflowGraphProjector"/>.
+/// Turns a workflow YAML and the <c>terminals[]</c> of its manifest into the graph shown by the dashboard. A step is an
+/// action followed by a <c>&lt;stepId&gt;_snapshot</c> SetVariable that stores its output in <c>Global.&lt;stepId&gt;</c>;
+/// helper actions (input/parse tools, plumbing variables, condition groups, EndConversation) are left out. End nodes and
+/// their success or failure outcome come from the manifest, never from the YAML. It lives with the MAF code because it
+/// reads the MAF document; <see cref="ModuleLoader"/> only knows <see cref="IWorkflowGraphProjector"/>.
 /// </summary>
 public sealed class WorkflowProjector : IWorkflowGraphProjector
 {

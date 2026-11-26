@@ -10,10 +10,9 @@ using Flowgent.Engine.Core.Runs.Execution;
 using Microsoft.Extensions.Options;
 
 /// <summary>
-/// Calls a module tool and validates its input/output. Retained component extracted verbatim from
-/// <c>ToolStepHandler.InvokeAsync</c> so tool invocation survives the <c>Steps/*</c> deletion; it
-/// depends only on <see cref="IModuleClient"/>, <see cref="ModuleDefinition"/>, <see cref="StepSchemas"/>
-/// and <see cref="EngineOptions"/>, never on anything under <c>Steps/*</c>.
+/// Calls a tool of a module service and checks its input and output against the JSON schemas declared by the module.
+/// It uses <see cref="IModuleClient"/> for the HTTP call, <see cref="StepSchemas"/> for validation and
+/// <see cref="EngineOptions"/> for the default timeout.
 /// </summary>
 public sealed class ModuleToolInvoker(IModuleClient moduleClient, IOptions<EngineOptions> engineOptions)
 {

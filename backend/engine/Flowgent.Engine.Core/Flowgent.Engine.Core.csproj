@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Flowgent engine runtime: workflow compilation and execution, step kinds, LLM access, module catalog, inbox.</Description>
+    <Description>Flowgent engine core: run intake, inbox and orchestration, module catalog, MAF workflow building and execution, LLM access.</Description>
   </PropertyGroup>
 
-  <!-- MAF declarative APIs are marked "evaluation only" and emit experimental diagnostics.
-       Suppressed here (scoped to THIS project only, never global): MEAI001 (Microsoft.Extensions.AI),
-       MAAI001 (Microsoft.Agents.AI), OPENAI001 (OpenAI, via Microsoft.Agents.AI.OpenAI).
-       IDs confirmed by FEAT-001 setup gate (restore+build) and the spike reflection probe. -->
+  <!-- MAF declarative APIs are marked "evaluation only" and emit experimental warnings. They are
+       suppressed here, for this project only: MEAI001 (Microsoft.Extensions.AI), MAAI001 (Microsoft.Agents.AI)
+       and OPENAI001 (OpenAI, via Microsoft.Agents.AI.OpenAI). -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);MEAI001;MAAI001;OPENAI001</NoWarn>
   </PropertyGroup>
@@ -20,9 +19,8 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
-    <!-- FEAT-002: MCP client (over Streamable HTTP). Gate-0/FEAT-001 proved the client package
-         ModelContextProtocol.Core references NO Microsoft.AspNetCore.* assembly, so referencing it
-         here keeps DefinitionsAndRuntime_DoNotDependOnAspNetCore green (design §2.8). -->
+    <!-- MCP client (over Streamable HTTP). The client package does not reference any Microsoft.AspNetCore assembly,
+         so using it here keeps the rule "Definitions and Engine.Core do not depend on ASP.NET Core" true. -->
     <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
 

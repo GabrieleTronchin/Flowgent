@@ -4,8 +4,8 @@ trigger:
   id: joke
   actions:
 
-    # Read the intake input (topic) as a record via the seam's built-in input tool: PowerFx has no ParseJSON, so the
-    # input JSON string is echoed back as a JSON-object string and parsed to a one-row record (PROBE-A).
+    # Read the intake input (topic) as a record via the engine's built-in input tool: PowerFx has no ParseJSON, so the
+    # input JSON string is echoed back as a JSON-object string and parsed to a one-row record.
     - kind: InvokeMcpTool
       id: read_input
       serverUrl: inproc://flowgent
@@ -29,7 +29,7 @@ trigger:
       output:
         messages: Local.tell
 
-    # Parse the agent's structured answer (a JSON string) into a record so .joke can be read (ParseJSON-free, PROBE-A).
+    # Parse the agent's structured answer (a JSON string) into a record so .joke can be read (no JSON parsing function is needed).
     - kind: InvokeMcpTool
       id: parse_tell
       serverUrl: inproc://flowgent

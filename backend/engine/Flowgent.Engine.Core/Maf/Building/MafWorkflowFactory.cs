@@ -11,11 +11,9 @@ using Microsoft.Agents.AI.Workflows.Declarative;
 using Microsoft.Extensions.AI;
 
 /// <summary>
-/// Builds one MAF declarative <see cref="Workflow"/> per run by wrapping
-/// <see cref="DeclarativeWorkflowBuilder"/>.Build&lt;JsonObject&gt; over the run's raw YAML, with
-/// <see cref="DeclarativeWorkflowOptions"/> carrying the per-run <see cref="MafAgentProvider"/> and
-/// <see cref="ModuleToolHandler"/>. A fresh workflow per run is required: the framework takes exclusive ownership and
-/// executors hold run state.
+/// Builds the MAF workflow for one run from the workflow YAML. The workflow is built fresh for every run because MAF
+/// takes ownership of it and its steps keep per-run state. The factory wires in the per-run <see cref="MafAgentProvider"/>
+/// (for LLM steps) and <see cref="ModuleToolHandler"/> (for tool steps).
 /// </summary>
 public sealed class MafWorkflowFactory(
     IChatClient chatClient,

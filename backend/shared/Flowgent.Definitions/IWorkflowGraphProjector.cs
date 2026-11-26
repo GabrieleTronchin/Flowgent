@@ -3,10 +3,9 @@ namespace Flowgent.Definitions;
 using Flowgent.Definitions.Model;
 
 /// <summary>
-/// Projects a workflow's declarative YAML plus its manifest-side outcome metadata into a
-/// <see cref="WorkflowGraphModel"/> for the dashboard. Implemented in the Runtime MAF seam (which may parse the
-/// declarative YAML); <see cref="ModuleLoader"/> only depends on this abstraction so the Definitions layer stays
-/// free of declarative types.
+/// Turns a workflow YAML plus the outcome metadata of its manifest into the <see cref="WorkflowGraphModel"/> shown by the
+/// dashboard. The real implementation lives in Engine.Core (it needs MAF to read the YAML); <see cref="ModuleLoader"/>
+/// only knows this interface, so the Definitions project stays free of MAF.
 /// </summary>
 public interface IWorkflowGraphProjector
 {
