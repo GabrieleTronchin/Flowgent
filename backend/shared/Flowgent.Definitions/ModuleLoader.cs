@@ -5,13 +5,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Json.Schema;
-using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Modules;
 using Flowgent.Definitions.Model;
 using Flowgent.Definitions.Schemas;
-using Flowgent.Definitions.Validation;
 using Flowgent.Definitions.Yaml;
+using Json.Schema;
 
 /// <summary>
 /// Loads a module definition (manifest, workflows, samples, prompts, schemas) from a package or a folder.
@@ -85,46 +83,8 @@ public static class ModuleLoader
         var manifest = manifestDoc.Value.Model;
         errors.ModuleId = manifest.Id;
 
-        // Resolve each workflow's raw YAML text (reference + existence checks only; the declarative document
-        // itself is not parsed here).
-        var workflows = new List<WorkflowDescriptor>();
-        foreach (var reference in manifest.Workflows)
-        {
-            if (!CheckReference(files, reference.File, ModuleManifest.FileName, "workflow", errors))
-            {
-                continue;
-            }
-
-            var normalized = DefinitionPaths.Normalize(reference.File);
-            workflows.Add(new WorkflowDescriptor
-            {
-                Id = reference.Id,
-                Version = reference.Version,
-                Name = reference.Name,
-                Description = reference.Description,
-                TitleTemplate = reference.Title,
-                InputSchema = reference.Input.Schema,
-                InputErrorMessage = reference.ErrorMessage,
-                Yaml = files[normalized],
-                File = normalized,
-                Graph = projector.Project(reference, files[normalized]),
-            });
-        }
-
-        var samples = new List<SampleDocument>();
-        foreach (var path in manifest.Samples)
-        {
-            if (!CheckReference(files, path, ModuleManifest.FileName, "samples", errors))
-            {
-                continue;
-            }
-
-            var doc = ReadDocument<SamplesFile>(files, DefinitionPaths.Normalize(path), FormatSchemas.Samples, errors);
-            if (doc is { } d)
-            {
-                samples.AddRange(d.Model.Samples.Select((s, i) => new SampleDocument(s, DefinitionPaths.Normalize(path), d.Lines, i)));
-            }
-        }
+        var workflows = ResolveWorkflows(manifest, files, projector, errors);
+        var samples = ReadSamples(manifest, files, errors);
 
         if (errors.HasErrors)
         {
@@ -149,6 +109,60 @@ public static class ModuleLoader
             errors.All);
 
         return new LoadResult(module, errors.All);
+    }
+
+    /// <summary>
+    /// Resolves each workflow's raw YAML text (reference + existence checks only; the declarative document itself is
+    /// not parsed here).
+    /// </summary>
+    private static List<WorkflowDescriptor> ResolveWorkflows(
+        ModuleManifest manifest, Dictionary<string, string> files, IWorkflowGraphProjector projector, DefinitionErrors errors)
+    {
+        var workflows = new List<WorkflowDescriptor>();
+        foreach (var reference in manifest.Workflows)
+        {
+            if (!CheckReference(files, reference.File, ModuleManifest.FileName, "workflow", errors))
+            {
+                continue;
+            }
+
+            var normalized = DefinitionPaths.Normalize(reference.File);
+            workflows.Add(new WorkflowDescriptor
+            {
+                Id = reference.Id,
+                Version = reference.Version,
+                Name = reference.Name,
+                Description = reference.Description,
+                TitleTemplate = reference.Title,
+                InputSchema = reference.Input.Schema,
+                InputErrorMessage = reference.ErrorMessage,
+                Yaml = files[normalized],
+                File = normalized,
+                Graph = projector.Project(reference, files[normalized]),
+            });
+        }
+
+        return workflows;
+    }
+
+    private static List<SampleDocument> ReadSamples(ModuleManifest manifest, Dictionary<string, string> files, DefinitionErrors errors)
+    {
+        var samples = new List<SampleDocument>();
+        foreach (var path in manifest.Samples)
+        {
+            if (!CheckReference(files, path, ModuleManifest.FileName, "samples", errors))
+            {
+                continue;
+            }
+
+            var doc = ReadDocument<SamplesFile>(files, DefinitionPaths.Normalize(path), FormatSchemas.Samples, errors);
+            if (doc is { } d)
+            {
+                samples.AddRange(d.Model.Samples.Select((s, i) => new SampleDocument(s, DefinitionPaths.Normalize(path), d.Lines, i)));
+            }
+        }
+
+        return samples;
     }
 
     private static bool CheckReference(Dictionary<string, string> files, string path, string fromFile, string what, DefinitionErrors errors)
@@ -227,24 +241,4 @@ public static class ModuleLoader
             && id.TryGetValue<string>(out var value)
             ? value
             : null;
-}
-
-internal sealed record SampleDocument(SampleDefinition Sample, string File, LineMap Lines, int Index);
-
-/// <summary>Collects definition errors and warnings for one module.</summary>
-internal sealed class DefinitionErrors(string moduleId)
-{
-    private readonly List<DefinitionErrorInfo> _items = [];
-
-    public string ModuleId { get; set; } = moduleId;
-
-    public IReadOnlyList<DefinitionErrorInfo> All => _items;
-
-    public bool HasErrors => _items.Exists(e => e.Severity == DefinitionSeverity.Error);
-
-    public void Add(string? file, string? stepId, int? line, string message) =>
-        _items.Add(new DefinitionErrorInfo(ModuleId, file, stepId, line, message, DefinitionSeverity.Error));
-
-    public void Warn(string? file, string? stepId, int? line, string message) =>
-        _items.Add(new DefinitionErrorInfo(ModuleId, file, stepId, line, message, DefinitionSeverity.Warning));
 }

@@ -2,8 +2,8 @@ namespace Flowgent.Engine.Tests.Runtime;
 
 using System.Text.Json.Nodes;
 using Flowgent.Contracts.Runs;
+using Flowgent.Engine.Core.Runs.HumanInput;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.HumanInput;
 
 public class HumanInputAndStepKindTests
 {
@@ -162,7 +162,7 @@ public class HumanInputAndStepKindTests
         Assert.Equal("Workflow was cancelled.", run.Detail);
     }
 
-    // Observability change (same Gap-3 class as support RoutingFailures; FEAT-004-observability-gap-analysis.md Gap 3):
+    // Observability note (same as support RoutingFailures):
     // under MAF a routing failure is a GotoAction to an explicit failure terminal, so CurrentStepId is that terminal
     // (fail_ambiguous / fail_no_team), not the rule step "route". The verbatim failure message is preserved.
     [Theory]

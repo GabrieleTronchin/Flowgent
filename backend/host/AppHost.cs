@@ -10,6 +10,12 @@ if (builder.Configuration["AppHost:LlmProvider"] is { Length: > 0 } llmProvider)
     engine.WithEnvironment("Flowgent__Llm__Provider", llmProvider);
 }
 
+// Support MCP server (serverLabel "support"): the engine reaches its tools over Streamable HTTP.
+var supportMcp = builder.AddProject<Projects.Flowgent_Mcp_Support>("support-mcp")
+    .WithEnvironment("SUPPORT_DUMMYAPPS_ROOT", Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "modules", "support", "dummy-apps")));
+engine.WithReference(supportMcp)
+    .WithEnvironment("Flowgent__McpServers__0__Label", "support")
+    .WithEnvironment("Flowgent__McpServers__0__Url", "http://support-mcp");
 var gateway = builder.AddProject<Projects.Flowgent_Gateway>("gateway")
     .WithReference(engine)
     .WithEnvironment("Gateway__Engine__Address", "http://engine");

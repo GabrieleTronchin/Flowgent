@@ -8,7 +8,7 @@ graph LR
 ```
 
 - `summarize` asks the LLM for a short summary (structured output, `schemas/summary.schema.json`). In Demo mode the engine's `DemoResponseProvider` answers instead, so no API key is needed.
-- `count_words` calls the module's own tool `template.wordCount` (C# code in `service/Tools/WordCountTool.cs`).
+- `count_words` calls the module's own tool `template.wordCount` (C# code in `service/WordCountTool.cs`).
 - `done` ends the run with the summary and the word count.
 
 ## Layout
@@ -23,7 +23,7 @@ backend/modules/_template/
 │   └── samples/              # sample inputs shown by the dashboard
 ├── service/                  # module service (ASP.NET Core + Flowgent.Module.Sdk), port 5083
 │   ├── TemplateHost.cs       # builds the app; used by Program.cs and by the tests
-│   ├── Tools/WordCountTool.cs
+│   ├── WordCountTool.cs      # the module's own tool
 │   └── template.http         # requests through the gateway
 └── tests/                    # definition validation + end-to-end run in Demo mode (in-process)
 ```

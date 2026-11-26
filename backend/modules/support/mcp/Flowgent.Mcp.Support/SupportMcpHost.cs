@@ -1,6 +1,5 @@
 namespace Flowgent.Mcp.Support;
 
-using Flowgent.Mcp.Support.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,7 +22,8 @@ public static class SupportMcpHost
         {
             if (builder.Configuration[SupportMcpOptions.EnvironmentVariable] is { Length: > 0 } root)
             {
-                o.DummyAppsRoot = root;
+                // The containment check in LocateComponentCore needs an absolute, normalized root.
+                o.DummyAppsRoot = Path.GetFullPath(root);
             }
         });
 

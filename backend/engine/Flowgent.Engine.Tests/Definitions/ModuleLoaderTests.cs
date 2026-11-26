@@ -7,7 +7,7 @@ using Flowgent.Definitions.Model;
 using Flowgent.Engine.Tests.Helpers;
 
 /// <summary>
-/// Module-envelope loading after the MAF declarative migration (design §4.3, §15, §18 AC-16). The custom step-format
+/// Module-envelope loading after the MAF declarative migration. The custom step-format
 /// validator (DefinitionValidator) is deleted: the loader no longer parses or step-validates the workflow document
 /// (unknown step kind, unreachable step, template/condition/regex, terminal-with-next, duplicate step ids, etc.).
 /// Those checks are gone as a documented behavior change — a malformed declarative workflow is now reported by the
@@ -160,7 +160,10 @@ public class ModuleLoaderTests
         var root = Directory.CreateTempSubdirectory("flowgent-def-");
         try
         {
-            foreach (var (path, content) in TestModules.Files())
+            // The fixture strings are raw literals, so they carry the checkout's line endings (CRLF on Windows with
+            // core.autocrlf=true). Normalise to LF first, then write every file with CRLF on disk.
+            var lfFiles = TestModules.Files().ToDictionary(f => f.Key, f => f.Value.ReplaceLineEndings("\n"));
+            foreach (var (path, content) in lfFiles)
             {
                 var full = Path.Combine(root.FullName, path);
                 Directory.CreateDirectory(Path.GetDirectoryName(full)!);
@@ -172,9 +175,9 @@ public class ModuleLoaderTests
 
             Assert.Equal("demo", package.ModuleId);
             Assert.Contains("workflows/hello.yaml", package.Files.Keys);
-            Assert.DoesNotContain('\r', package.Files["module.yaml"]);
+            Assert.All(package.Files.Values, content => Assert.DoesNotContain('\r', content));
             Assert.True(result.IsValid);
-            Assert.Equal(TestModules.Package().Version, package.Version);
+            Assert.Equal(ModuleLoader.ComputeVersion(lfFiles), package.Version);
         }
         finally
         {

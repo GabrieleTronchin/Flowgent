@@ -1,6 +1,6 @@
 namespace Flowgent.Engine.Tests.Helpers;
 
-using Flowgent.Runtime.Maf;
+using Flowgent.Engine.Core.Maf.Mcp;
 using ModelContextProtocol.Client;
 
 /// <summary>

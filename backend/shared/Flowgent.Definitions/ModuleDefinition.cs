@@ -69,28 +69,3 @@ public sealed class ModuleDefinition
             ? entry
             : throw new InvalidOperationException($"Schema '{source.File ?? "inline"}' was not loaded for module '{Id}'.");
 }
-
-/// <summary>Result of loading a module: the definition when valid, plus errors and warnings.</summary>
-public sealed record LoadResult(ModuleDefinition? Module, IReadOnlyList<DefinitionErrorInfo> Errors)
-{
-    public bool IsValid => Module is not null;
-
-    public IEnumerable<DefinitionErrorInfo> BlockingErrors => Errors.Where(e => e.Severity == DefinitionSeverity.Error);
-}
-
-/// <summary>Path rules for files inside a definition folder.</summary>
-public static class DefinitionPaths
-{
-    public static string Normalize(string path) => path.Replace('\\', '/').TrimStart('.', '/').Trim();
-
-    /// <summary>True for relative paths that stay inside the definition folder.</summary>
-    public static bool IsSafe(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path) || path.Contains(':'))
-        {
-            return false;
-        }
-
-        return path.Replace('\\', '/').Split('/').All(segment => segment != "..");
-    }
-}

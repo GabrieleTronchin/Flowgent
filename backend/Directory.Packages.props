@@ -24,8 +24,7 @@
 
   <!-- ═══════════════════════════════════════════════════════════════════
        Model Context Protocol (MCP)
-       Added for the containerize-and-mcp task (Gate-0 / FEAT-001). No project
-       consumes these yet — central versions only; the build stays green.
+       Central versions of the MCP client (engine) and MCP server (Flowgent.Mcp.Support) packages.
        ═══════════════════════════════════════════════════════════════════ -->
   <ItemGroup Label="MCP">
     <PackageVersion Include="ModelContextProtocol" Version="1.4.2" />
@@ -89,7 +88,6 @@
   <ItemGroup Label="Testing">
     <PackageVersion Include="coverlet.MTP" Version="10.1.0" />
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.6.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.14" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />

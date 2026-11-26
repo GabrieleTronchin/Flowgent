@@ -8,7 +8,7 @@ Workflows are MAF declarative documents, so expressions inside them are **PowerF
 
 ## Reading data
 
-The run's intake input arrives as the trigger message text (a JSON string). PowerFx has no `ParseJSON`, so a workflow reads structured data through the seam's built-in MCP tools and then `First(...)`:
+The run's intake input arrives as the trigger message text (a JSON string). PowerFx has no `ParseJSON`, so a workflow reads structured data through the engine's built-in MCP tools and then `First(...)`:
 
 ```yaml
 - kind: InvokeMcpTool
@@ -60,7 +60,7 @@ The run's intake input arrives as the trigger message text (a JSON string). Powe
     - { kind: GotoAction, id: goto_oos, actionId: classified_out_of_scope_message }
 ```
 
-## Crossing the seam boundary
+## Crossing the MAF boundary
 
 Values cross between the engine and PowerFx as JSON strings. Two invariants to respect when authoring:
 

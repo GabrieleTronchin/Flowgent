@@ -3,7 +3,7 @@ namespace Flowgent.Engine.Tests.Runtime;
 using System.Text.Json.Nodes;
 using Flowgent.Contracts.Runs;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.Llm;
+using Flowgent.Engine.Core.Llm;
 
 public class RunExecutionTests
 {

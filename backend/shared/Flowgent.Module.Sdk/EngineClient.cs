@@ -5,24 +5,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Flowgent.Contracts.Api;
 
-/// <summary>Result of submitting an input to the engine intake.</summary>
-public abstract record EngineSubmitResult
-{
-    public sealed record Accepted(IntakeAccepted Ids) : EngineSubmitResult;
-
-    public sealed record Invalid(string Message) : EngineSubmitResult;
-
-    public sealed record NotFound(string Message) : EngineSubmitResult;
-
-    public sealed record Unavailable(string Message) : EngineSubmitResult;
-}
-
-/// <summary>Submits inputs to the engine's generic intake (<c>POST /api/engine/workflows/{id}/runs</c>).</summary>
-public interface IEngineClient
-{
-    Task<EngineSubmitResult> SubmitAsync(string workflowId, object input, CancellationToken ct = default);
-}
-
 internal sealed class EngineClient(HttpClient httpClient) : IEngineClient
 {
     public const string HttpClientName = "flowgent-engine";

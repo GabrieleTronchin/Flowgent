@@ -75,10 +75,11 @@ Each submitted input becomes a **run** of one workflow. A run has a current step
 
 ### Execution
 
-- `MafWorkflowFactory` builds a fresh MAF **declarative** workflow **per run** from the workflow's YAML (`DeclarativeWorkflowBuilder.Build<JsonObject>`), bound to the run's `RunContext`. Concurrent runs never share state. All declarative types are confined to the `Flowgent.Runtime.Maf` seam.
+- `MafWorkflowFactory` builds a fresh MAF **declarative** workflow **per run** from the workflow's YAML (`DeclarativeWorkflowBuilder.Build<JsonObject>`), bound to the run's `RunContext`. Concurrent runs never share state. All declarative types are confined to the `Flowgent.Engine.Core.Maf` folder.
 - `MafRunDriver` runs the workflow with JSON checkpointing and translates the declarative event stream into neutral records: per-step `StepStarted`/`StepCompleted` read from `Global.<stepId>` run-state variables, HITL via `RequestInfoEvent`↔`HumanInputRegistry`, and one terminal transition whose outcome comes from the manifest `terminals[]`.
 - A step that fails (agent/LLM error, tool error, PowerFx error) ends the run as `Failed` with a descriptive reason; an expected module-tool failure surfaces its `StepFailedException` message (e.g. `Module '<id>' is unavailable…`).
-- Each agent call emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Runtime`) tagged with run, module, workflow and step.
+- The run path (intake, inbox, orchestrator, MAF factory and run driver) and the folder layout of Flowgent.Engine.Core are described in its [README](../backend/engine/Flowgent.Engine.Core/README.md); each main project has one.
+- Each agent call emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Engine.Core`) tagged with run, module, workflow and step.
 
 ### Persistence
 
@@ -91,7 +92,7 @@ backend/
 ├── Flowgent.slnx                   # one solution: platform, modules, tests
 ├── Directory.Build.props, Directory.Packages.props, .editorconfig   # shared build settings
 ├── host/                           # Flowgent.AppHost (Aspire)
-├── engine/                         # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
+├── engine/                         # Flowgent.Engine.Service, .Engine.Core, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
 ├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests
 ├── shared/                         # Flowgent.Contracts, .Definitions (Schemas/: JSON Schemas of module.yaml and samples), .Module.Sdk, .ServiceDefaults
 ├── tests/                          # Architecture, Integration tests, Flowgent.Testing (in-process harness), Fixtures/ (test-only module)
@@ -110,9 +111,9 @@ nuget.config, global.json           # package source and SDK / test runner (repo
 graph TD
     Contracts[Flowgent.Contracts]
     Definitions[Flowgent.Definitions] --> Contracts
-    Runtime[Flowgent.Runtime] --> Definitions
-    Persistence[Flowgent.Persistence] --> Runtime
-    EngineSvc[Flowgent.Engine.Service] --> Runtime & Persistence & Defaults
+    Core[Flowgent.Engine.Core] --> Definitions
+    Persistence[Flowgent.Persistence] --> Core
+    EngineSvc[Flowgent.Engine.Service] --> Core & Persistence & Defaults
     Gateway[Flowgent.Gateway] --> Defaults[Flowgent.ServiceDefaults]
     Sdk[Flowgent.Module.Sdk] --> Contracts & Definitions
     Modules[Module services] --> Sdk & Defaults
@@ -126,7 +127,7 @@ graph TD
 - Engine projects and the gateway never reference `backend/modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
 - Module services reference only `Flowgent.Module.Sdk`, `Flowgent.Contracts`, `Flowgent.Definitions` and `Flowgent.ServiceDefaults`.
 - `Flowgent.Mcp.Support` references only `Flowgent.ServiceDefaults` and the MCP package.
-- `Definitions` and `Runtime` do not depend on ASP.NET Core.
+- `Definitions` and `Engine.Core` do not depend on ASP.NET Core.
 - Engine sources and the proto contain no domain terms of the support module.
 
 ## Security notes

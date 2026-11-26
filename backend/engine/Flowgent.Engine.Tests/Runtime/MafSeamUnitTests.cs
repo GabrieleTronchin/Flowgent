@@ -2,11 +2,12 @@ namespace Flowgent.Engine.Tests.Runtime;
 
 using System.Text.Json.Nodes;
 using Flowgent.Definitions.Model;
-using Flowgent.Runtime.Llm;
-using Flowgent.Runtime.Maf;
+using Flowgent.Engine.Core.Llm;
+using Flowgent.Engine.Core.Maf.Building;
+using Flowgent.Engine.Core.Maf.Execution;
 
 /// <summary>
-/// FEAT-003 unit tests for the pure, host-independent seam pieces (design AC): the Demo response provider's
+/// Unit tests for the pure, host-independent seam pieces: the Demo response provider's
 /// topic/rule/severity logic, the graph projector's nodes/edges/outcomes, the PowerFx JSON-string round-trip, and the
 /// checkpoint <c>@Global</c> value extraction.
 /// </summary>
@@ -60,7 +61,7 @@ public sealed class MafSeamUnitTests
     [Fact]
     public void WorkflowProjector_ProjectsSnapshotStepsAndManifestTerminals()
     {
-        // FEAT-004: the graph's logical steps are the actions that snapshot their output via a trailing
+        // The graph's logical steps are the actions that snapshot their output via a trailing
         // "<stepId>_snapshot" SetVariable (kind taken from the action with id <stepId>); terminals come from the
         // manifest. Plumbing actions (input/parse tools, detail/terminal SetVariables, ConditionGroups) are excluded.
         const string yaml = """
@@ -113,7 +114,7 @@ public sealed class MafSeamUnitTests
         Assert.Equal("src/X.cs", globals["produce"]);
     }
 
-    private static Flowgent.Runtime.Execution.RunContext RunStub()
+    private static Flowgent.Engine.Core.Runs.Execution.RunContext RunStub()
     {
         var descriptor = new WorkflowDescriptor
         {
@@ -126,7 +127,7 @@ public sealed class MafSeamUnitTests
             Graph = new WorkflowGraphModel("x", [], []),
         };
         // ModuleDefinition is only needed for cross-step reads this stub does not exercise; use a loaded module.
-        return new Flowgent.Runtime.Execution.RunContext(Guid.NewGuid(), LoadStubModule(), descriptor, [], null, CancellationToken.None);
+        return new Flowgent.Engine.Core.Runs.Execution.RunContext(Guid.NewGuid(), LoadStubModule(), descriptor, [], null, CancellationToken.None);
     }
 
     private static Flowgent.Definitions.ModuleDefinition LoadStubModule()

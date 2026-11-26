@@ -6,9 +6,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
+using Flowgent.Engine.Core.Modules.Catalog;
+using Flowgent.Engine.Core.Modules.Client;
 using Flowgent.Engine.Service;
 using Flowgent.Gateway;
-using Flowgent.Runtime.Modules;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -178,8 +179,8 @@ public sealed class PlatformHarness : IAsyncDisposable
             builder.Configuration.AddInMemoryCollection(engineSettings);
             builder.Services.ConfigureHttpClientDefaults(http => http.ConfigurePrimaryHttpMessageHandler(router.CreateClientHandler));
             // Override the production HttpMcpTransportFactory (registered with TryAdd) so the engine reaches the
-            // harness's in-process MCP TestServers over the router instead of a real socket (FEAT-003).
-            builder.Services.AddSingleton<Flowgent.Runtime.Maf.IMcpTransportFactory>(sp =>
+            // harness's in-process MCP TestServers over the router instead of a real socket.
+            builder.Services.AddSingleton<Flowgent.Engine.Core.Maf.Mcp.IMcpTransportFactory>(sp =>
                 new RoutedMcpTransportFactory(router, sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()));
         });
         await engine.StartAsync();

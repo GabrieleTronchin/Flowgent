@@ -112,8 +112,8 @@ public sealed class FixtureModuleTests : IAsyncLifetime
         var run = await _platform.WaitForTerminalAsync(await _platform.SubmitFixtureAsync(FixtureHost.RulesWorkflowId, new { text = "alpha and beta" }));
 
         Assert.Equal(RunStatus.Failed, run.Status);
-        // Observability-contract change (same Gap-3 class as support's RoutingFailures; see
-        // FEAT-004-observability-gap-analysis.md Gap 3): under MAF an ambiguous rule match is a GotoAction to an
+        // Observability note (same as support's RoutingFailures):
+        // under MAF an ambiguous rule match is a GotoAction to an
         // explicit failure terminal, so CurrentStepId is that terminal ("ambiguous"), not the rule step ("classify").
         // The business outcome is preserved: Failed with the verbatim declared message.
         Assert.Equal("ambiguous", run.CurrentStepId);

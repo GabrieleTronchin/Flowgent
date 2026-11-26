@@ -4,17 +4,19 @@ using System.Text.Json.Nodes;
 using Flowgent.Contracts.Modules;
 using Flowgent.Definitions;
 using Flowgent.Definitions.Model;
+using Flowgent.Engine.Core.Configuration;
+using Flowgent.Engine.Core.Maf.Building;
+using Flowgent.Engine.Core.Maf.Mcp;
+using Flowgent.Engine.Core.Modules.Client;
+using Flowgent.Engine.Core.Modules.Tools;
+using Flowgent.Engine.Core.Runs.Execution;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.Configuration;
-using Flowgent.Runtime.Execution;
-using Flowgent.Runtime.Maf;
-using Flowgent.Runtime.Modules;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
 /// <summary>
-/// FEAT-002 unit tests for the strict resolution order of <see cref="ModuleToolHandler"/> and the MCP-over-HTTP branch,
+/// Unit tests for the strict resolution order of <see cref="ModuleToolHandler"/> and the MCP-over-HTTP branch,
 /// driven through a fake <see cref="IMcpTransportFactory"/> over in-memory pipes (no network). Covers: reserved
 /// built-ins served in-process; a mapped label routed to the HTTP branch; the reserved <c>flowgent</c> label rejected;
 /// an unmapped label falling back to the legacy in-process invoker; bare-name wire translation with qualified schema
@@ -207,7 +209,7 @@ public sealed class ModuleToolHandlerTests
         var failing = new FailableTransport(serverA.ClientTransport);
 
         var factory = new FakeMcpTransportFactory(failing, serverB.ClientTransport);
-        await using var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        await using var pool = new McpClientPool(factory);
         var (handler, _) = Handler(pool, factory, mappedLabel: MappedLabel, module: TestModules.LoadValid(), url: MappedUrl);
 
         // Warm the first client (handshake succeeds), then flip it to fail on the next send (the tool call).
@@ -237,7 +239,7 @@ public sealed class ModuleToolHandlerTests
         module ??= TestModules.LoadValid();
 
         var factory = transport is null ? new FakeMcpTransportFactory() : new FakeMcpTransportFactory(transport);
-        var pool = new McpClientPool(factory, NullLoggerFactory.Instance);
+        var pool = new McpClientPool(factory);
 
         var engineOptions = new EngineOptions();
         if (mappedLabel is not null)

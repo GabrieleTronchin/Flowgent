@@ -14,7 +14,7 @@ using NetArchTest.Rules;
 /// </summary>
 public class DependencyRulesTests
 {
-    private static readonly string[] EngineNamespaces = ["Flowgent.Runtime", "Flowgent.Persistence", "Flowgent.Engine.Service", "Flowgent.Gateway", "Flowgent.Testing"];
+    private static readonly string[] EngineNamespaces = ["Flowgent.Engine.Core", "Flowgent.Persistence", "Flowgent.Engine.Service", "Flowgent.Gateway", "Flowgent.Testing"];
 
     private static readonly string[] SupportDomainTerms = ["IncomingEmail", "IssueCategory", "TeamRouter", "/emails"];
 
@@ -25,7 +25,7 @@ public class DependencyRulesTests
 
     public static TheoryData<string> EngineAndGatewayAssemblies =>
     [
-        "Flowgent.Contracts", "Flowgent.Definitions", "Flowgent.Runtime", "Flowgent.Persistence", "Flowgent.Engine.Service", "Flowgent.Gateway",
+        "Flowgent.Contracts", "Flowgent.Definitions", "Flowgent.Engine.Core", "Flowgent.Persistence", "Flowgent.Engine.Service", "Flowgent.Gateway",
     ];
 
     public static TheoryData<string> ModuleAssemblies => [.. ModuleTypes.Select(t => t.Assembly.GetName().Name!)];
@@ -72,7 +72,7 @@ public class DependencyRulesTests
         ];
         string[] forbidden =
         [
-            ProjectGraph.Engine("Flowgent.Runtime"),
+            ProjectGraph.Engine("Flowgent.Engine.Core"),
             ProjectGraph.Engine("Flowgent.Persistence"),
             ProjectGraph.Service("Flowgent.Engine.Service"),
             ProjectGraph.Service("Flowgent.Gateway"),
@@ -87,7 +87,7 @@ public class DependencyRulesTests
     [Fact]
     public void SupportMcpServer_ReferencesOnlyServiceDefaultsAndTheMcpPackage()
     {
-        // FEAT-003: the standalone support MCP server is intentionally NOT a module service and NOT an engine project.
+        // The standalone support MCP server is intentionally NOT a module service and NOT an engine project.
         // Its only project reference is ServiceDefaults, and its only NuGet dependency is the MCP ASP.NET Core package;
         // it must never reach the Module SDK, contracts, definitions, runtime or any engine/service project.
         string[] forbidden =
@@ -95,7 +95,7 @@ public class DependencyRulesTests
             ProjectGraph.Sdk("Flowgent.Module.Sdk"),
             ProjectGraph.Engine("Flowgent.Contracts"),
             ProjectGraph.Engine("Flowgent.Definitions"),
-            ProjectGraph.Engine("Flowgent.Runtime"),
+            ProjectGraph.Engine("Flowgent.Engine.Core"),
             ProjectGraph.Engine("Flowgent.Persistence"),
             ProjectGraph.Service("Flowgent.Engine.Service"),
             ProjectGraph.Service("Flowgent.Gateway"),
@@ -135,7 +135,7 @@ public class DependencyRulesTests
 
     [Theory]
     [InlineData("Flowgent.Definitions")]
-    [InlineData("Flowgent.Runtime")]
+    [InlineData("Flowgent.Engine.Core")]
     public void DefinitionsAndRuntime_DoNotDependOnAspNetCore(string assemblyName)
     {
         var assembly = Assembly.Load(assemblyName);
@@ -160,17 +160,17 @@ public class DependencyRulesTests
     [Fact]
     public void OnlyTheMafSeam_ReferencesTheDeclarativePackage()
     {
-        var assembly = Assembly.Load("Flowgent.Runtime");
+        var assembly = Assembly.Load("Flowgent.Engine.Core");
 
-        // Only types in Flowgent.Runtime.Maf may depend on Microsoft.Agents.AI.Workflows.Declarative; every other
-        // namespace exchanges plain .NET types with the seam (AC-4, design §13).
+        // Only types in Flowgent.Engine.Core.Maf may depend on Microsoft.Agents.AI.Workflows.Declarative; every other
+        // namespace exchanges plain .NET types with the seam.
         var result = Types.InAssembly(assembly)
-            .That().ResideInNamespace("Flowgent.Runtime")
-            .And().DoNotResideInNamespace("Flowgent.Runtime.Maf")
+            .That().ResideInNamespace("Flowgent.Engine.Core")
+            .And().DoNotResideInNamespace("Flowgent.Engine.Core.Maf")
             .ShouldNot().HaveDependencyOn("Microsoft.Agents.AI.Workflows.Declarative")
             .GetResult();
 
-        Assert.True(result.IsSuccessful, $"Types outside Flowgent.Runtime.Maf depending on the declarative package: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        Assert.True(result.IsSuccessful, $"Types outside Flowgent.Engine.Core.Maf depending on the declarative package: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 
     // ── Source files ───────────────────────────────────────────────────

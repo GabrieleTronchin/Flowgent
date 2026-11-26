@@ -6,12 +6,6 @@ using System.Text.RegularExpressions;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
-/// <summary>Result of reading a YAML document as JSON.</summary>
-public sealed record YamlReadResult(JsonNode? Root, LineMap Lines, string? Error, int? ErrorLine)
-{
-    public bool IsSuccess => Error is null;
-}
-
 /// <summary>
 /// Converts a YAML document into a <see cref="JsonNode"/>, keeping the line of every node (by JSON pointer)
 /// so that validation errors can point to the YAML source. Plain scalars are typed (null, bool, number);
@@ -145,33 +139,8 @@ public static partial class YamlJsonReader
     private static partial Regex FloatPattern();
 }
 
-/// <summary>Line numbers of YAML nodes indexed by JSON pointer (e.g. <c>/steps/2/prompt</c>).</summary>
-public sealed class LineMap
+/// <summary>Result of reading a YAML document as JSON.</summary>
+public sealed record YamlReadResult(JsonNode? Root, LineMap Lines, string? Error, int? ErrorLine)
 {
-    private readonly Dictionary<string, int> _lines = new(StringComparer.Ordinal);
-
-    internal void Add(string pointer, int line) => _lines[pointer] = line;
-
-    /// <summary>Line of the node at <paramref name="pointer"/>, or of its closest known ancestor.</summary>
-    public int? Find(string? pointer)
-    {
-        var current = pointer ?? "";
-        while (true)
-        {
-            if (_lines.TryGetValue(current, out var line))
-            {
-                return line;
-            }
-
-            if (current.Length == 0)
-            {
-                return null;
-            }
-
-            var slash = current.LastIndexOf('/');
-            current = slash <= 0 ? "" : current[..slash];
-        }
-    }
+    public bool IsSuccess => Error is null;
 }
-
-internal sealed class YamlDepthException() : Exception("The YAML document is nested too deeply.");

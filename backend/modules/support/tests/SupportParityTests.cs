@@ -115,7 +115,7 @@ public sealed class SupportParityTests : IAsyncLifetime
         Assert.False(run.StepOutputs["classify"]!["isCodeRelated"]!.GetValue<bool>());
     }
 
-    // BEHAVIOUR CHANGE (FEAT-004, MAF declarative — see .agents/.../FEAT-004-observability-gap-analysis.md Gap 3):
+    // Behaviour under MAF declarative workflows:
     // a routing failure is now modelled as a GotoAction to an explicit failure terminal (fail_ambiguous / fail_no_app),
     // so the failing step id is that terminal, not "route_team". The outcome (Failed), the verbatim reason and the
     // classify output are preserved. The old engine had the rule step fail in place; under MAF the failing step is the
@@ -157,7 +157,7 @@ public sealed class SupportParityTests : IAsyncLifetime
         Assert.Equal("Subject and Body are required.", problem.RootElement.GetProperty("detail").GetString());
     }
 
-    // BEHAVIOUR CHANGE (FEAT-004, MAF declarative — see .agents/.../FEAT-004-observability-gap-analysis.md Gap 2):
+    // Behaviour under MAF declarative workflows:
     // the seam surfaces every logical step's output uniformly from run state, so EVERY step now emits both StepStarted
     // and StepCompleted in deterministic workflow order (the old engine suppressed StepStarted for synchronous rule/map
     // steps — an incidental artifact of its executors, not a dashboard contract). The HITL gate surfaces its
@@ -255,7 +255,7 @@ public sealed class SupportParityTests : IAsyncLifetime
             workflow!.Samples.Select(s => s.Id));
         Assert.Equal(["Application A", "Application B", "Edge Cases"], workflow.Samples.Select(s => s.Group!).Distinct());
         Assert.Equal("classify", workflow.Graph.Start);
-        // BEHAVIOUR CHANGE (FEAT-004, MAF declarative — see .agents/.../FEAT-004-observability-gap-analysis.md Gaps 2/3):
+        // Behaviour under MAF declarative workflows:
         // routing failures are now explicit terminals (fail_ambiguous / fail_no_app), so the graph shows the 7 pipeline
         // steps plus 6 terminals (was 10 = 7 steps + 3 terminals, with routing failures folded into the rule step).
         Assert.Equal(13, workflow.Graph.Nodes.Count);

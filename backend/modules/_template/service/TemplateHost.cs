@@ -1,7 +1,6 @@
 namespace Flowgent.Modules.Template;
 
 using Flowgent.Module.Sdk;
-using Flowgent.Modules.Template.Tools;
 
 /// <summary>
 /// Builds the template module service. <c>Program.cs</c> and the in-process test harness both use it.

@@ -2,14 +2,14 @@ namespace Flowgent.Engine.Tests.Runtime;
 
 using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
+using Flowgent.Contracts.Runs;
+using Flowgent.Engine.Core.Runs.Execution;
+using Flowgent.Engine.Core.Runs.Intake;
+using Flowgent.Engine.Core.Runs.Store;
+using Flowgent.Engine.Tests.Helpers;
 using FsCheck;
 using FsCheck.Fluent;
 using FsCheck.Xunit;
-using Flowgent.Contracts.Runs;
-using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Runtime.Execution;
-using Flowgent.Runtime.Intake;
-using Flowgent.Runtime.Runs;
 using Microsoft.Extensions.DependencyInjection;
 
 public class IntakeAndInboxTests
@@ -74,7 +74,7 @@ public class IntakeAndInboxTests
     {
         await using var engine = await TestEngine.StartAsync();
         engine.Modules.DownModules.Add("demo");
-        await engine.Services.GetRequiredService<Flowgent.Runtime.Modules.ModuleCatalogService>().RefreshAllAsync();
+        await engine.Services.GetRequiredService<Flowgent.Engine.Core.Modules.Catalog.ModuleCatalogService>().RefreshAllAsync();
 
         var result = await engine.Intake.SubmitAsync("hello", new JsonObject { ["text"] = "x" });
 
@@ -114,7 +114,7 @@ public class IntakeAndInboxTests
         await using var engine = await TestEngine.StartAsync();
         var runId = await engine.SubmitAsync(new JsonObject { ["text"] = "x" });
         engine.Modules.DownModules.Add("demo");
-        await engine.Services.GetRequiredService<Flowgent.Runtime.Modules.ModuleCatalogService>().RefreshAllAsync();
+        await engine.Services.GetRequiredService<Flowgent.Engine.Core.Modules.Catalog.ModuleCatalogService>().RefreshAllAsync();
 
         await engine.Inbox.ProcessPendingMessagesAsync(TestContext.Current.CancellationToken);
         await engine.Inbox.ProcessPendingMessagesAsync(TestContext.Current.CancellationToken);

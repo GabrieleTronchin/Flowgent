@@ -14,7 +14,7 @@ public static class ProjectGraph
         ["Flowgent.Definitions"] = "shared",
         ["Flowgent.Module.Sdk"] = "shared",
         ["Flowgent.ServiceDefaults"] = "shared",
-        ["Flowgent.Runtime"] = "engine",
+        ["Flowgent.Engine.Core"] = "engine",
         ["Flowgent.Persistence"] = "engine",
         ["Flowgent.Engine.Service"] = "engine",
         ["Flowgent.Gateway"] = "gateway",
@@ -41,7 +41,7 @@ public static class ProjectGraph
     [
         Engine("Flowgent.Contracts"),
         Engine("Flowgent.Definitions"),
-        Engine("Flowgent.Runtime"),
+        Engine("Flowgent.Engine.Core"),
         Engine("Flowgent.Persistence"),
         Service("Flowgent.Engine.Service"),
     ];

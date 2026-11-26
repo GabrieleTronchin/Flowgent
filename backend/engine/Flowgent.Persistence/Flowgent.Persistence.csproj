@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Flowgent.Runtime\Flowgent.Runtime.csproj" />
+    <ProjectReference Include="..\Flowgent.Engine.Core\Flowgent.Engine.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,8 @@
 namespace Flowgent.Engine.Service.Endpoints;
 
 using Flowgent.Contracts.Api;
+using Flowgent.Engine.Core.Runs.HumanInput;
 using Flowgent.Engine.Service.Endpoints.Primitives;
-using Flowgent.Runtime.HumanInput;
 
 /// <summary>Runs awaiting a human decision, and the approve / reject actions.</summary>
 internal sealed class HumanInputEndpoints : IEndpoint

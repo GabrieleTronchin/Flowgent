@@ -1,8 +1,8 @@
 namespace Flowgent.Engine.Service.Endpoints;
 
 using Flowgent.Contracts.Api;
+using Flowgent.Engine.Core.Runs.Intake;
 using Flowgent.Engine.Service.Endpoints.Primitives;
-using Flowgent.Runtime.Runs;
 
 /// <summary>Inbox messages (queued, processed, failed).</summary>
 internal sealed class InboxEndpoints : IEndpoint
