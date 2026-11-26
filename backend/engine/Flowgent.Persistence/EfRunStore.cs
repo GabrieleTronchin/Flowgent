@@ -3,7 +3,7 @@ namespace Flowgent.Persistence;
 using System.Text.Json.Nodes;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
-using Flowgent.Engine.Core.Runs;
+using Flowgent.Engine.Core.Runs.Store;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>

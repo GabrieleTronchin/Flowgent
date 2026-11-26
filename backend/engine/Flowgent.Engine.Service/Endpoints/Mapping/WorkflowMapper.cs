@@ -3,7 +3,7 @@ namespace Flowgent.Engine.Service.Endpoints.Mapping;
 using Flowgent.Contracts.Api;
 using Flowgent.Definitions;
 using Flowgent.Definitions.Model;
-using Flowgent.Engine.Core.Modules;
+using Flowgent.Engine.Core.Modules.Catalog;
 
 internal static class WorkflowMapper
 {

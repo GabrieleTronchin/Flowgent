@@ -1,8 +1,8 @@
 namespace Flowgent.Engine.Service.Grpc;
 
-using global::Grpc.Core;
 using Flowgent.Engine.Core.Configuration;
-using Flowgent.Engine.Core.Runs;
+using Flowgent.Engine.Core.Runs.Store;
+using global::Grpc.Core;
 using Microsoft.Extensions.Options;
 
 /// <summary>gRPC server stream of run transitions, filterable by run, workflow and module.</summary>
@@ -54,7 +54,7 @@ public sealed class RunMonitorService(
         }
     }
 
-    internal static RunUpdate ToMessage(Engine.Core.Runs.RunUpdate update)
+    internal static RunUpdate ToMessage(Engine.Core.Runs.Store.RunUpdate update)
     {
         var message = new RunUpdate
         {

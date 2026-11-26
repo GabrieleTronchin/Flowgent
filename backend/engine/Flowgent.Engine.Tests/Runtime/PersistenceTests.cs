@@ -1,12 +1,12 @@
 namespace Flowgent.Engine.Tests.Runtime;
 
 using System.Text.Json.Nodes;
+using Flowgent.Contracts.Runs;
+using Flowgent.Engine.Core.Runs.Store;
+using Flowgent.Engine.Tests.Helpers;
 using FsCheck;
 using FsCheck.Fluent;
 using FsCheck.Xunit;
-using Flowgent.Contracts.Runs;
-using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Engine.Core.Runs;
 using Microsoft.Extensions.DependencyInjection;
 
 public class PersistenceTests

@@ -3,8 +3,8 @@ namespace Flowgent.Engine.Tests.Runtime;
 using System.Text.Json.Nodes;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
+using Flowgent.Engine.Core.Modules.Catalog;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Engine.Core.Modules;
 using Microsoft.Extensions.DependencyInjection;
 
 public class ModuleCatalogTests

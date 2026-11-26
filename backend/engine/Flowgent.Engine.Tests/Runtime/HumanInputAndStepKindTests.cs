@@ -2,8 +2,8 @@ namespace Flowgent.Engine.Tests.Runtime;
 
 using System.Text.Json.Nodes;
 using Flowgent.Contracts.Runs;
+using Flowgent.Engine.Core.Runs.HumanInput;
 using Flowgent.Engine.Tests.Helpers;
-using Flowgent.Engine.Core.HumanInput;
 
 public class HumanInputAndStepKindTests
 {

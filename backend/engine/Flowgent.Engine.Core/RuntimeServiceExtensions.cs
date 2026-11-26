@@ -5,15 +5,19 @@
 namespace Flowgent.Engine.Core;
 
 using Flowgent.Definitions;
-using Flowgent.Engine.Core.Agents;
 using Flowgent.Engine.Core.Configuration;
-using Flowgent.Engine.Core.Execution;
-using Flowgent.Engine.Core.HumanInput;
-using Flowgent.Engine.Core.Intake;
 using Flowgent.Engine.Core.Llm;
-using Flowgent.Engine.Core.Maf;
-using Flowgent.Engine.Core.Modules;
-using Flowgent.Engine.Core.Runs;
+using Flowgent.Engine.Core.Maf.Building;
+using Flowgent.Engine.Core.Maf.Execution;
+using Flowgent.Engine.Core.Maf.Mcp;
+using Flowgent.Engine.Core.Modules.Catalog;
+using Flowgent.Engine.Core.Modules.Client;
+using Flowgent.Engine.Core.Modules.Sources;
+using Flowgent.Engine.Core.Modules.Tools;
+using Flowgent.Engine.Core.Runs.Execution;
+using Flowgent.Engine.Core.Runs.HumanInput;
+using Flowgent.Engine.Core.Runs.Intake;
+using Flowgent.Engine.Core.Runs.Store;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

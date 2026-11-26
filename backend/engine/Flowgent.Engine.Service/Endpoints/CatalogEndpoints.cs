@@ -2,11 +2,11 @@ namespace Flowgent.Engine.Service.Endpoints;
 
 using Flowgent.Contracts.Api;
 using Flowgent.Definitions.Schemas;
-using Flowgent.Engine.Service.Endpoints.Mapping;
-using Flowgent.Engine.Service.Endpoints.Primitives;
 using Flowgent.Engine.Core.Configuration;
 using Flowgent.Engine.Core.Llm;
-using Flowgent.Engine.Core.Modules;
+using Flowgent.Engine.Core.Modules.Catalog;
+using Flowgent.Engine.Service.Endpoints.Mapping;
+using Flowgent.Engine.Service.Endpoints.Primitives;
 using Microsoft.Extensions.Options;
 
 /// <summary>Runtime configuration, modules, workflows and the module-envelope JSON Schemas.</summary>

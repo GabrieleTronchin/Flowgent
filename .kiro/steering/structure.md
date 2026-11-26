@@ -23,9 +23,9 @@ backend/
 ├── host/                            # Flowgent.AppHost: Aspire AppHost, ModuleWiring, AppHost:Modules toggles
 ├── engine/
 │   ├── Flowgent.Engine.Service/     # EngineHost, endpoints/ (one IEndpoint class per resource), RunMonitorService (gRPC), engine.http
-│   ├── Flowgent.Engine.Core/            # RunOrchestrator, RunRegistry, HumanInputRegistry, IntakeService,
-│   │                                #   InboxProcessor, ModuleCatalog(+Service), ModuleToolInvoker, LLM (Demo, telemetry);
-│   │                                #   Maf/ = MafWorkflowFactory, MafRunDriver, MafAgentProvider, ModuleToolHandler (MCP-over-HTTP branch), McpClientPool, IMcpTransportFactory
+│   ├── Flowgent.Engine.Core/        # Runs/ (core: Intake, Execution, Store, HumanInput), Modules/ (Catalog, Client, Sources, Tools),
+│   │                                #   Maf/ (everything that touches Microsoft Agent Framework: Building, Execution, Mcp), Llm/ (chat client, Demo, telemetry),
+│   │                                #   Configuration/ (options), RuntimeServiceExtensions (DI wiring)
 │   ├── Flowgent.Persistence/        # EF Core InMemory EngineDbContext, EfRunStore (dual-write), EfInboxStore
 │   ├── Flowgent.Engine.Tests/       # definitions, runtime, persistence, LLM, endpoints (+ FsCheck properties)
 │   └── protos/run_monitor.proto     # gRPC contract (engine + dashboard codegen)
