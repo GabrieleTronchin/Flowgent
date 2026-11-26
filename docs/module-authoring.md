@@ -121,8 +121,8 @@ The gateway routes `/api/modules/<id>/**` to the module automatically; other pub
 
 With the AppHost (recommended):
 
-1. Add the service and test projects to `backend/Flowgent.slnx`.
-2. Add a `ProjectReference` to the service in `backend/src/AppHost/Flowgent.AppHost/Flowgent.AppHost.csproj`.
+1. Add the service and test projects to `Flowgent.slnx`.
+2. Add a `ProjectReference` to the service in `Flowgent.AppHost/Flowgent.AppHost.csproj`.
 3. In `AppHost.cs`: `modules.Add<Projects.Flowgent_Modules_Notes>("notes");` (extra gateway routes as further arguments). The module is enabled unless `AppHost:Modules:notes:Enabled` is `false`.
 
 `ModuleWiring` then configures the engine (`Flowgent:Modules`), the gateway (`Gateway:Modules`) and the module (`Flowgent:Module:EngineUrl`).
@@ -130,10 +130,10 @@ With the AppHost (recommended):
 Without the AppHost, add the module to the engine and gateway `appsettings.json`:
 
 ```jsonc
-// backend/src/Services/Flowgent.Engine.Service/appsettings.json
+// engine/Flowgent.Engine.Service/appsettings.json
 "Flowgent": { "Modules": [ { "Id": "notes", "Url": "http://localhost:5084" } ] }
 
-// backend/src/Services/Flowgent.Gateway/appsettings.json
+// gateway/Flowgent.Gateway/appsettings.json
 "Gateway": { "Modules": [ { "Id": "notes", "Address": "http://localhost:5084" } ] }
 ```
 
@@ -160,4 +160,4 @@ Assert.Equal(RunStatus.Completed, run.Status);
 
 The harness also offers `WaitForHumanInputAsync`, `ApproveAsync`, `RejectAsync`, `AbortAsync`, `GetEventsAsync`, `StopModuleAsync`, `StartModuleAsync` and `RestartModuleAsync`. See `modules/_template/tests/TemplateModuleTests.cs` for a complete example.
 
-Run them with `dotnet test --project modules/<id>/tests` or the whole solution with `dotnet test --solution backend/Flowgent.slnx`.
+Run them with `dotnet test --project modules/<id>/tests` or the whole solution with `dotnet test --solution Flowgent.slnx`.

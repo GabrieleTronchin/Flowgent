@@ -84,17 +84,13 @@ The engine stores runs, transition events and inbox messages with EF Core InMemo
 ## Repository layout
 
 ```
-backend/
-├── Flowgent.slnx                   # one solution: platform, modules, tests
-├── Directory.Build.props, Directory.Packages.props, nuget.config   # shared build settings (modules/ imports them)
-├── schemas/                        # JSON Schemas of module.yaml, workflows and samples (editors + engine)
-├── protos/run_monitor.proto        # gRPC contract (engine + dashboard codegen)
-├── src/
-│   ├── Engine/                     # Flowgent.Contracts, .Definitions, .Runtime, .Persistence
-│   ├── Services/                   # Flowgent.Engine.Service, Flowgent.Gateway
-│   ├── Sdk/                        # Flowgent.Module.Sdk, Flowgent.Testing (in-process harness)
-│   └── AppHost/                    # Flowgent.AppHost, Flowgent.ServiceDefaults
-└── tests/                          # Engine, Gateway, Integration, Architecture tests + Fixtures/ (test-only module)
+Flowgent.slnx                       # one solution: platform, modules, tests
+Directory.Build.props, Directory.Packages.props, nuget.config   # shared build settings (one root set)
+Flowgent.AppHost/                   # Aspire AppHost
+engine/                             # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
+gateway/                            # Flowgent.Gateway, Flowgent.Gateway.Tests
+shared/                             # Flowgent.Contracts, .Definitions (Schemas/: JSON Schemas of module.yaml and samples), .Module.Sdk, .ServiceDefaults
+tests/                              # Architecture, Integration tests, Flowgent.Testing (in-process harness), Fixtures/ (test-only module)
 modules/
 ├── _template/                      # minimal module to copy
 └── support/                        # support-email module (reference implementation)

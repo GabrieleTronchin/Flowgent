@@ -86,7 +86,7 @@ In Demo mode (the default) every `llm` step answers from its `demo:` block, so a
 
 ```bash
 # Whole platform (support is enabled by default), then open http://localhost:5173
-dotnet run --project backend/src/AppHost/Flowgent.AppHost
+dotnet run --project Flowgent.AppHost
 
 # Module tests: definition, routing, agent mapping, demo rules, tool, endpoints, support.http, parity of all scenarios
 dotnet test --project modules/support/tests

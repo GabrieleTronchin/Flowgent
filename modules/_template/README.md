@@ -33,10 +33,10 @@ modules/_template/
 The template is part of the solution and the AppHost, disabled by default:
 
 ```bash
-dotnet run --project backend/src/AppHost/Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
+dotnet run --project Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
 ```
 
-Open the dashboard (http://localhost:5173), pick the module `Template` and the workflow `Hello (template)`, and submit the sample. To enable it permanently set `AppHost:Modules:template:Enabled` to `true` in `backend/src/AppHost/Flowgent.AppHost/appsettings.json`.
+Open the dashboard (http://localhost:5173), pick the module `Template` and the workflow `Hello (template)`, and submit the sample. To enable it permanently set `AppHost:Modules:template:Enabled` to `true` in `Flowgent.AppHost/appsettings.json`.
 
 Tests:
 
@@ -60,9 +60,9 @@ The example uses the id `notes` and the name `Notes`; replace them with yours. I
    - Pick a free port in `Properties/launchSettings.json` and update `template.http`.
 4. Tests (`tests/`): rename the project and its references, then adapt `TemplateModuleTests` (content root `modules/notes/service`).
 5. Register the module:
-   - `backend/Flowgent.slnx`: add the service and test projects.
+   - `Flowgent.slnx`: add the service and test projects.
    - AppHost: add a `ProjectReference` to the service in `Flowgent.AppHost.csproj` and `modules.Add<Projects.Flowgent_Modules_Notes>("notes");` in `AppHost.cs` (add extra gateway routes as further arguments if the module keeps legacy URLs).
    - Without the AppHost (services started one by one): add `{ "Id": "notes", "Url": "http://localhost:<port>" }` to `Flowgent:Modules` in the engine `appsettings.json` and `{ "Id": "notes", "Address": "http://localhost:<port>" }` to `Gateway:Modules` in the gateway `appsettings.json`.
-6. Run `dotnet test --solution backend/Flowgent.slnx`.
+6. Run `dotnet test --solution Flowgent.slnx`.
 
 No change to the engine, the gateway code or the dashboard is needed: the engine pulls the definition from the module service, the gateway routes `/api/modules/notes/**` to it and the dashboard lists the new workflows.

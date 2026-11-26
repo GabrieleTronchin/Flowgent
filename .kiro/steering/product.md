@@ -34,7 +34,7 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 
 - `modules/support`: reference module and regression suite (support-email triage with human approval). Domain details live in `modules/support/README.md` and `modules/support/docs/`; do not describe them in platform documentation.
 - `modules/_template`: minimal module to copy (`template-hello`), disabled in the AppHost by default.
-- `backend/tests/Fixtures/Flowgent.Fixtures.Module`: test-only module covering every step kind.
+- `tests/Fixtures/Flowgent.Fixtures.Module`: test-only module covering every step kind.
 
 ## Documentation
 

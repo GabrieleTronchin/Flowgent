@@ -4,7 +4,7 @@
 
 A module definition is a folder of YAML, Markdown and JSON files (`modules/<id>/definition/`) published by the module service. Workflows are **Microsoft Agent Framework (MAF) declarative workflows**: the engine feeds each workflow's YAML to the declarative workflow builder and runs it, so the workflow format is MAF's, not a Flowgent-specific one. Flowgent owns only the **module envelope** (the manifest and samples) and the **run contract** the workflow follows (how it reads intake input, snapshots step outputs, and marks terminals).
 
-Two envelope formats have a JSON Schema in `backend/schemas/` (served by `GET /api/engine/schemas/{module|samples}`):
+Two envelope formats have a JSON Schema in `shared/Flowgent.Definitions/Schemas/` (served by `GET /api/engine/schemas/{module|samples}`):
 
 | File | Schema | Content |
 |------|--------|---------|
@@ -19,7 +19,7 @@ The complete, runnable example is the template module: [`modules/_template/defin
 ## Module manifest (`module.yaml`)
 
 ```yaml
-# yaml-language-server: $schema=../../../backend/schemas/module.schema.json
+# yaml-language-server: $schema=../../../shared/Flowgent.Definitions/Schemas/module.schema.json
 id: notes
 name: Notes
 description: Summarises notes.
@@ -117,7 +117,7 @@ Workflows carry **no** `demo:` block. In Demo mode the engine's `DemoResponsePro
 ## Samples
 
 ```yaml
-# yaml-language-server: $schema=../../../../backend/schemas/samples.schema.json
+# yaml-language-server: $schema=../../../../shared/Flowgent.Definitions/Schemas/samples.schema.json
 samples:
   - id: notes-short
     name: Short note

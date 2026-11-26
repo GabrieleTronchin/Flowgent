@@ -112,7 +112,7 @@ cd flowgent
 cd dashboard && npm install && cd ..
 
 # Engine, enabled modules, gateway and dashboard (.NET Aspire)
-dotnet run --project backend/src/AppHost/Flowgent.AppHost
+dotnet run --project Flowgent.AppHost
 ```
 
 | What | Where |
@@ -126,8 +126,8 @@ Services can also be started one by one; see [Orchestration](docs/orchestration.
 ### Build and test
 
 ```bash
-dotnet build backend/Flowgent.slnx
-dotnet test --solution backend/Flowgent.slnx
+dotnet build Flowgent.slnx
+dotnet test --solution Flowgent.slnx
 
 cd dashboard
 npm run typecheck
@@ -140,14 +140,13 @@ Tests run in-process (`Flowgent.Testing.PlatformHarness`): no ports, no Aspire, 
 ### Repository structure
 
 ```
-backend/
-├── Flowgent.slnx                   # single solution (backend and modules)
-├── src/
-│   ├── Engine/                     # Flowgent.Contracts, .Definitions, .Runtime, .Persistence
-│   ├── Services/                   # Flowgent.Engine.Service, Flowgent.Gateway, Flowgent.Mcp.Support
-│   ├── Sdk/                        # Flowgent.Module.Sdk, Flowgent.Testing
-│   └── AppHost/                    # Flowgent.AppHost, Flowgent.ServiceDefaults
-└── tests/                          # Engine, Gateway, Architecture, Integration tests, Fixtures/
+Flowgent.slnx                       # single solution (platform and modules)
+Directory.Build.props, Directory.Packages.props, nuget.config, global.json
+Flowgent.AppHost/                   # Aspire AppHost
+engine/                             # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/
+gateway/                            # Flowgent.Gateway, Flowgent.Gateway.Tests
+shared/                             # Flowgent.Contracts, .Definitions (with Schemas/), .Module.Sdk, .ServiceDefaults
+tests/                              # Architecture, Integration tests, Flowgent.Testing, Fixtures/
 modules/
 ├── _template/                      # module template
 ├── jokes/                          # tiny example module (single llm step, no tools)

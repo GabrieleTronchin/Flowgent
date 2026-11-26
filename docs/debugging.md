@@ -8,7 +8,7 @@ Requests go through the gateway (`http://localhost:5080`). Open them in Visual S
 
 | File | Content |
 |------|---------|
-| [`backend/src/Services/Flowgent.Engine.Service/engine.http`](../backend/src/Services/Flowgent.Engine.Service/engine.http) | Every `/api/engine` route: config, modules, workflows, schemas, submit, runs, abort, human input, events, agents, telemetry, inbox |
+| [`engine/Flowgent.Engine.Service/engine.http`](../engine/Flowgent.Engine.Service/engine.http) | Every `/api/engine` route: config, modules, workflows, schemas, submit, runs, abort, human input, events, agents, telemetry, inbox |
 | [`modules/_template/service/template.http`](../modules/_template/service/template.http) | Template module summary and a `template-hello` run |
 | Each module's `service/<id>.http` | Module requests (e.g. [support](../modules/support/README.md)) |
 
@@ -43,4 +43,4 @@ Module tests call `ModuleDefinitionAssert.IsValid(path)`, which applies the engi
 dotnet test --project modules/_template/tests
 ```
 
-The YAML JSON Schemas in `backend/schemas/` give editor validation and autocomplete while you type.
+The YAML JSON Schemas in `shared/Flowgent.Definitions/Schemas/` give editor validation and autocomplete while you type.
