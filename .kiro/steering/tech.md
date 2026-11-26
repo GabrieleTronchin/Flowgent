@@ -3,7 +3,7 @@
 ## Runtime & Language
 
 - .NET 10.0 (`net10.0`), C# `LangVersion: latest`, nullable and implicit usings enabled
-- Central package management (root `Directory.Packages.props`, transitive pinning; one root `Directory.Build.props`); single package source nuget.org (root `nuget.config`)
+- Central package management (`backend/Directory.Packages.props`, transitive pinning; one `backend/Directory.Build.props`); single package source nuget.org (root `nuget.config`)
 - Tests run on Microsoft.Testing.Platform (root `global.json`)
 
 ## Key Libraries — Backend
@@ -36,25 +36,25 @@ Node.js >= 20.19. React 19, TypeScript 6, Vite 8, Tailwind CSS 4, React Router 7
 
 ```bash
 # Build and test everything (backend + modules)
-dotnet build Flowgent.slnx
-dotnet test --solution Flowgent.slnx
+dotnet build backend/Flowgent.slnx
+dotnet test --solution backend/Flowgent.slnx
 
 # Single test projects
-dotnet test --project engine/Flowgent.Engine.Tests
-dotnet test --project gateway/Flowgent.Gateway.Tests
-dotnet test --project tests/Flowgent.Integration.Tests
-dotnet test --project tests/Flowgent.Architecture.Tests
-dotnet test --project modules/support/tests
-dotnet test --project modules/_template/tests
+dotnet test --project backend/engine/Flowgent.Engine.Tests
+dotnet test --project backend/gateway/Flowgent.Gateway.Tests
+dotnet test --project backend/tests/Flowgent.Integration.Tests
+dotnet test --project backend/tests/Flowgent.Architecture.Tests
+dotnet test --project backend/modules/support/tests
+dotnet test --project backend/modules/_template/tests
 
 # Whole platform (engine, enabled modules, gateway :5080, dashboard :5173, Aspire dashboard :15080)
-dotnet run --project Flowgent.AppHost
-dotnet run --project Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
+dotnet run --project backend/host
+dotnet run --project backend/host -- --AppHost:Modules:template:Enabled=true
 
 # Services one by one
-dotnet run --project engine/Flowgent.Engine.Service   # :5081
-dotnet run --project modules/support/service                         # :5082
-dotnet run --project gateway/Flowgent.Gateway          # :5080
+dotnet run --project backend/engine/Flowgent.Engine.Service   # :5081
+dotnet run --project backend/modules/support/service                         # :5082
+dotnet run --project backend/gateway/Flowgent.Gateway          # :5080
 
 # Dashboard
 cd dashboard && npm install
@@ -62,7 +62,7 @@ cd dashboard && npm run dev
 cd dashboard && npm run typecheck
 cd dashboard && npm run test -- --run
 cd dashboard && npm run build
-cd dashboard && npm run generate     # regenerate src/gen from engine/protos/run_monitor.proto
+cd dashboard && npm run generate     # regenerate src/gen from backend/engine/protos/run_monitor.proto
 ```
 
 ## Configuration

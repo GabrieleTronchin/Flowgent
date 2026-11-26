@@ -1,5 +1,5 @@
 // Starts the whole platform: engine, module services, gateway (http://localhost:5080) and dashboard (http://localhost:5173).
-// Run: dotnet run --project Flowgent.AppHost
+// Run: dotnet run --project backend/host
 var builder = DistributedApplication.CreateBuilder(args);
 
 var engine = builder.AddProject<Projects.Flowgent_Engine_Service>("engine");
@@ -25,7 +25,7 @@ modules.Add<Projects.Flowgent_Modules_Template>("template");
 // Jokes: a second simple example module (modules/jokes), enabled by default.
 modules.Add<Projects.Flowgent_Modules_Jokes>("jokes");
 
-builder.AddViteApp("dashboard", "../dashboard")
+builder.AddViteApp("dashboard", "../../dashboard")
     .WithReference(gateway)
     .WithEnvironment("GATEWAY_URL", gateway.GetEndpoint("http"))
     .WithEndpoint("http", endpoint => endpoint.Port = 5173)

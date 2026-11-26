@@ -42,7 +42,7 @@ Outputs `role` and `agentId = <teamName>_<role>` (e.g. `TeamA_BackendDeveloper`)
 
 ### 4. `locate_component` (tool `support.locateComponent`)
 
-Input `{ applicationFolder, text }` (`text` = subject + body). Implemented in [`service/Tools/LocateComponentTool.cs`](../service/Tools/LocateComponentTool.cs):
+Input `{ applicationFolder, text }` (`text` = subject + body). Implemented in [`mcp/Flowgent.Mcp.Support/LocateComponentCore.cs`](../mcp/Flowgent.Mcp.Support/LocateComponentCore.cs) (served by the standalone support MCP server):
 
 - Scans `<module>/<config.dummyAppsRoot>/<applicationFolder>` (folder name must match `^[a-z0-9-]+$` and stay inside the dummy-apps folder) for `.cs`, `.razor`, `.cshtml`, `.ts`, `.tsx`, `.js`, `.css` files.
 - Picks the file whose name or stem (`OrderController`, `OrderSummary.razor`) appears first in the text.

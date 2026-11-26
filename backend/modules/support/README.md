@@ -1,6 +1,6 @@
 # Support module
 
-[← Platform README](../../README.md) · [Pipeline](docs/pipeline.md) · [Demo responses](docs/demo-responses.md) · [Scenarios and dummy apps](docs/scenarios.md) · [Endpoints](docs/endpoints.md)
+[← Platform README](../../../README.md) · [Pipeline](docs/pipeline.md) · [Demo responses](docs/demo-responses.md) · [Scenarios and dummy apps](docs/scenarios.md) · [Endpoints](docs/endpoints.md)
 
 The support module is the reference module of Flowgent and its regression suite. Its workflow, `support-email`, triages a support email: an LLM classifies it, rules route it to a team and an agent, a tool finds the affected source file in a sample application, the agent analyses the root cause, a human approves or rejects the proposed fix and, once approved, the agent generates a simulated pull request.
 
@@ -57,13 +57,13 @@ The `approval` step pauses the run in `AwaitingInput` with the review title `Pro
 
 | Where | Setting | Value |
 |-------|---------|-------|
-| `definition/module.yaml` | `config.dummyAppsRoot` | `dummy-apps`: folder of the sample applications, relative to `modules/support`. Used by the tool, so prompts and generated paths never hard-code it. |
+| `definition/module.yaml` | `config.dummyAppsRoot` | `dummy-apps`: folder of the sample applications, relative to `backend/modules/support`. Used by the tool, so prompts and generated paths never hard-code it. |
 | `service/appsettings.json` | `Flowgent:Module:DefinitionPath` | `../definition` |
 | `service/appsettings.json` | `Flowgent:Module:EngineUrl` | `http://localhost:5081` (the AppHost sets `http://engine`) |
 | `service/Properties/launchSettings.json` | port | `5082` |
 | AppHost | `AppHost:Modules:support:Enabled` | `true`; the gateway also routes `/api/support/{**catch-all}` to this module |
 
-The LLM provider is an engine setting (`Flowgent:Llm`): see the platform's [Demo mode](../../docs/demo-mode.md).
+The LLM provider is an engine setting (`Flowgent:Llm`): see the platform's [Demo mode](../../../docs/demo-mode.md).
 
 ## Demo responses
 
@@ -86,10 +86,10 @@ In Demo mode (the default) every `llm` step answers from its `demo:` block, so a
 
 ```bash
 # Whole platform (support is enabled by default), then open http://localhost:5173
-dotnet run --project Flowgent.AppHost
+dotnet run --project backend/host
 
 # Module tests: definition, routing, agent mapping, demo rules, tool, endpoints, support.http, parity of all scenarios
-dotnet test --project modules/support/tests
+dotnet test --project backend/modules/support/tests
 ```
 
 `support.http` is checked by `SupportServiceTests.HttpFile_IsGeneratedFromTheSamples`; after changing `scenarios.yaml`, run the tests once with `UPDATE_SNAPSHOTS=1` to regenerate it.
@@ -97,7 +97,7 @@ dotnet test --project modules/support/tests
 ## Layout
 
 ```
-modules/support/
+backend/modules/support/
 ├── definition/
 │   ├── module.yaml                       # config, six agents, support.locateComponent
 │   ├── workflows/support-email.yaml
@@ -110,4 +110,4 @@ modules/support/
 └── docs/                                 # this module's documentation
 ```
 
-Platform documentation: [workflow reference](../../docs/workflow-reference.md), [module authoring](../../docs/module-authoring.md), [engine API](../../docs/engine-api.md), [human input](../../docs/human-input.md).
+Platform documentation: [workflow reference](../../../docs/workflow-reference.md), [module authoring](../../../docs/module-authoring.md), [engine API](../../../docs/engine-api.md), [human input](../../../docs/human-input.md).

@@ -20,7 +20,7 @@ The AppHost starts it automatically on port 5173. The dev server proxies `/api` 
 | `npm run build` | Type check and production build (`dist/`) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test -- --run` | Vitest (single run) |
-| `npm run generate` | Regenerate `src/gen/` from `engine/protos/run_monitor.proto` (buf) |
+| `npm run generate` | Regenerate `src/gen/` from `backend/engine/protos/run_monitor.proto` (buf) |
 
 Node.js 20.19 or later is required.
 

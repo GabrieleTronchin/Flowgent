@@ -1,6 +1,6 @@
 # Support demo responses
 
-[← Support module](../README.md) · [Pipeline](pipeline.md) · [Platform: Demo mode](../../../docs/demo-mode.md)
+[← Support module](../README.md) · [Pipeline](pipeline.md) · [Platform: Demo mode](../../../../docs/demo-mode.md)
 
 In Demo mode (`Flowgent:Llm:Provider = Demo`, the default) the three `llm` steps answer from the `demo:` blocks in [`support-email.yaml`](../definition/workflows/support-email.yaml). Responses are deterministic and all generated texts start with `[Demo]`. Routing, agent assignment and the component lookup are not simulated: they run exactly as with a real model.
 

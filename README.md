@@ -112,7 +112,7 @@ cd flowgent
 cd dashboard && npm install && cd ..
 
 # Engine, enabled modules, gateway and dashboard (.NET Aspire)
-dotnet run --project Flowgent.AppHost
+dotnet run --project backend/host
 ```
 
 | What | Where |
@@ -126,8 +126,8 @@ Services can also be started one by one; see [Orchestration](docs/orchestration.
 ### Build and test
 
 ```bash
-dotnet build Flowgent.slnx
-dotnet test --solution Flowgent.slnx
+dotnet build backend/Flowgent.slnx
+dotnet test --solution backend/Flowgent.slnx
 
 cd dashboard
 npm run typecheck
@@ -140,29 +140,31 @@ Tests run in-process (`Flowgent.Testing.PlatformHarness`): no ports, no Aspire, 
 ### Repository structure
 
 ```
-Flowgent.slnx                       # single solution (platform and modules)
-Directory.Build.props, Directory.Packages.props, nuget.config, global.json
-Flowgent.AppHost/                   # Aspire AppHost
-engine/                             # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/
-gateway/                            # Flowgent.Gateway, Flowgent.Gateway.Tests
-shared/                             # Flowgent.Contracts, .Definitions (with Schemas/), .Module.Sdk, .ServiceDefaults
-tests/                              # Architecture, Integration tests, Flowgent.Testing, Fixtures/
-modules/
-├── _template/                      # module template
-├── jokes/                          # tiny example module (single llm step, no tools)
-└── support/                        # support example module (definition, service, tests, dummy-apps, docs)
-deploy/                             # Dockerfiles + GHCR publish workflow
+backend/
+├── Flowgent.slnx                   # single solution (platform and modules)
+├── Directory.Build.props, Directory.Packages.props, .editorconfig   # build settings and package versions
+├── host/                           # Flowgent.AppHost (Aspire)
+├── engine/                         # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/
+├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests
+├── shared/                         # Flowgent.Contracts, .Definitions (with Schemas/), .Module.Sdk, .ServiceDefaults
+├── tests/                          # Architecture, Integration tests, Flowgent.Testing, Fixtures/
+└── modules/
+    ├── _template/                  # module template
+    ├── jokes/                      # tiny example module (single llm step, no tools)
+    └── support/                    # support example module (definition, service, mcp, tests, dummy-apps, docs)
 dashboard/                          # React control console
+deploy/                             # Dockerfiles + GHCR publish workflow
 docs/                               # platform documentation (how it works)
+nuget.config, global.json           # package source and SDK / test runner (repository root)
 ```
 
 ### Modules in this repo
 
 | Module | Folder | Description |
 |--------|--------|-------------|
-| Support | [`modules/support`](modules/support/README.md) | Example domain module: triages support emails and proposes code fixes after human approval. Its MCP tool ships as the `flowgent-support-mcp` image. |
-| Jokes | [`modules/jokes`](modules/jokes/definition/module.yaml) | Tiny example: one `llm` step turns a topic into a one-liner. A good starting point to read. |
-| Template | [`modules/_template`](modules/_template/README.md) | Minimal module to copy when creating a new one. |
+| Support | [`backend/modules/support`](backend/modules/support/README.md) | Example domain module: triages support emails and proposes code fixes after human approval. Its MCP tool ships as the `flowgent-support-mcp` image. |
+| Jokes | [`backend/modules/jokes`](backend/modules/jokes/definition/module.yaml) | Tiny example: one `llm` step turns a topic into a one-liner. A good starting point to read. |
+| Template | [`backend/modules/_template`](backend/modules/_template/README.md) | Minimal module to copy when creating a new one. |
 
 ### Documentation
 

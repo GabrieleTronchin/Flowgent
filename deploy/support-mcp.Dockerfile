@@ -9,12 +9,12 @@ WORKDIR /src
 # Copy the nuget.org-only feed config FIRST so restore is deterministic.
 COPY nuget.config ./
 
-COPY Directory.Build.props Directory.Packages.props ./
-COPY shared/ ./shared/
-COPY modules/support/mcp/ ./modules/support/mcp/
+COPY backend/Directory.Build.props backend/Directory.Packages.props ./backend/
+COPY backend/shared/ ./backend/shared/
+COPY backend/modules/support/mcp/ ./backend/modules/support/mcp/
 
-RUN dotnet restore modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj
-RUN dotnet publish modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj \
+RUN dotnet restore backend/modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj
+RUN dotnet publish backend/modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj \
     -c Release -o /app/publish --no-restore
 
 # ---- runtime stage ----
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY --from=build /app/publish ./
 
 # The locateComponent demo tool searches the example dummy-apps tree.
-COPY modules/support/dummy-apps /app/dummy-apps
+COPY backend/modules/support/dummy-apps /app/dummy-apps
 ENV SUPPORT_DUMMYAPPS_ROOT=/app/dummy-apps
 
 ENV ASPNETCORE_HTTP_PORTS=8080

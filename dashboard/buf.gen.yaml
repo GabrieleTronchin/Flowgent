@@ -4,5 +4,5 @@ plugins:
     out: src/gen
     opt: target=ts
 inputs:
-  - directory: ../engine/protos
+  - directory: ../backend/engine/protos
 

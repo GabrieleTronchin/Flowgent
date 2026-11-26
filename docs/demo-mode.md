@@ -21,7 +21,7 @@ Everything else (inbox, runs, tools, human input, persistence, telemetry, dashbo
 | `Endpoint` | OpenAI | Optional absolute `http(s)` URL of an OpenAI-compatible server (e.g. Groq `https://api.groq.com/openai/v1`, Ollama `http://localhost:11434/v1`). |
 | `DemoLatencyMs` | `1500` | Simulated latency per call in Demo mode, so progress is visible in the dashboard. `0` = instant. |
 
-The configuration is read at startup. Keep the API key out of committed files: use the git-ignored `engine/Flowgent.Engine.Service/appsettings.Development.json`, or environment variables (`Flowgent__Llm__Provider`, `Flowgent__Llm__ApiKey`, …). Example `appsettings.Development.json`:
+The configuration is read at startup. Keep the API key out of committed files: use the git-ignored `backend/engine/Flowgent.Engine.Service/appsettings.Development.json`, or environment variables (`Flowgent__Llm__Provider`, `Flowgent__Llm__ApiKey`, …). Example `appsettings.Development.json`:
 
 ```json
 {
@@ -31,7 +31,7 @@ The configuration is read at startup. Keep the API key out of committed files: u
 }
 ```
 
-The AppHost can also override the provider without touching files: `dotnet run --project Flowgent.AppHost -- --AppHost:LlmProvider=Demo`.
+The AppHost can also override the provider without touching files: `dotnet run --project backend/host -- --AppHost:LlmProvider=Demo`.
 
 ## Declaring demo responses
 

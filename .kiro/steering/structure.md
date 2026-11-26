@@ -16,38 +16,40 @@ Service-to-service calls go directly (service discovery under Aspire), never thr
 ## Repository layout
 
 ```
-.editorconfig, .gitattributes, global.json   # repo-wide (global.json: test runner, read from the working directory)
-Flowgent.slnx                        # single solution (platform + modules)
-Directory.Build.props, Directory.Packages.props, nuget.config   # one root set, applies to every project
-Flowgent.AppHost/                    # Aspire AppHost, ModuleWiring, AppHost:Modules toggles
-engine/
-├── Flowgent.Engine.Service/         # EngineHost, /api/engine endpoints, RunMonitorService (gRPC), engine.http
-├── Flowgent.Runtime/                # WorkflowCompiler, RunOrchestrator, RunRegistry, HumanInputRegistry, IntakeService,
-│                                    #   InboxProcessor, ModuleCatalog(+Service), ModuleToolInvoker, LLM (Demo, telemetry);
-│                                    #   Maf/ = ModuleToolHandler (MCP-over-HTTP branch), McpClientPool, IMcpTransportFactory
-├── Flowgent.Persistence/            # EF Core InMemory EngineDbContext, EfRunStore (dual-write), EfInboxStore
-├── Flowgent.Engine.Tests/           # definitions, runtime, persistence, LLM, endpoints (+ FsCheck properties)
-└── protos/run_monitor.proto         # gRPC contract (engine + dashboard codegen)
-gateway/
-├── Flowgent.Gateway/                # GatewayHost, GatewayRoutes, GatewayMiddleware (correlation id, 503)
-└── Flowgent.Gateway.Tests/          # routes, forwarding, correlation id, 503
-shared/
-├── Flowgent.Contracts/              # HTTP DTOs: module package, tool invocation, engine API views, RunStatus/RunEventKind
-├── Flowgent.Definitions/            # YAML → JsonNode reader, model records, ModuleLoader, DefinitionValidator;
-│                                    #   Schemas/ = module/samples JSON Schemas (embedded)
-├── Flowgent.Module.Sdk/             # AddFlowgentModule/MapFlowgentModule, ModuleTool<TIn,TOut>, IEngineClient, ModuleDefinitionAssert
-└── Flowgent.ServiceDefaults/        # health, OpenTelemetry, service discovery, resilience
-tests/
-├── Flowgent.Testing/                # PlatformHarness: engine, modules and gateway in-process on TestServer
-├── Flowgent.Integration.Tests/      # support + fixture modules: isolation, module down, version reload, gRPC-Web via gateway
-├── Flowgent.Architecture.Tests/     # dependency rules (project files + NetArchTest)
-└── Fixtures/Flowgent.Fixtures.Module/  # test-only module covering every step kind
-modules/
-├── _template/                       # definition/, service/ (Flowgent.Modules.Template), tests/, README.md
-├── jokes/                           # definition/, service/ (tiny example, single llm step)
-└── support/                         # definition/, service/ (Flowgent.Modules.Support), tests/, dummy-apps/, docs/, README.md
-    └── mcp/Flowgent.Mcp.Support/    # standalone support MCP server (locateComponent); ServiceDefaults + MCP package only
-deploy/                              # Dockerfiles + GHCR publish workflowdashboard/                           # React console: api/, gen/, hooks/, components/, pages/, utils/, types/, __tests__/
+.gitattributes, .gitignore, global.json, nuget.config   # repo-wide (global.json: test runner, read from the working directory; nuget.config: nuget.org-only feed)
+backend/
+├── Flowgent.slnx                    # single solution (platform + modules); solution folders mirror the physical ones, no "backend" folder
+├── Directory.Build.props, Directory.Packages.props, .editorconfig   # one set, applies to every backend project
+├── host/                            # Flowgent.AppHost: Aspire AppHost, ModuleWiring, AppHost:Modules toggles
+├── engine/
+│   ├── Flowgent.Engine.Service/     # EngineHost, endpoints/ (one IEndpoint class per resource), RunMonitorService (gRPC), engine.http
+│   ├── Flowgent.Runtime/            # WorkflowCompiler, RunOrchestrator, RunRegistry, HumanInputRegistry, IntakeService,
+│   │                                #   InboxProcessor, ModuleCatalog(+Service), ModuleToolInvoker, LLM (Demo, telemetry);
+│   │                                #   Maf/ = ModuleToolHandler (MCP-over-HTTP branch), McpClientPool, IMcpTransportFactory
+│   ├── Flowgent.Persistence/        # EF Core InMemory EngineDbContext, EfRunStore (dual-write), EfInboxStore
+│   ├── Flowgent.Engine.Tests/       # definitions, runtime, persistence, LLM, endpoints (+ FsCheck properties)
+│   └── protos/run_monitor.proto     # gRPC contract (engine + dashboard codegen)
+├── gateway/
+│   ├── Flowgent.Gateway/            # GatewayHost, GatewayRoutes, GatewayMiddleware (correlation id, 503)
+│   └── Flowgent.Gateway.Tests/      # routes, forwarding, correlation id, 503
+├── shared/
+│   ├── Flowgent.Contracts/          # HTTP DTOs: module package, tool invocation, engine API views, RunStatus/RunEventKind
+│   ├── Flowgent.Definitions/        # YAML → JsonNode reader, model records, ModuleLoader, DefinitionValidator;
+│   │                                #   Schemas/ = module/samples JSON Schemas (embedded)
+│   ├── Flowgent.Module.Sdk/         # AddFlowgentModule/MapFlowgentModule, ModuleTool<TIn,TOut>, IEngineClient, ModuleDefinitionAssert
+│   └── Flowgent.ServiceDefaults/    # health, OpenTelemetry, service discovery, resilience
+├── tests/
+│   ├── Flowgent.Testing/            # PlatformHarness: engine, modules and gateway in-process on TestServer
+│   ├── Flowgent.Integration.Tests/  # support + fixture modules: isolation, module down, version reload, gRPC-Web via gateway
+│   ├── Flowgent.Architecture.Tests/ # dependency rules (project files + NetArchTest)
+│   └── Fixtures/Flowgent.Fixtures.Module/  # test-only module covering every step kind
+└── modules/
+    ├── _template/                   # definition/, service/ (Flowgent.Modules.Template), tests/, README.md
+    ├── jokes/                       # definition/, service/ (tiny example, single llm step)
+    └── support/                     # definition/, service/ (Flowgent.Modules.Support), tests/, dummy-apps/, docs/, README.md
+        └── mcp/Flowgent.Mcp.Support/  # standalone support MCP server (locateComponent); ServiceDefaults + MCP package only
+dashboard/                           # React console: api/, gen/, hooks/, components/, pages/, utils/, types/, __tests__/
+deploy/                              # Dockerfiles + GHCR publish workflow
 docs/                                # platform documentation (engine, not domain)
 ```
 
@@ -56,7 +58,7 @@ docs/                                # platform documentation (engine, not domai
 Every module follows the same layout; nothing module-specific lives outside it:
 
 ```
-modules/<id>/
+backend/modules/<id>/
 ├── definition/   # module.yaml, workflows/, prompts/, schemas/, samples/
 ├── service/      # Flowgent.Modules.<Name>.csproj: <Name>Host.Create, Program.cs, Tools/, endpoints, <id>.http
 ├── tests/        # Flowgent.Modules.<Name>.Tests.csproj
@@ -64,13 +66,13 @@ modules/<id>/
 └── assets        # e.g. support's dummy-apps/
 ```
 
-New modules start from `modules/_template` (see its README and `docs/module-authoring.md`). Support domain details: `modules/support/README.md`.
+New modules start from `backend/modules/_template` (see its README and `docs/module-authoring.md`). Support domain details: `backend/modules/support/README.md`.
 
 ## Dependency rules (Flowgent.Architecture.Tests)
 
 - `Contracts` has no project references; `Definitions` references only `Contracts`.
 - `Runtime` → `Definitions`; `Persistence` → `Runtime`; `Engine.Service` → `Runtime`, `Persistence`, `ServiceDefaults`; `Gateway` → `ServiceDefaults`; `Module.Sdk` → `Contracts`, `Definitions`; `Testing` → `Engine.Service`, `Gateway`, `Module.Sdk`.
-- Engine projects and the gateway never reference `modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
+- Engine projects and the gateway never reference `backend/modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
 - Module services reference only `Module.Sdk`, `Contracts`, `Definitions`, `ServiceDefaults`.
 - `Definitions` and `Runtime` do not depend on ASP.NET Core.
 - Engine sources and the proto contain no support-domain terms.
@@ -89,5 +91,5 @@ New modules start from `modules/_template` (see its README and `docs/module-auth
 - xUnit v3 on Microsoft.Testing.Platform; FsCheck for properties; NSubstitute where mocks are needed.
 - Platform and module tests run services in-process with `PlatformHarness` in Demo mode (no ports, no Aspire).
 - Module tests validate the definition with `ModuleDefinitionAssert.IsValid` and run workflows end-to-end.
-- Generated artifacts (e.g. `modules/support/service/support.http`) are checked by tests and regenerated with `UPDATE_SNAPSHOTS=1`.
+- Generated artifacts (e.g. `backend/modules/support/service/support.http`) are checked by tests and regenerated with `UPDATE_SNAPSHOTS=1`.
 - Dashboard: Vitest (jsdom) + fast-check in `dashboard/src/__tests__/`.

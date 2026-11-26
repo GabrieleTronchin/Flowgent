@@ -67,4 +67,4 @@ Values cross between the engine and PowerFx as JSON strings. Two invariants to r
 - A module tool result is returned as exactly one non-numeric JSON string; a bare top-level number is wrapped (a bare number crashes the `InvokeMcpTool` PowerFx binding).
 - Each step writes its output to `Global.<stepId>` (snapshot) so the engine can surface it as `steps.<stepId>`; terminals write `Global.__terminalId` / `Global.__message` / `Global.__finalOutput`.
 
-See the [workflow reference](workflow-reference.md) for the full run contract, and [`modules/support/definition/workflows/support-email.yaml`](../modules/support/definition/workflows/support-email.yaml) for a worked example.
+See the [workflow reference](workflow-reference.md) for the full run contract, and [`backend/modules/support/definition/workflows/support-email.yaml`](../backend/modules/support/definition/workflows/support-email.yaml) for a worked example.

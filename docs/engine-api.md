@@ -2,7 +2,7 @@
 
 [← README](../README.md) · [Gateway](gateway.md) · [Human input](human-input.md) · [Inbox](inbox.md)
 
-The engine exposes a module-agnostic API under `/api/engine`, reached through the gateway (`http://localhost:5080`). JSON is camelCase with string enums. Errors are problem details (`title`, `detail`, optional `errors`). Ready-made requests: [`engine.http`](../engine/Flowgent.Engine.Service/engine.http).
+The engine exposes a module-agnostic API under `/api/engine`, reached through the gateway (`http://localhost:5080`). JSON is camelCase with string enums. Errors are problem details (`title`, `detail`, optional `errors`). Ready-made requests: [`engine.http`](../backend/engine/Flowgent.Engine.Service/engine.http).
 
 No endpoint returns secrets: API keys and LLM endpoint URLs stay in configuration.
 
@@ -67,7 +67,7 @@ Telemetry is kept in memory by the engine. `lastCall` includes model, tokens, la
 
 ## gRPC run stream
 
-`engine/protos/run_monitor.proto`, served as gRPC-Web at `/flowgent.RunMonitor/Subscribe` through the gateway:
+`backend/engine/protos/run_monitor.proto`, served as gRPC-Web at `/flowgent.RunMonitor/Subscribe` through the gateway:
 
 ```proto
 service RunMonitor {

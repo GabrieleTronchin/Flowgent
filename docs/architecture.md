@@ -23,7 +23,7 @@ graph LR
 |-----------|---------|----------------|
 | Gateway | `Flowgent.Gateway` | Single public entry point. Config-driven YARP routes, gRPC-Web passthrough, correlation id, `503` problem details. See [Gateway](gateway.md). |
 | Engine service | `Flowgent.Engine.Service` | Pulls module packages, validates and compiles workflows, runs them on Microsoft Agent Framework Workflows. Owns runs, events, inbox, human input, LLM access (Demo or OpenAI-compatible), telemetry, the `/api/engine` API and the gRPC run stream. |
-| Module services | `modules/<id>/service` (on `Flowgent.Module.Sdk`) | Own one domain: `module.yaml`, workflows, prompts, schemas, samples, tools (HTTP operations called by `tool` steps) and domain endpoints. |
+| Module services | `backend/modules/<id>/service` (on `Flowgent.Module.Sdk`) | Own one domain: `module.yaml`, workflows, prompts, schemas, samples, tools (HTTP operations called by `tool` steps) and domain endpoints. |
 | Dashboard | `dashboard/` | Generic React console. Calls only the gateway. See [Dashboard](dashboard.md). |
 | AppHost | `Flowgent.AppHost` | .NET Aspire host: starts everything with one command and shows logs, traces and metrics. See [Orchestration](orchestration.md). |
 
@@ -84,18 +84,21 @@ The engine stores runs, transition events and inbox messages with EF Core InMemo
 ## Repository layout
 
 ```
-Flowgent.slnx                       # one solution: platform, modules, tests
-Directory.Build.props, Directory.Packages.props, nuget.config   # shared build settings (one root set)
-Flowgent.AppHost/                   # Aspire AppHost
-engine/                             # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
-gateway/                            # Flowgent.Gateway, Flowgent.Gateway.Tests
-shared/                             # Flowgent.Contracts, .Definitions (Schemas/: JSON Schemas of module.yaml and samples), .Module.Sdk, .ServiceDefaults
-tests/                              # Architecture, Integration tests, Flowgent.Testing (in-process harness), Fixtures/ (test-only module)
-modules/
-├── _template/                      # minimal module to copy
-└── support/                        # support-email module (reference implementation)
+backend/
+├── Flowgent.slnx                   # one solution: platform, modules, tests
+├── Directory.Build.props, Directory.Packages.props, .editorconfig   # shared build settings
+├── host/                           # Flowgent.AppHost (Aspire)
+├── engine/                         # Flowgent.Engine.Service, .Runtime, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
+├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests
+├── shared/                         # Flowgent.Contracts, .Definitions (Schemas/: JSON Schemas of module.yaml and samples), .Module.Sdk, .ServiceDefaults
+├── tests/                          # Architecture, Integration tests, Flowgent.Testing (in-process harness), Fixtures/ (test-only module)
+└── modules/
+    ├── _template/                  # minimal module to copy
+    ├── jokes/                      # tiny example module
+    └── support/                    # support-email module (reference implementation) + mcp/ (Flowgent.Mcp.Support)
 dashboard/                          # generic monitoring console
 docs/                               # platform documentation
+nuget.config, global.json           # package source and SDK / test runner (repository root)
 ```
 
 ### Project dependencies
@@ -116,7 +119,7 @@ graph TD
 `Flowgent.Architecture.Tests` enforces the rules:
 
 - `Contracts` has no project references; `Definitions` references only `Contracts`.
-- Engine projects and the gateway never reference `modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
+- Engine projects and the gateway never reference `backend/modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
 - Module services reference only `Flowgent.Module.Sdk`, `Flowgent.Contracts`, `Flowgent.Definitions` and `Flowgent.ServiceDefaults`.
 - `Definitions` and `Runtime` do not depend on ASP.NET Core.
 - Engine sources and the proto contain no domain terms of the support module.

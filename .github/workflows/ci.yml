@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches: [master]
-    paths: ['Flowgent.AppHost/**', 'engine/**', 'gateway/**', 'shared/**', 'tests/**', 'modules/**', 'Flowgent.slnx', 'Directory.*.props', 'nuget.config', 'global.json']
+    paths: ['backend/**', 'nuget.config', 'global.json']
   pull_request:
     branches: [master]
-    paths: ['Flowgent.AppHost/**', 'engine/**', 'gateway/**', 'shared/**', 'tests/**', 'modules/**', 'Flowgent.slnx', 'Directory.*.props', 'nuget.config', 'global.json']
+    paths: ['backend/**', 'nuget.config', 'global.json']
 
 jobs:
   build-and-test:
@@ -19,6 +19,6 @@ jobs:
           # .NET 11 preview — which has a StaticWebAssets build bug with Web SDK test
           # projects — is never selected.
           global-json-file: global.json
-      - run: dotnet restore Flowgent.slnx
-      - run: dotnet build Flowgent.slnx --no-restore
-      - run: dotnet test --solution Flowgent.slnx --no-build
+      - run: dotnet restore backend/Flowgent.slnx
+      - run: dotnet build backend/Flowgent.slnx --no-restore
+      - run: dotnet test --solution backend/Flowgent.slnx --no-build

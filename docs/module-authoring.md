@@ -1,17 +1,17 @@
 # Module authoring
 
-[← README](../README.md) · [Workflow reference](workflow-reference.md) · [Template module](../modules/_template/README.md)
+[← README](../README.md) · [Workflow reference](workflow-reference.md) · [Template module](../backend/modules/_template/README.md)
 
 A module is one business domain: its workflow definitions plus a small ASP.NET Core service built on `Flowgent.Module.Sdk`. Adding a module needs no change to the engine, the gateway code or the dashboard.
 
-Start from [`modules/_template`](../modules/_template/README.md): it is a minimal, valid module (a MAF declarative workflow that calls an LLM, invokes one tool and ends; one tool; one sample; tests) and its README lists the copy-and-rename steps.
+Start from [`backend/modules/_template`](../backend/modules/_template/README.md): it is a minimal, valid module (a MAF declarative workflow that calls an LLM, invokes one tool and ends; one tool; one sample; tests) and its README lists the copy-and-rename steps.
 
 Workflows are **Microsoft Agent Framework declarative** documents (`kind: Workflow`, a `trigger` with ordered `actions`, [PowerFx](expressions.md) expressions). See the [Workflow reference](workflow-reference.md) for the action kinds. The engine trial-builds each workflow with the declarative builder; there is no custom step format.
 
 ## Layout
 
 ```
-modules/<id>/
+backend/modules/<id>/
 ├── definition/           # published to the engine (GET /_module/package)
 │   ├── module.yaml
 │   ├── workflows/
@@ -99,7 +99,7 @@ A workflow invokes a tool with the declarative `InvokeMcpTool` action, where `se
 
 > Tool results must be a non-numeric JSON string or object — a bare top-level number crashes the PowerFx binding. The handler wraps a bare number automatically, but prefer returning an object.
 
-The engine also exposes two reserved built-in tools under `serverLabel: flowgent`, since PowerFx has no `ParseJSON`: `flowgent.input` returns the run's intake input as a record, and `flowgent.parse` turns a JSON string (e.g. an agent's structured answer) into a record — both read with `First(Local.x).<field>`. See [`modules/_template/definition/workflows/template-hello.yaml`](../modules/_template/definition/workflows/template-hello.yaml) for all three in use.
+The engine also exposes two reserved built-in tools under `serverLabel: flowgent`, since PowerFx has no `ParseJSON`: `flowgent.input` returns the run's intake input as a record, and `flowgent.parse` turns a JSON string (e.g. an agent's structured answer) into a record — both read with `First(Local.x).<field>`. See [`backend/modules/_template/definition/workflows/template-hello.yaml`](../backend/modules/_template/definition/workflows/template-hello.yaml) for all three in use.
 
 ## Domain endpoints
 
@@ -121,8 +121,8 @@ The gateway routes `/api/modules/<id>/**` to the module automatically; other pub
 
 With the AppHost (recommended):
 
-1. Add the service and test projects to `Flowgent.slnx`.
-2. Add a `ProjectReference` to the service in `Flowgent.AppHost/Flowgent.AppHost.csproj`.
+1. Add the service and test projects to `backend/Flowgent.slnx`.
+2. Add a `ProjectReference` to the service in `backend/host/Flowgent.AppHost.csproj`.
 3. In `AppHost.cs`: `modules.Add<Projects.Flowgent_Modules_Notes>("notes");` (extra gateway routes as further arguments). The module is enabled unless `AppHost:Modules:notes:Enabled` is `false`.
 
 `ModuleWiring` then configures the engine (`Flowgent:Modules`), the gateway (`Gateway:Modules`) and the module (`Flowgent:Module:EngineUrl`).
@@ -130,10 +130,10 @@ With the AppHost (recommended):
 Without the AppHost, add the module to the engine and gateway `appsettings.json`:
 
 ```jsonc
-// engine/Flowgent.Engine.Service/appsettings.json
+// backend/engine/Flowgent.Engine.Service/appsettings.json
 "Flowgent": { "Modules": [ { "Id": "notes", "Url": "http://localhost:5084" } ] }
 
-// gateway/Flowgent.Gateway/appsettings.json
+// backend/gateway/Flowgent.Gateway/appsettings.json
 "Gateway": { "Modules": [ { "Id": "notes", "Address": "http://localhost:5084" } ] }
 ```
 
@@ -158,6 +158,6 @@ var run = await platform.WaitForTerminalAsync(accepted.RunId);
 Assert.Equal(RunStatus.Completed, run.Status);
 ```
 
-The harness also offers `WaitForHumanInputAsync`, `ApproveAsync`, `RejectAsync`, `AbortAsync`, `GetEventsAsync`, `StopModuleAsync`, `StartModuleAsync` and `RestartModuleAsync`. See `modules/_template/tests/TemplateModuleTests.cs` for a complete example.
+The harness also offers `WaitForHumanInputAsync`, `ApproveAsync`, `RejectAsync`, `AbortAsync`, `GetEventsAsync`, `StopModuleAsync`, `StartModuleAsync` and `RestartModuleAsync`. See `backend/modules/_template/tests/TemplateModuleTests.cs` for a complete example.
 
-Run them with `dotnet test --project modules/<id>/tests` or the whole solution with `dotnet test --solution Flowgent.slnx`.
+Run them with `dotnet test --project backend/modules/<id>/tests` or the whole solution with `dotnet test --solution backend/Flowgent.slnx`.

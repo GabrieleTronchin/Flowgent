@@ -7,7 +7,7 @@
 `Flowgent.AppHost` is a .NET Aspire host that starts the engine, every enabled module service, the gateway and the dashboard, and wires their addresses.
 
 ```bash
-dotnet run --project Flowgent.AppHost
+dotnet run --project backend/host
 ```
 
 | Resource | Address |
@@ -35,13 +35,13 @@ Services find each other by resource name (`http://engine`, `http://support`) th
 
 | Setting | Effect |
 |---------|--------|
-| `AppHost:Modules:<id>:Enabled` | Enables or disables a module (in `Flowgent.AppHost/appsettings.json`: `support` on, `template` off). |
+| `AppHost:Modules:<id>:Enabled` | Enables or disables a module (in `backend/host/appsettings.json`: `support` on, `template` off). |
 | `AppHost:LlmProvider` | Overrides `Flowgent:Llm:Provider` of the engine. |
 
 Both can be passed on the command line:
 
 ```bash
-dotnet run --project Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true --AppHost:LlmProvider=Demo
+dotnet run --project backend/host -- --AppHost:Modules:template:Enabled=true --AppHost:LlmProvider=Demo
 ```
 
 ## Without the AppHost
@@ -49,9 +49,9 @@ dotnet run --project Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
 Each service also runs on its own with the ports of its `http` launch profile and the addresses in its `appsettings.json`:
 
 ```bash
-dotnet run --project engine/Flowgent.Engine.Service    # :5081
-dotnet run --project modules/support/service                          # :5082
-dotnet run --project gateway/Flowgent.Gateway           # :5080
+dotnet run --project backend/engine/Flowgent.Engine.Service    # :5081
+dotnet run --project backend/modules/support/service                          # :5082
+dotnet run --project backend/gateway/Flowgent.Gateway           # :5080
 cd dashboard && npm run dev                                           # :5173
 ```
 

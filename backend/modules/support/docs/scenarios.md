@@ -47,5 +47,5 @@ Each one pauses at `approval`; approve → `code_change_generated` (Completed, `
 ## Adding a scenario
 
 1. Add the sample to `scenarios.yaml` (and, for a new bug, describe it in the application's `BugScenarios.md`).
-2. Run `UPDATE_SNAPSHOTS=1 dotnet test --project modules/support/tests` (PowerShell: `$env:UPDATE_SNAPSHOTS=1; dotnet test --project modules/support/tests`) to regenerate `support.http`.
+2. Run `UPDATE_SNAPSHOTS=1 dotnet test --project backend/modules/support/tests` (PowerShell: `$env:UPDATE_SNAPSHOTS=1; dotnet test --project backend/modules/support/tests`) to regenerate `support.http`.
 3. Extend the parity test data if the scenario has a new expected outcome.

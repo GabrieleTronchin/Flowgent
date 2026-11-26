@@ -77,7 +77,7 @@ docker run --rm -p 8080:80 flowgent-dashboard:local
 - Port: `8080`.
 - Key env vars:
   - `SUPPORT_DUMMYAPPS_ROOT=/app/dummy-apps` — root the `locateComponent` tool
-    searches. The runtime image already copies `modules/support/dummy-apps`
+    searches. The runtime image already copies `backend/modules/support/dummy-apps`
     there and sets this default.
 
 ```bash
