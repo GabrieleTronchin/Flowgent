@@ -1,7 +1,6 @@
 namespace Flowgent.Modules.Support;
 
 using Flowgent.Module.Sdk;
-using Flowgent.Modules.Support.Endpoints;
 
 /// <summary>
 /// Builds the support module service. <c>Program.cs</c> and the in-process test harness both use it.

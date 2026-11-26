@@ -1,9 +1,11 @@
-namespace Flowgent.Engine.Service.Grpc;
+namespace Flowgent.Engine.Service;
 
 using Flowgent.Engine.Core.Configuration;
 using Flowgent.Engine.Core.Runs.Store;
+using Flowgent.Engine.Service.Grpc;
 using global::Grpc.Core;
 using Microsoft.Extensions.Options;
+using RunUpdate = Flowgent.Engine.Service.Grpc.RunUpdate;
 
 /// <summary>gRPC server stream of run transitions, filterable by run, workflow and module.</summary>
 public sealed class RunMonitorService(

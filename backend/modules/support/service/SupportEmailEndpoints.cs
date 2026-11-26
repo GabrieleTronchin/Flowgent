@@ -1,4 +1,4 @@
-namespace Flowgent.Modules.Support.Endpoints;
+namespace Flowgent.Modules.Support;
 
 using Flowgent.Contracts.Api;
 using Flowgent.Module.Sdk;

@@ -1,4 +1,4 @@
-namespace Flowgent.Mcp.Support.Tools;
+namespace Flowgent.Mcp.Support;
 
 using System.ComponentModel;
 using System.Text.Json;

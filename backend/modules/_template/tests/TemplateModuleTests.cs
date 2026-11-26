@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Module.Sdk;
-using Flowgent.Modules.Template.Tools;
+using Flowgent.Modules.Template;
 using Flowgent.Testing;
 
 /// <summary>The template definition is valid and its workflow runs end-to-end in Demo mode through the gateway.</summary>

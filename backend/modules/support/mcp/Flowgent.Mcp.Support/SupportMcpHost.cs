@@ -1,6 +1,5 @@
 namespace Flowgent.Mcp.Support;
 
-using Flowgent.Mcp.Support.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,4 +1,4 @@
-namespace Flowgent.Modules.Template.Tools;
+namespace Flowgent.Modules.Template;
 
 using Flowgent.Module.Sdk;
 

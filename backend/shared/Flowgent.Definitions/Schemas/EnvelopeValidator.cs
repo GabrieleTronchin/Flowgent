@@ -1,4 +1,4 @@
-namespace Flowgent.Definitions.Validation;
+namespace Flowgent.Definitions.Schemas;
 
 using System.Text.Json.Nodes;
 using Json.Schema;

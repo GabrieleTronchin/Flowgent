@@ -5,12 +5,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Json.Schema;
 using Flowgent.Contracts.Modules;
 using Flowgent.Definitions.Model;
 using Flowgent.Definitions.Schemas;
-using Flowgent.Definitions.Validation;
 using Flowgent.Definitions.Yaml;
+using Json.Schema;
 
 /// <summary>
 /// Loads a module definition (manifest, workflows, samples, prompts, schemas) from a package or a folder.
