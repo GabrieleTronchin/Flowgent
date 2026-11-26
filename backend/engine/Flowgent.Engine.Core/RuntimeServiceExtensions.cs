@@ -61,6 +61,7 @@ public static class RuntimeServiceExtensions
         services.AddSingleton<IDeclarativeDefinitionValidator, DeclarativeValidation>();
         services.AddSingleton<MafWorkflowFactory>();
         services.AddSingleton<MafRunDriver>();
+        services.AddSingleton<IRunDriver>(sp => sp.GetRequiredService<MafRunDriver>());
 
         // MCP-over-HTTP. The pool caches one McpClient per server URL; the transport factory builds a
         // Streamable-HTTP transport over the named "mcp" IHttpClientFactory client (ownsHttpClient:false), with

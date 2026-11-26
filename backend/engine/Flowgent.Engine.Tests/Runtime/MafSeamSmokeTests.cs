@@ -49,10 +49,10 @@ public sealed class MafSeamSmokeTests
 
         var (events, terminal) = await DriveAsync(driver, factory, run);
 
-        Assert.IsType<MafRunEvent.Completed>(terminal);
-        Assert.Equal(WorkflowOutcome.Success, ((MafRunEvent.Completed)terminal).Outcome);
+        Assert.IsType<RunEvent.Completed>(terminal);
+        Assert.Equal(WorkflowOutcome.Success, ((RunEvent.Completed)terminal).Outcome);
         // The Global.produce variable was recovered from run state and surfaced as a step output.
-        var produce = events.OfType<MafRunEvent.StepCompleted>().FirstOrDefault(e => e.StepId == "produce");
+        var produce = events.OfType<RunEvent.StepCompleted>().FirstOrDefault(e => e.StepId == "produce");
         Assert.NotNull(produce);
         Assert.Equal(true, produce!.Output?["ok"]?.GetValue<bool>());
     }
@@ -94,7 +94,7 @@ public sealed class MafSeamSmokeTests
         var (_, terminal) = await DriveAsync(driver, factory, run);
 
         // The run reached its terminal without the InvokeMcpTool PowerFx binding crashing on the JSON-string result.
-        Assert.True(terminal is MafRunEvent.Completed, terminal is MafRunEvent.Failed f ? f.Reason : terminal.GetType().Name);
+        Assert.True(terminal is RunEvent.Completed, terminal is RunEvent.Failed f ? f.Reason : terminal.GetType().Name);
     }
 
     [Fact]
@@ -153,18 +153,18 @@ public sealed class MafSeamSmokeTests
             built,
             evt =>
             {
-                if (evt is MafRunEvent.AwaitingInput)
+                if (evt is RunEvent.AwaitingInput)
                 {
                     awaited = true;
                 }
 
                 return Task.CompletedTask;
             },
-            (stepId, prompt, ct) => Task.FromResult(new MafHumanDecision(true, null)),
+            (stepId, prompt, ct) => Task.FromResult(new RunHumanDecision(true, null)),
             CancellationToken.None);
 
         Assert.True(awaited, "the Question gate should surface an AwaitingInput event");
-        Assert.IsType<MafRunEvent.Completed>(terminal);
+        Assert.IsType<RunEvent.Completed>(terminal);
     }
 
     private static (MafRunDriver Driver, MafWorkflowFactory Factory) Seam(TestEngine engine) =>
@@ -245,10 +245,10 @@ public sealed class MafSeamSmokeTests
         return new RunContext(Guid.NewGuid(), module, descriptor, [], null, CancellationToken.None);
     }
 
-    private static async Task<(List<MafRunEvent> Events, MafRunEvent Terminal)> DriveAsync(
+    private static async Task<(List<RunEvent> Events, RunEvent Terminal)> DriveAsync(
         MafRunDriver driver, MafWorkflowFactory factory, RunContext run)
     {
-        var events = new List<MafRunEvent>();
+        var events = new List<RunEvent>();
         var built = factory.Build(run);
         var terminal = await driver.RunAsync(
             run,
@@ -258,7 +258,7 @@ public sealed class MafSeamSmokeTests
                 events.Add(evt);
                 return Task.CompletedTask;
             },
-            (stepId, prompt, ct) => Task.FromResult(new MafHumanDecision(true, null)),
+            (stepId, prompt, ct) => Task.FromResult(new RunHumanDecision(true, null)),
             CancellationToken.None);
         return (events, terminal);
     }

@@ -8,32 +8,40 @@ using Flowgent.Engine.Core.Maf.Building;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Agents.AI.Workflows.Checkpointing;
 using Microsoft.Extensions.Logging;
-using RunContext = Flowgent.Engine.Core.Runs.Execution.RunContext;
+using Flowgent.Engine.Core.Runs.Execution;
 
 /// <summary>
 /// Drives one MAF declarative run and translates the declarative event stream into neutral
-/// <see cref="MafRunEvent"/> records, so <c>RunOrchestrator</c> never sees a declarative type. It runs the workflow
+/// <see cref="RunEvent"/> records, so <c>RunOrchestrator</c> never sees a declarative type. It runs the workflow
 /// with JSON checkpointing so the host can read each step's <c>Global.&lt;stepId&gt;</c> JSON
-/// value from run state and surface it as a <see cref="MafRunEvent.StepCompleted"/>; it bridges a <c>RequestInfoEvent</c>
+/// value from run state and surface it as a <see cref="RunEvent.StepCompleted"/>; it bridges a <c>RequestInfoEvent</c>
 /// human-input gate by invoking the supplied decision resolver and replying with an
 /// <see cref="DeclEvents.ExternalInputResponse"/> carrying the <c>{decision, reason}</c> JSON.
 /// </summary>
-public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
+public sealed class MafRunDriver(MafWorkflowFactory factory, ILogger<MafRunDriver> logger) : IRunDriver
 {
     private readonly ILogger<MafRunDriver> _logger = logger;
 
-    /// <summary>Resolves the human decision for a gate on <paramref name="stepId"/>; cancellation ends the wait.</summary>
-    public delegate Task<MafHumanDecision> ResolveDecisionAsync(string stepId, string? prompt, CancellationToken ct);
+    /// <summary>
+    /// Builds a fresh declarative workflow for the run (the framework needs exclusive ownership and executors hold
+    /// run state) and runs it via <see cref="RunAsync(RunContext, MafWorkflowFactory.BuiltWorkflow, Func{RunEvent, Task}, ResolveDecisionAsync, CancellationToken)"/>.
+    /// </summary>
+    public Task<RunEvent> RunAsync(
+        RunContext run,
+        Func<RunEvent, Task> onEvent,
+        ResolveDecisionAsync resolveDecision,
+        CancellationToken ct) =>
+        RunAsync(run, factory.Build(run), onEvent, resolveDecision, ct);
 
     /// <summary>
     /// Runs <paramref name="built"/> to completion, invoking <paramref name="onEvent"/> for each neutral event and
     /// <paramref name="resolveDecision"/> when a human-input gate surfaces. Returns the terminal event (Completed or
     /// Failed); cancellation of <paramref name="ct"/> surfaces as an <see cref="OperationCanceledException"/>.
     /// </summary>
-    public async Task<MafRunEvent> RunAsync(
+    public async Task<RunEvent> RunAsync(
         RunContext run,
         MafWorkflowFactory.BuiltWorkflow built,
-        Func<MafRunEvent, Task> onEvent,
+        Func<RunEvent, Task> onEvent,
         ResolveDecisionAsync resolveDecision,
         CancellationToken ct)
     {
@@ -48,10 +56,10 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         }
     }
 
-    private async Task<MafRunEvent> RunCoreAsync(
+    private async Task<RunEvent> RunCoreAsync(
         RunContext run,
         MafWorkflowFactory.BuiltWorkflow built,
-        Func<MafRunEvent, Task> onEvent,
+        Func<RunEvent, Task> onEvent,
         ResolveDecisionAsync resolveDecision,
         DirectoryInfo checkpointDir,
         CancellationToken ct)
@@ -61,7 +69,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
 
         var execution = await InProcessExecution.RunStreamingAsync(built.Workflow, run.Input, checkpointManager, cancellationToken: ct).ConfigureAwait(false);
 
-        MafRunEvent? terminal = null;
+        RunEvent? terminal = null;
         var reportedOutputs = new HashSet<string>(StringComparer.Ordinal);
 
         await foreach (var evt in execution.WatchStreamAsync(ct).ConfigureAwait(false))
@@ -81,11 +89,11 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
                     break;
 
                 case ExecutorFailedEvent failed:
-                    terminal ??= new MafRunEvent.Failed(failed.ExecutorId, DescribeError(failed.Data) ?? $"Step '{failed.ExecutorId}' failed.");
+                    terminal ??= new RunEvent.Failed(failed.ExecutorId, DescribeError(failed.Data) ?? $"Step '{failed.ExecutorId}' failed.");
                     break;
 
                 case WorkflowErrorEvent error:
-                    terminal ??= new MafRunEvent.Failed(run.CurrentStepId, DescribeError(error.Data) ?? "Workflow error.");
+                    terminal ??= new RunEvent.Failed(run.CurrentStepId, DescribeError(error.Data) ?? "Workflow error.");
                     break;
             }
         }
@@ -100,22 +108,22 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
     private static async Task AnswerHumanInputAsync(
         StreamingRun execution,
         RequestInfoEvent request,
-        Func<MafRunEvent, Task> onEvent,
+        Func<RunEvent, Task> onEvent,
         ResolveDecisionAsync resolveDecision,
         CancellationToken ct)
     {
         var (stepId, prompt) = DescribeRequest(request.Request);
-        await onEvent(new MafRunEvent.AwaitingInput(stepId, prompt)).ConfigureAwait(false);
+        await onEvent(new RunEvent.AwaitingInput(stepId, prompt)).ConfigureAwait(false);
         var decision = await resolveDecision(stepId, prompt, ct).ConfigureAwait(false);
         var answer = new DeclEvents.ExternalInputResponse(
             new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.User, decision.ToJson().ToJsonString()));
         await execution.SendResponseAsync(request.Request.CreateResponse(answer)).ConfigureAwait(false);
     }
 
-    private static async Task<MafRunEvent> ReadTerminalAsync(RunContext run, DirectoryInfo checkpointDir, CancellationToken ct)
+    private static async Task<RunEvent> ReadTerminalAsync(RunContext run, DirectoryInfo checkpointDir, CancellationToken ct)
     {
-        MafRunEvent? completed = ToCompleted(run, await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false));
-        return completed ?? new MafRunEvent.Failed(run.CurrentStepId, "Workflow completed without producing a result.");
+        RunEvent? completed = ToCompleted(run, await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false));
+        return completed ?? new RunEvent.Failed(run.CurrentStepId, "Workflow completed without producing a result.");
     }
 
     /// <summary>
@@ -125,7 +133,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
     /// (the structured JSON a success terminal exposes as <c>FinalOutput</c>). The success/failure outcome is taken from
     /// the descriptor manifest <c>terminals[]</c> for that id, never inferred from the YAML.
     /// </summary>
-    private static MafRunEvent.Completed? ToCompleted(RunContext run, IReadOnlyDictionary<string, string> globals)
+    private static RunEvent.Completed? ToCompleted(RunContext run, IReadOnlyDictionary<string, string> globals)
     {
         if (!globals.TryGetValue("__terminalId", out var rawId))
         {
@@ -140,7 +148,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
 
         var message = ReadStringGlobal(globals, "__message");
         var finalOutput = globals.TryGetValue("__finalOutput", out var rawOut) ? PowerFxConversion.FromJsonString(rawOut) : null;
-        return new MafRunEvent.Completed(terminalId, outcome, message, finalOutput);
+        return new RunEvent.Completed(terminalId, outcome, message, finalOutput);
     }
 
     private static DefModel.WorkflowOutcome ResolveOutcome(DefModel.WorkflowDescriptor workflow, string terminalId)
@@ -163,7 +171,7 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         RunContext run,
         DirectoryInfo checkpointDir,
         HashSet<string> reported,
-        Func<MafRunEvent, Task> onEvent,
+        Func<RunEvent, Task> onEvent,
         CancellationToken ct)
     {
         var globals = await ReadGlobalsAsync(checkpointDir, ct).ConfigureAwait(false);
@@ -193,14 +201,14 @@ public sealed class MafRunDriver(ILogger<MafRunDriver> logger)
         RunContext run,
         string name,
         IReadOnlyDictionary<string, string> globals,
-        Func<MafRunEvent, Task> onEvent)
+        Func<RunEvent, Task> onEvent)
     {
         var node = PowerFxConversion.FromJsonString(globals[name]);
         var detail = ReadStringGlobal(globals, $"{name}__detail");
 
         run.SetOutput(name, node);
-        await onEvent(new MafRunEvent.StepStarted(name)).ConfigureAwait(false);
-        await onEvent(new MafRunEvent.StepCompleted(name, node, detail)).ConfigureAwait(false);
+        await onEvent(new RunEvent.StepStarted(name)).ConfigureAwait(false);
+        await onEvent(new RunEvent.StepCompleted(name, node, detail)).ConfigureAwait(false);
     }
 
     /// <summary>Reads a global whose value is a JSON string, or null when it is absent or not a string.</summary>

@@ -3,8 +3,6 @@ namespace Flowgent.Engine.Core.Runs.Execution;
 using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Definitions.Model;
-using Flowgent.Engine.Core.Maf.Building;
-using Flowgent.Engine.Core.Maf.Execution;
 using Flowgent.Engine.Core.Modules.Catalog;
 using Flowgent.Engine.Core.Runs.HumanInput;
 using Flowgent.Engine.Core.Runs.Store;
@@ -12,8 +10,7 @@ using Microsoft.Extensions.Logging;
 using RunStatus = Flowgent.Contracts.Runs.RunStatus;
 
 /// <summary>
-/// Executes queued runs on MAF declarative workflows: builds the workflow for the run via
-/// <see cref="MafWorkflowFactory"/>, drives it through the neutral <see cref="MafRunDriver"/> seam, records per-step
+/// Executes queued runs: hands each run to the <see cref="IRunDriver"/> (which builds and runs the workflow), records per-step
 /// transitions through <see cref="RunRecorder"/> and exactly one terminal transition (Completed, Failed or Cancelled)
 /// via the dual-write <see cref="IRunStore"/>. The gRPC RunMonitor shape, RunStatus set and current-step-id are
 /// preserved because the orchestrator still drives RunRecorder/RunStore.
@@ -21,8 +18,7 @@ using RunStatus = Flowgent.Contracts.Runs.RunStatus;
 public sealed class RunOrchestrator(
     IModuleCatalog catalog,
     IRunStore store,
-    MafWorkflowFactory factory,
-    MafRunDriver driver,
+    IRunDriver driver,
     RunRecorder recorder,
     HumanInputRegistry humanInput,
     RunRegistry registry,
@@ -86,12 +82,8 @@ public sealed class RunOrchestrator(
 
     private async Task<RunExecutionResult> RunWorkflowAsync(RunContext run, CancellationToken runToken, CancellationToken hostToken)
     {
-        // A fresh declarative workflow per run: the framework requires exclusive ownership and executors hold run state.
-        var built = factory.Build(run);
-
         var terminal = await driver.RunAsync(
             run,
-            built,
             evt => OnEventAsync(run, evt),
             (stepId, prompt, ct) => ResolveDecisionAsync(run, stepId, prompt, ct),
             runToken);
@@ -104,31 +96,31 @@ public sealed class RunOrchestrator(
 
         return terminal switch
         {
-            MafRunEvent.Completed completed => await CompleteAsync(run, completed),
-            MafRunEvent.Failed failed => await FailAsync(run, failed.StepId ?? run.CurrentStepId, failed.Reason),
+            RunEvent.Completed completed => await CompleteAsync(run, completed),
+            RunEvent.Failed failed => await FailAsync(run, failed.StepId ?? run.CurrentStepId, failed.Reason),
             _ => await FailAsync(run, run.CurrentStepId, "Workflow completed without producing a result."),
         };
     }
 
-    private async Task OnEventAsync(RunContext run, MafRunEvent evt)
+    private async Task OnEventAsync(RunContext run, RunEvent evt)
     {
         switch (evt)
         {
-            case MafRunEvent.StepStarted started:
+            case RunEvent.StepStarted started:
                 run.EnterStep(started.StepId);
                 await recorder.StepStartedAsync(run, started.StepId);
                 break;
-            case MafRunEvent.StepCompleted completed:
+            case RunEvent.StepCompleted completed:
                 await recorder.StepCompletedAsync(run, completed.StepId, completed.Detail);
                 break;
-            case MafRunEvent.AwaitingInput awaiting:
+            case RunEvent.AwaitingInput awaiting:
                 run.EnterStep(awaiting.StepId);
                 await recorder.AwaitingInputAsync(run, awaiting.StepId, awaiting.Prompt);
                 break;
         }
     }
 
-    private async Task<MafHumanDecision> ResolveDecisionAsync(RunContext run, string stepId, string? prompt, CancellationToken ct)
+    private async Task<RunHumanDecision> ResolveDecisionAsync(RunContext run, string stepId, string? prompt, CancellationToken ct)
     {
         var review = ReviewFromPrompt(prompt, stepId);
         var completion = new TaskCompletionSource<HumanDecision>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -145,7 +137,7 @@ public sealed class RunOrchestrator(
         }
 
         await recorder.InputReceivedAsync(run, stepId, decision.Reason is null ? decision.Value : $"{decision.Value}: {decision.Reason}");
-        return new MafHumanDecision(decision.Approved, decision.Reason);
+        return new RunHumanDecision(decision.Approved, decision.Reason);
     }
 
     /// <summary>
@@ -193,7 +185,7 @@ public sealed class RunOrchestrator(
     private static string? StringProperty(System.Text.Json.Nodes.JsonObject obj, string name) =>
         obj.TryGetPropertyValue(name, out var node) && node is not null ? node.GetValue<string>() : null;
 
-    private async Task<RunExecutionResult> CompleteAsync(RunContext run, MafRunEvent.Completed outcome)
+    private async Task<RunExecutionResult> CompleteAsync(RunContext run, RunEvent.Completed outcome)
     {
         var status = outcome.Outcome == WorkflowOutcome.Success ? RunStatus.Completed : RunStatus.Failed;
         run.EnterStep(outcome.TerminalId);
