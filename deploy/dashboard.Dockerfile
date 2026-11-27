@@ -17,10 +17,14 @@ RUN npm run build
 # ---- runtime stage ----
 FROM nginx:1.27-alpine AS runtime
 
-# Minimal SPA-fallback config (try_files $uri /index.html). No gateway
-# reverse-proxy wiring this round (see deploy/README.md).
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+# SPA fallback plus a reverse proxy to the gateway. The nginx image renders templates in
+# /etc/nginx/templates into /etc/nginx/conf.d at start-up (envsubst), so the gateway address
+# is set with GATEWAY_URL at run time (see deploy/README.md).
+COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/dist /usr/share/nginx/html
+
+ENV GATEWAY_URL=http://gateway:8080 \
+    NGINX_RESOLVER=127.0.0.11
 
 EXPOSE 80
 

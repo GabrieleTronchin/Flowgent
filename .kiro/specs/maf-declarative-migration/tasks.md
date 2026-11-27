@@ -63,7 +63,7 @@ Confirmed while authoring the real module YAMLs against the FEAT-003 seam; recor
 
 ## Phase 4 — Containerization
 - [x] 4.1 **FEAT-004 (redesigned):** Multi-stage Dockerfiles for engine, gateway, dashboard **and support-mcp** (sdk:10.0→aspnet:10.0 / node:20-alpine→nginx:1.27-alpine), under `deploy/`, repo-root build context, `.dockerignore`s, curated OCI labels distinguishing core platform from the example module. All four build locally. `deploy/README.md` documents them.
-- [ ] 4.2 Reference `docker-compose.yml`: engine + gateway + dashboard + one example MCP server, Demo mode, definitions mounted as a volume. **Deferred to the next round** (owner decision): this beta round ships standalone images + GHCR publishing only; compose + local wiring come next.
+- [ ] 4.2 Reference `docker-compose.yml`: engine + gateway + dashboard + one example MCP server, Demo mode, definitions mounted as a volume. **PREPARED, NOT RUN**: `compose/docker-compose.yml` + `compose/README.md`; the dashboard image now proxies `/api` and the run stream to the gateway (`GATEWAY_URL`, nginx template). `docker compose config` parses it; it has not been built or started (no Docker on the author's machine yet). Tick this together with 4.3 once it runs.
 - [ ] 4.3 Verify a run end-to-end through the composed stack. **Deferred with 4.2.**
 
 ## Phase 5 — CI/CD
