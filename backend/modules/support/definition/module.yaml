@@ -58,6 +58,7 @@ workflows:
     input:
       schema: { file: schemas/support-email.input.schema.json }
     errorMessage: Subject and Body are required.
+    demo: demo/support-email.yaml
     terminals:
       - id: code_change_generated
         outcome: success

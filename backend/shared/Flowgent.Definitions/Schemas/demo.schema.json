@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flowgent.local/schemas/demo.schema.json",
+  "title": "Flowgent demo responses",
+  "description": "Demo-mode answers of a workflow's agent steps (referenced by workflows[].demo in module.yaml).",
+  "type": "object",
+  "required": ["steps"],
+  "additionalProperties": false,
+  "properties": {
+    "steps": {
+      "type": "object",
+      "description": "Responses by step id (the left part of the agent name \"<stepId>|<agentId>\").",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_-]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "anyOf": [{ "required": ["output"] }, { "required": ["rules"] }],
+        "properties": {
+          "extract": {
+            "type": "object",
+            "description": "Values read from the rendered prompt, used as {name} placeholders in outputs.",
+            "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "not": { "const": "prompt" } },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "oneOf": [{ "required": ["field"] }, { "required": ["pattern"] }],
+              "properties": {
+                "field": { "type": "string", "minLength": 1, "description": "Text after a 'Label:' line of the prompt." },
+                "pattern": { "type": "string", "minLength": 1, "description": "Regex; the first capture group (or the whole match) is the value." },
+                "default": { "type": "string", "description": "Used when the value is empty; may contain {prompt}." }
+              }
+            }
+          },
+          "rules": {
+            "type": "array",
+            "description": "Ordered rules: the first whose 'when' regex matches the prompt (case-insensitive) wins.",
+            "items": {
+              "type": "object",
+              "required": ["when", "output"],
+              "additionalProperties": false,
+              "properties": {
+                "when": { "type": "string", "minLength": 1 },
+                "output": { "type": "object" }
+              }
+            }
+          },
+          "output": { "type": "object", "description": "Output when no rule matches. Strings accept {name} and {prompt} placeholders." }
+        }
+      }
+    }
+  }
+}

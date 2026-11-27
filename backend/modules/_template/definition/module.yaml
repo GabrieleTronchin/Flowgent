@@ -35,6 +35,8 @@ workflows:
     input:
       schema: { file: schemas/template-hello.input.schema.json }
     errorMessage: Text is required.
+    # Optional: answers of the agent steps in Demo mode (no model, no API key).
+    demo: demo/template-hello.yaml
     terminals:
       - id: done
         outcome: success

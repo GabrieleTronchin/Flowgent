@@ -17,8 +17,8 @@ trigger:
         result: Local.intake
 
     # ── draft (llm) ─────────────────────────────────────────────────────────────────────────────────────
-    # Demo output for (fixture-flow, draft) comes from DemoResponseProvider; the prompt keeps the
-    # "Write a draft for: <text>" shape the Demo logic expects.
+    # In Demo mode the answer comes from demo/fixture-flow.yaml; the prompt keeps the
+    # "Write a draft for: <text>" shape that file reads.
     - kind: InvokeAzureAgent
       id: draft
       conversationId: =System.ConversationId

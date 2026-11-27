@@ -69,7 +69,7 @@ The LLM provider is an engine setting (`Flowgent:Llm`): see the platform's [Demo
 
 ## Demo responses
 
-In Demo mode (the default) every agent step answers from the engine's `DemoResponseProvider` (keyed by workflow and step id), so all scenarios run offline: classification by keyword rules, severity by keywords (`injection`/`security` → Critical, `exception`/`crash` → High, else Medium), and placeholder root cause and diff texts prefixed with `[Demo]`. Details: [Demo responses](docs/demo-responses.md).
+In Demo mode (the default) every agent step answers from the module's demo file [`definition/demo/support-email.yaml`](definition/demo/support-email.yaml), so all scenarios run offline: classification by keyword rules, severity by keywords (`injection`/`security` → Critical, `exception`/`crash` → High, else Medium), and placeholder root cause and diff texts prefixed with `[Demo]`. Details: [Demo responses](docs/demo-responses.md).
 
 ## Dummy apps and scenarios
 

@@ -17,7 +17,7 @@ trigger:
         result: Local.intake
 
     # ── classify ──────────────────────────────────────────────────────────────────────────────────────
-    # Demo output for (support-email, classify) comes from DemoResponseProvider, which matches its rules against the
+    # In Demo mode the answer comes from demo/support-email.yaml, which matches its rules against the
     # rendered prompt; the prompt therefore keeps the "Subject: ...\n\nBody: ..." shape the Demo rules expect.
     - kind: InvokeAzureAgent
       id: classify

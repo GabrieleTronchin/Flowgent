@@ -35,4 +35,7 @@ public sealed class WorkflowDescriptor
 
     /// <summary>Nodes/edges projected from the YAML + manifest outcome metadata at load time.</summary>
     public required WorkflowGraphModel Graph { get; init; }
+
+    /// <summary>Demo responses declared by the module (<c>workflows[].demo</c>), or null when the workflow has none.</summary>
+    public DemoFile? Demo { get; init; }
 }

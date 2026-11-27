@@ -7,9 +7,9 @@ using Flowgent.Engine.Core.Runs.Execution;
 /// <summary>
 /// Unit tests of the support workflow's Demo-mode behaviour and agent mapping, ported from the pre-migration
 /// SupportDefinitionTests (that file was disabled because it was built on the deleted
-/// custom step model). The behaviour that used to live in the workflow <c>demo:</c> blocks and <c>rule</c>/<c>map</c>
-/// steps now lives in <see cref="DemoResponseProvider"/> (classification keyword rules, severity, pull-request paths)
-/// and in the declarative support YAML (routing, category→role mapping); the routing single/both/no-application and
+/// custom step model). The Demo behaviour (classification keyword rules, severity, pull-request paths) is declared in
+/// the module's <c>demo/support-email.yaml</c> and answered by <see cref="DemoResponseProvider"/>; routing and the
+/// category→role mapping live in the declarative support YAML; the routing single/both/no-application and
 /// category→agent outcomes are asserted end-to-end by <see cref="SupportParityTests"/>, and reproduced here at the
 /// unit level where the logic is pure.
 /// </summary>
@@ -119,13 +119,13 @@ public class SupportDefinitionTests
     }
 
     private static JsonObject Classify(string subject, string body) =>
-        (JsonObject)Demo.Resolve("support-email", "classify", $"Subject: {subject}\n\nBody: {body}", Run());
+        (JsonObject)Demo.Resolve(Run(), "classify", $"Subject: {subject}\n\nBody: {body}");
 
     private static JsonObject Resolve(string subject, string body, string component) =>
-        (JsonObject)Demo.Resolve("support-email", "resolve", $"Subject: {subject}\n\nBody: {body}\n\nComponent: {component}", Run());
+        (JsonObject)Demo.Resolve(Run(), "resolve", $"Subject: {subject}\n\nBody: {body}\n\nComponent: {component}");
 
     private static JsonObject GenerateCode(string component, string fix, string path) =>
-        (JsonObject)Demo.Resolve("support-email", "generate_code", $"Component: {component}\n\nProposedFix: {fix}\n\nPath: {path}", Run());
+        (JsonObject)Demo.Resolve(Run(), "generate_code", $"Component: {component}\n\nProposedFix: {fix}\n\nPath: {path}");
 
     private static RunContext Run()
     {

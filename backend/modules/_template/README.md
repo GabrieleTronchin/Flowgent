@@ -7,7 +7,7 @@ graph LR
     summarize["summarize (llm)"] --> count_words["count_words (tool template.wordCount)"] --> done["done (terminal, success)"]
 ```
 
-- `summarize` asks the LLM for a short summary (structured output, `schemas/summary.schema.json`). In Demo mode the engine's `DemoResponseProvider` answers instead, so no API key is needed.
+- `summarize` asks the LLM for a short summary (structured output, `schemas/summary.schema.json`). In Demo mode the answer comes from `definition/demo/template-hello.yaml` instead, so no API key is needed. The file is optional and commented; copy it for your own agent steps.
 - `count_words` calls the module's own tool `template.wordCount` (C# code in `service/WordCountTool.cs`).
 - `done` ends the run with the summary and the word count.
 

@@ -2,7 +2,7 @@
 
 [← Support module](../README.md) · [Pipeline](pipeline.md) · [Platform: Demo mode](../../../../docs/demo-mode.md)
 
-In Demo mode (`Flowgent:Llm:Provider = Demo`, the default) the three agent steps (`classify`, `resolve`, `generate_code`) answer from the engine's `DemoResponseProvider` (C#, keyed by workflow and step id); [`support-email.yaml`](../definition/workflows/support-email.yaml) carries no `demo:` block. Responses are deterministic and all generated texts start with `[Demo]`. Routing, agent assignment and the component lookup are not simulated: they run exactly as with a real model.
+In Demo mode (`Flowgent:Llm:Provider = Demo`, the default) the three agent steps (`classify`, `resolve`, `generate_code`) answer from the module's demo file [`demo/support-email.yaml`](../definition/demo/support-email.yaml), referenced by `workflows[].demo` in `module.yaml`. Responses are deterministic and all generated texts start with `[Demo]`. Routing, agent assignment and the component lookup are not simulated: they run exactly as with a real model.
 
 ## Classification (`classify`)
 
@@ -21,7 +21,7 @@ Rules on `subject + " " + body`, case-insensitive, first match wins:
 |-------|------------|
 | `rootCauseDescription` | `[Demo] Simulated root cause analysis for "<subject>": the defect originates in <component>.` |
 | `affectedComponent` | The component found by `locate_component` (e.g. `OrderController.cs`, or `UnknownComponent`) |
-| `severityAssessment` | `Critical` if the text contains `injection` or `security`, `High` for `exception` or `crash`, otherwise `Medium` |
+| `severityAssessment` | `Critical` if the prompt (subject, body, component) contains `injection` or `security`, `High` for `exception` or `crash`, otherwise `Medium` |
 | `proposedFixSummary` | `[Demo] Apply a targeted fix in <component> and add a regression test.` |
 | `requiresEscalation` | `false` |
 

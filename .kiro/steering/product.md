@@ -29,7 +29,7 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 - `RunStatus`: `Queued`, `Running`, `AwaitingInput`, `Completed`, `Failed`, `Cancelled` (last three terminal). Each run has a current step id.
 - Every transition updates the run and appends an event in one `SaveChanges` (dual-write), then is published on the gRPC stream.
 - Human input: `GET /api/engine/human-inputs`, `POST .../{runId}/approve|reject` (`204`/`404`/`409`); abort `POST /api/engine/runs/{runId}/abort` ends the run `Failed` with `Aborted by user`.
-- Demo mode (default): agent steps answer from the engine's `DemoResponseProvider` (keyed by workflow and step id); no API key needed.
+- Demo mode (default): agent steps answer from the demo file each module declares per workflow (`workflows[].demo`, e.g. `demo/<workflow>.yaml`, keyed by step id); no API key needed. The engine holds no workflow-specific demo logic.
 
 ## Modules in the repository
 

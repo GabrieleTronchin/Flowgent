@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../../../../shared/Flowgent.Definitions/Schemas/demo.schema.json
+#
+# Demo-mode answers of the fixture-flow workflow. The prompt is "Write a draft for: <text>".
+steps:
+  draft:
+    extract:
+      text: { pattern: 'Write a draft for:\s*(.+)', default: "{prompt}" }
+    output:
+      text: "draft {text}"

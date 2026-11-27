@@ -4,12 +4,13 @@
 
 A module definition is a folder of YAML, Markdown and JSON files (`backend/modules/<id>/definition/`) published by the module service. Workflows are **Microsoft Agent Framework (MAF) declarative workflows**: the engine feeds each workflow's YAML to the declarative workflow builder and runs it, so the workflow format is MAF's, not a Flowgent-specific one. Flowgent owns only the **module envelope** (the manifest and samples) and the **run contract** the workflow follows (how it reads intake input, snapshots step outputs, and marks terminals).
 
-Two envelope formats have a JSON Schema in `backend/shared/Flowgent.Definitions/Schemas/` (served by `GET /api/engine/schemas/{module|samples}`):
+Three envelope formats have a JSON Schema in `backend/shared/Flowgent.Definitions/Schemas/` (served by `GET /api/engine/schemas/{module|samples|demo}`):
 
 | File | Schema | Content |
 |------|--------|---------|
 | `module.yaml` | `module.schema.json` | Module id, config, agents, tools, workflow **descriptors** and sample files |
 | `samples/*.yaml` | `samples.schema.json` | Example inputs shown by the dashboard |
+| `demo/*.yaml` | `demo.schema.json` | Optional Demo-mode answers of a workflow's agent steps ([Demo mode](demo-mode.md#declaring-demo-responses)) |
 | `workflows/*.yaml` | (none) | One MAF declarative workflow. Not step-validated at load; the engine **trial-builds** it with the declarative builder and reports a build failure as a module error. |
 
 > The old custom workflow format (`workflow.schema.json`, `kind: llm/rule/map/tool/http/human-input/terminal`, Scriban `{{ … }}` templates) was removed when the engine moved to MAF declarative. `/api/engine/schemas/workflow` no longer exists.
@@ -54,7 +55,7 @@ samples:
   - samples/notes-summary.samples.yaml
 ```
 
-Required: `id`, `name`, `workflows`. Tool names must start with the module id. Each `workflows[]` entry is a **descriptor**: id, file, integer `version`, name, optional `description`/`title`, the input `schema`, optional `errorMessage`, and `terminals[]` (`{ id, outcome }` with outcome `success` or `failure`). The engine reads graph/terminal metadata from here — the workflow YAML is opaque to the loader.
+Required: `id`, `name`, `workflows`. Tool names must start with the module id. Each `workflows[]` entry is a **descriptor**: id, file, integer `version`, name, optional `description`/`title`, the input `schema`, optional `errorMessage`, optional `demo` (the demo responses file, see [Demo mode](demo-mode.md#declaring-demo-responses)), and `terminals[]` (`{ id, outcome }` with outcome `success` or `failure`). The engine reads graph/terminal metadata from here — the workflow YAML is opaque to the loader.
 
 ## Workflow definition (MAF declarative)
 
@@ -112,7 +113,7 @@ PowerFx `IsMatch` is recognised but not supported in this builder, so keyword ro
 
 ## Demo mode
 
-Workflows carry **no** `demo:` block. In Demo mode the engine's `DemoResponseProvider` supplies each agent step's response, keyed by `(workflowId, stepId)`. Add a key there when you add an agent step. See [Demo mode](demo-mode.md).
+In Demo mode each agent step answers with the response declared in the workflow's optional demo file (`workflows[].demo` in `module.yaml`, e.g. `demo/notes-summary.yaml`), keyed by step id. Add an entry there when you add an agent step. See [Demo mode](demo-mode.md#declaring-demo-responses).
 
 ## Samples
 

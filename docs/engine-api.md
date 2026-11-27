@@ -14,7 +14,7 @@ No endpoint returns secrets: API keys and LLM endpoint URLs stay in configuratio
 | GET | `/api/engine/modules` | `[{ id, name, description, status, version, workflows[], errors[], lastLoadedAt, lastError }]`; `status` is `Loading`, `Available`, `Invalid` or `Unavailable`; `errors[]` are `{ moduleId, file, stepId, line, message, severity }` |
 | GET | `/api/engine/workflows?moduleId=` | `[{ id, moduleId, name, description, version, available, inputSchema, graph, samples[] }]` |
 | GET | `/api/engine/workflows/{workflowId}` | One workflow; `404` when unknown |
-| GET | `/api/engine/schemas/{name}` | JSON Schema of a YAML format: `module` or `samples`; `404` otherwise (the custom `workflow` schema was removed with the move to MAF declarative) |
+| GET | `/api/engine/schemas/{name}` | JSON Schema of a YAML format: `module`, `samples` or `demo`; `404` otherwise |
 
 `graph` is `{ start, nodes: [{ id, name, kind, outcome }], edges: [{ from, to, label }] }`, projected from the declarative workflow; `kind` is the action/terminal kind, `outcome` is `success`/`failure` on terminal nodes, `label` is the edge condition. `samples[]` are `{ id, name, group, description, workflowId, input, expectInvalid }`.
 

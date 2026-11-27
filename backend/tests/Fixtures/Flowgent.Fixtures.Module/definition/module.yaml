@@ -63,6 +63,7 @@ workflows:
           text: { type: string, minLength: 1, pattern: '\S' }
           priority: { type: string, enum: [high, low] }
     errorMessage: Text and priority are required.
+    demo: demo/fixture-flow.yaml
     terminals:
       - id: done
         outcome: success

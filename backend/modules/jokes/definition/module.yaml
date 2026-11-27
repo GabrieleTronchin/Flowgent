@@ -25,6 +25,7 @@ workflows:
     title: "Joke about {topic}"
     input:
       schema: { file: schemas/joke.input.schema.json }
+    demo: demo/joke.yaml
     terminals:
       - id: done
         outcome: success

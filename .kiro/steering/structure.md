@@ -35,7 +35,7 @@ backend/
 ├── shared/
 │   ├── Flowgent.Contracts/          # HTTP DTOs: module package, tool invocation, engine API views, RunStatus/RunEventKind
 │   ├── Flowgent.Definitions/        # YAML → JsonNode reader, model records, ModuleLoader, EnvelopeValidator;
-│   │                                #   Schemas/ = module/samples JSON Schemas (embedded)
+│   │                                #   Schemas/ = module/samples/demo JSON Schemas (embedded); DemoTemplate (demo file rules)
 │   ├── Flowgent.Module.Sdk/         # AddFlowgentModule/MapFlowgentModule, ModuleTool<TIn,TOut>, IEngineClient, ModuleDefinitionAssert
 │   └── Flowgent.ServiceDefaults/    # health, OpenTelemetry, service discovery, resilience
 ├── tests/

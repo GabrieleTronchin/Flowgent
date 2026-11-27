@@ -57,6 +57,7 @@
           "title": { "type": "string" },
           "input": { "$ref": "#/$defs/schemaRef" },
           "errorMessage": { "type": "string" },
+          "demo": { "type": "string", "minLength": 1, "description": "Optional demo responses file (e.g. demo/joke.yaml), used in Demo mode." },
           "terminals": {
             "type": "array",
             "items": {

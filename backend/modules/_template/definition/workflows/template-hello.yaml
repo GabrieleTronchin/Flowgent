@@ -16,7 +16,7 @@ trigger:
       output:
         result: Local.intake
 
-    # Summarise. Demo output for (template-hello, summarize) comes from DemoResponseProvider.
+    # Summarise. In Demo mode the answer comes from demo/template-hello.yaml (step "summarize").
     - kind: InvokeAzureAgent
       id: summarize
       conversationId: =System.ConversationId
