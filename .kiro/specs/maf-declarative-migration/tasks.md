@@ -9,12 +9,12 @@ These are the spike follow-ups and must-answer items before real migration.
 - [x] 0.2b **Mini-spike: HITL** (F5) — DONE, PASS. `Question` + `ConditionGroup` gate with scripted resume via `SendResponseAsync`; approved + rejected branches verified. Substitutions required: `Question` not `RequestExternalInput`, `ConditionGroup` not `If`.
 - [x] 0.3 **Mini-spike: MCP over HTTP** (not in-memory pipes) — DONE, PASS (Gate-0, FEAT-001). Proved `McpClient` against a real Streamable-HTTP MCP server (`ModelContextProtocol.AspNetCore` on Kestrel at `127.0.0.1:0`) fully offline. Four outcomes recorded in `spike/README.md`: (1) `InvokeMcpTool` crosses PowerFx with no `Double` crash (non-numeric result); (2) **correction** — there is NO `DefaultMcpToolHandler` in MAF 1.27.0 (the earlier "targets HTTP natively" assumption was wrong), so a **custom `IMcpToolHandler`** (`HttpMcpToolHandler`) is mandatory; (3) an external caller-owned `HttpClient` + `HttpClientTransport(ownsHttpClient:false)` works end-to-end with `McpClient.CreateAsync`; (4) **no ASP.NET Core leak** — the client package `ModelContextProtocol.Core` references 0 `Microsoft.AspNetCore.*`, so the client package sits on `Flowgent.Engine.Core`.
 - [x] 0.4 **NuGet hygiene** (D7): DONE — added repo-root `nuget.config` (nuget.org only) covering the whole repo and any future top-level folders. Verified restore no longer hangs on the private feed.
-- [ ] 0.5 Decide definition-distribution mechanism (D5) for the stock engine image.
+- [x] 0.5 Definition distribution for the stock engine image (D5) — DONE. The image ships no definitions; one folder per module is mounted under `/definitions` (`Flowgent__Definitions__Path=/definitions` set in `engine.Dockerfile`). Modules are registered explicitly by id (`Flowgent__Modules__<n>__Id`); a volume module needs no `Url`; a module without a folder falls back to HTTP. Covered by `VolumeDefinitionTests`; documented in `deploy/README.md`. Auto-discovery of folders (no `Modules[]`) is a possible later step, not part of 0.5.
 
 ## Phase 1 — Format mapping (no deletions yet)
 - [x] 1.3 **Mapping pass DONE** — written step-by-step mapping of `support` (all step kinds) and `jokes` in `step-mapping.md`. **Gate PASSED: every step maps**, no blocker. Found 5 frictions F1–F5 (demo leaves YAML; rule fail-paths; assignAgent run state; tool→MCP; HITL review shape). F4 (McpToolHandler) and F5 (HITL shape) still need mini-spike validation before deleting engine code.
-- [ ] 1.1 Rewrite `jokes` as MAF declarative YAML and run through a MAF path to confirm parity (do together with the Phase 0 mini-spikes).
-- [ ] 1.2 Rewrite `support` likewise once F4/F5 mini-spikes pass; use the mapping table as the checklist.
+- [x] 1.1 Rewrite `jokes` as MAF declarative YAML and run through a MAF path to confirm parity — DONE in FEAT-004 (see 2.3/2.6).
+- [x] 1.2 Rewrite `support` likewise — DONE in FEAT-004 (see 2.3/2.6); `SupportParityTests` green.
 
 ## Phase 2 — Engine core migration
 
@@ -75,4 +75,4 @@ Confirmed while authoring the real module YAMLs against the FEAT-003 seam; recor
 ## Housekeeping (carried over, independent)
 - [ ] H1 Fix dashboard tooltip text `LlmProvider:Provider` → `Flowgent:Llm:Provider`.
 - [ ] H2 After GitHub repo rename: update `origin` remote + README CI badge URLs; push local commits on `feature/llm-flows-platform`.
-- [ ] H3 Decide spike disposition: keep `spike/` as reference or delete. **Kept for now** — `spike/Spike.MafDeclarative` carries the Gate-0 (0.3) MCP-over-HTTP evidence and the probe findings referenced throughout this file; it is not in `Flowgent.slnx`, so it does not affect build/test. Candidate for removal once the beta is stable and the findings are folded into `docs/`.
+- [x] H3 Spike disposition — DONE: `spike/` deleted (still in git history). Its findings are recorded in this file and in `docs/` (`workflow-reference.md`, `expressions.md`, `human-input.md`, `module-authoring.md`, `demo-mode.md`). References to `spike/...` elsewhere in this spec are historical.

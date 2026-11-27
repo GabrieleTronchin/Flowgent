@@ -18,7 +18,6 @@ artifacts/
 # Agent / spec tooling scratch
 .agents/
 .kiro/
-spike/
 
 # IDE
 .vs/
