@@ -372,3 +372,5 @@ appsettings.Development.json
 # Visual Studio-generated launch profiles for test projects (they are not web apps, no profile needed)
 backend/**/*Tests/Properties/launchSettings.json
 backend/tests/Fixtures/**/Properties/launchSettings.json
+# Playwright MCP scratch output (snapshots, screenshots, console logs)
+.playwright-mcp/
