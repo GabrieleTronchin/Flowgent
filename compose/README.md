@@ -22,7 +22,7 @@ Stop with `docker compose down`.
 
 ## How it fits together
 
-- The engine image contains no definitions. `../backend/modules/support/definition` is mounted
+- The engine image contains no definitions. `../samples/support/definition` is mounted
   read-only at `/definitions/support`, and the module is registered with
   `Flowgent__Modules__0__Id=support` (see [`deploy/README.md`](../deploy/README.md)).
 - The workflow reaches its tool through the label `support`, mapped to `http://support-mcp:8080`

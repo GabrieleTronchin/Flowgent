@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=../../../backend/shared/Flowgent.Definitions/Schemas/module.schema.json
+id: support
+name: Support
+description: Classifies support emails, routes them to a team agent, analyses the root cause and proposes a code change after human approval.
+
+config:
+  # Folder of the sample applications, relative to the module folder (samples/support).
+  dummyAppsRoot: dummy-apps
+
+agents:
+  - id: TeamA_BackendDeveloper
+    name: Backend developer
+    group: TeamA
+    role: BackendDeveloper
+    persona: Senior backend developer specializing in API and database issues
+  - id: TeamA_FrontendDeveloper
+    name: Frontend developer
+    group: TeamA
+    role: FrontendDeveloper
+    persona: Frontend developer specializing in UI/UX and component issues
+  - id: TeamA_QAEngineer
+    name: QA engineer
+    group: TeamA
+    role: QAEngineer
+    persona: QA engineer specializing in test coverage and quality issues
+  - id: TeamB_BackendDeveloper
+    name: Backend developer
+    group: TeamB
+    role: BackendDeveloper
+    persona: Senior backend developer specializing in API and database issues
+  - id: TeamB_FrontendDeveloper
+    name: Frontend developer
+    group: TeamB
+    role: FrontendDeveloper
+    persona: Frontend developer specializing in UI/UX and component issues
+  - id: TeamB_QAEngineer
+    name: QA engineer
+    group: TeamB
+    role: QAEngineer
+    persona: QA engineer specializing in test coverage and quality issues
+
+tools:
+  - name: support.locateComponent
+    description: Finds the dummy-app source file mentioned in a support email and returns its path and content.
+    input:
+      schema: { file: schemas/locate-component.input.schema.json }
+    output:
+      schema: { file: schemas/locate-component.output.schema.json }
+    timeoutSeconds: 10
+
+workflows:
+  - id: support-email
+    file: workflows/support-email.yaml
+    version: 1
+    name: Support email
+    description: Classifies a support email, routes it to a team agent, analyses the root cause and proposes a code change after human approval.
+    title: "{subject}"
+    input:
+      schema: { file: schemas/support-email.input.schema.json }
+    errorMessage: Subject and Body are required.
+    demo: demo/support-email.yaml
+    terminals:
+      - id: code_change_generated
+        outcome: success
+      - id: classified_out_of_scope
+        outcome: success
+      - id: manual_review_required
+        outcome: failure
+      - id: fail_ambiguous
+        outcome: failure
+      - id: fail_no_app
+        outcome: failure
+      - id: no_agent_mapping
+        outcome: failure
+
+samples:
+  - samples/scenarios.yaml

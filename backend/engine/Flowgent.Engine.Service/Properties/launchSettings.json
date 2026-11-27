@@ -8,10 +8,8 @@
       "applicationUrl": "http://localhost:5081",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "Flowgent__Modules__0__Id": "support",
-        "Flowgent__Modules__0__Url": "http://localhost:5082",
-        "Flowgent__McpServers__0__Label": "support",
-        "Flowgent__McpServers__0__Url": "http://localhost:5085"
+        "Flowgent__Modules__0__Id": "template",
+        "Flowgent__Modules__0__Url": "http://localhost:5083"
       }
     }
   }

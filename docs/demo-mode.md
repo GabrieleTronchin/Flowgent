@@ -75,7 +75,7 @@ Every string of an output accepts `{name}` placeholders from `extract`, plus `{p
 
 Keep each step's prompt in a stable shape (for example `Subject: …\n\nBody: …`) so the demo file can read it.
 
-The template module has a commented example: [`backend/modules/_template/definition/demo/template-hello.yaml`](../backend/modules/_template/definition/demo/template-hello.yaml). `GET /api/engine/schemas/demo` serves the JSON Schema of the file.
+The template module has a commented example: [`backend/template/definition/demo/template-hello.yaml`](../backend/template/definition/demo/template-hello.yaml). `GET /api/engine/schemas/demo` serves the JSON Schema of the file.
 
 The engine checks the file when it loads the module: format, regexes, and unknown placeholders are errors (the module is not loaded); a step id that no agent step of the workflow uses is a warning.
 

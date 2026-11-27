@@ -12,7 +12,7 @@
 |---------|---------|---------|
 | Microsoft.Agents.AI / .OpenAI / .Workflows / .Workflows.Declarative | 1.27.0 | Declarative workflows (YAML actions, PowerFx), run execution, `IChatClient` integration |
 | ModelContextProtocol (+ .AspNetCore) | 1.4.2 | MCP client in the engine, MCP server in `Flowgent.Mcp.Support` (Streamable HTTP) |
-| Aspire.AppHost.Sdk, Aspire.Hosting.JavaScript | 13.6.5 | Local orchestration (AppHost, Vite dashboard) |
+| Aspire.AppHost.Sdk, Aspire.Hosting, Aspire.Hosting.JavaScript | 13.6.5 | Local orchestration (AppHosts, `Flowgent.Hosting` wiring library, Vite dashboard) |
 | Microsoft.Extensions.ServiceDiscovery (+ .Yarp) | 10.11.0 | Service discovery, gateway destination resolution |
 | Microsoft.Extensions.Http.Resilience | 10.11.0 | Resilience handlers and per-module retries |
 | Yarp.ReverseProxy | 2.3.0 | Gateway |
@@ -35,26 +35,34 @@ Node.js >= 20.19. React 19, TypeScript 6, Vite 8, Tailwind CSS 4, React Router 7
 ## Common Commands
 
 ```bash
-# Build and test everything (backend + modules)
-dotnet build backend/Flowgent.slnx
-dotnet test --solution backend/Flowgent.slnx
+# Core platform (engine, gateway, shared, hosting, template, core tests); must pass without samples/
+dotnet build backend/Flowgent.Core.slnx
+dotnet test --solution backend/Flowgent.Core.slnx
+
+# Samples (core projects + jokes, support, samples tests)
+dotnet build samples/Flowgent.Samples.slnx
+dotnet test --solution samples/Flowgent.Samples.slnx
 
 # Single test projects
 dotnet test --project backend/engine/Flowgent.Engine.Tests
 dotnet test --project backend/gateway/Flowgent.Gateway.Tests
 dotnet test --project backend/tests/Flowgent.Integration.Tests
 dotnet test --project backend/tests/Flowgent.Architecture.Tests
-dotnet test --project backend/modules/support/tests
-dotnet test --project backend/modules/_template/tests
+dotnet test --project backend/template/tests
+dotnet test --project samples/support/tests
+dotnet test --project samples/tests/Flowgent.Samples.Tests
 
-# Whole platform (engine, enabled modules, gateway :5080, dashboard :5173, Aspire dashboard :15080)
+# Core AppHost: engine, gateway :5080, dashboard :5173, template, Aspire dashboard :15080
 dotnet run --project backend/host
-dotnet run --project backend/host -- --AppHost:Modules:template:Enabled=true
+# Samples AppHost: the same plus support (+ its MCP server) and jokes
+dotnet run --project samples/host
+dotnet run --project samples/host -- --AppHost:Modules:template:Enabled=true
 
 # Services one by one
-dotnet run --project backend/engine/Flowgent.Engine.Service   # :5081
-dotnet run --project backend/modules/support/service                         # :5082
+dotnet run --project backend/engine/Flowgent.Engine.Service   # :5081 (launch profile registers template at :5083)
+dotnet run --project backend/template/service                 # :5083
 dotnet run --project backend/gateway/Flowgent.Gateway          # :5080
+dotnet run --project samples/support/service                  # :5082
 
 # Dashboard
 cd dashboard && npm install
@@ -79,7 +87,7 @@ docker build -f deploy/support-mcp.Dockerfile -t flowgent-support-mcp:local .
 - Gateway (`Gateway`): `Engine:Address`, `Modules[] { Id, Address, ExtraRoutes[] }`, `StreamActivityTimeout`.
 - AppHost: `AppHost:Modules:<id>:Enabled`, `AppHost:LlmProvider`.
 - Ports (launch profiles, also used by Aspire): gateway 5080, engine 5081, support 5082, template 5083, jokes 5084, support MCP 5085, dashboard 5173.
-- The engine and gateway `appsettings.json` list no modules or MCP servers (generic images). The `support` entries for standalone `dotnet run` live in the `http` launch profiles of `Flowgent.Engine.Service` and `Flowgent.Gateway`; the AppHost and compose set them through environment variables.
+- The engine and gateway `appsettings.json` list no modules or MCP servers (generic images). The `template` entry for standalone `dotnet run` lives in the `http` launch profiles of `Flowgent.Engine.Service` and `Flowgent.Gateway`; the AppHosts (through `Flowgent.Hosting`) and compose set modules and MCP servers through environment variables.
 
 ## Code Style (root `.editorconfig` enforced)
 

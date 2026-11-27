@@ -8,9 +8,8 @@
       "applicationUrl": "http://localhost:5080",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "Gateway__Modules__0__Id": "support",
-        "Gateway__Modules__0__Address": "http://localhost:5082",
-        "Gateway__Modules__0__ExtraRoutes__0": "/api/support/{**catch-all}"
+        "Gateway__Modules__0__Id": "template",
+        "Gateway__Modules__0__Address": "http://localhost:5083"
       }
     }
   }

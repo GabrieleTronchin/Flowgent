@@ -23,7 +23,7 @@ services:
       Flowgent__McpServers__0__Label: support
       Flowgent__McpServers__0__Url: http://support-mcp:8080
     volumes:
-      - ../backend/modules/support/definition:/definitions/support:ro
+      - ../samples/support/definition:/definitions/support:ro
     depends_on:
       - support-mcp
 

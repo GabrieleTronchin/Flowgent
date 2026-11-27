@@ -24,8 +24,8 @@ graph LR
 |-----------|---------|----------------|
 | Gateway | `Flowgent.Gateway` | Single public entry point. Config-driven YARP routes, gRPC-Web passthrough, correlation id, `503` problem details. See [Gateway](gateway.md). |
 | Engine service | `Flowgent.Engine.Service` | Pulls module packages, validates and compiles workflows, runs them on Microsoft Agent Framework Workflows. Owns runs, events, inbox, human input, LLM access (Demo or OpenAI-compatible), telemetry, the `/api/engine` API and the gRPC run stream. |
-| Module services | `backend/modules/<id>/service` (on `Flowgent.Module.Sdk`) | Own one domain: `module.yaml`, workflows, prompts, schemas, samples, declared tools, optional legacy in-process tools (the fallback route below) and domain endpoints. |
-| MCP servers | `backend/modules/<id>/mcp/...` (on `ModelContextProtocol.AspNetCore`) | Serve a module's domain tools over Streamable HTTP, e.g. the support demo's `Flowgent.Mcp.Support` (`locateComponent`). Reached by the engine through `Flowgent:McpServers[]`. |
+| Module services | `<module>/service` (on `Flowgent.Module.Sdk`) | Own one domain: `module.yaml`, workflows, prompts, schemas, samples, declared tools, optional legacy in-process tools (the fallback route below) and domain endpoints. |
+| MCP servers | `<module>/mcp/...` (on `ModelContextProtocol.AspNetCore`) | Serve a module's domain tools over Streamable HTTP, e.g. the support demo's `Flowgent.Mcp.Support` (`locateComponent`). Reached by the engine through `Flowgent:McpServers[]`. |
 | Dashboard | `dashboard/` | Generic React console. Calls only the gateway. See [Dashboard](dashboard.md). |
 | AppHost | `Flowgent.AppHost` | .NET Aspire host: starts everything with one command and shows logs, traces and metrics. See [Orchestration](orchestration.md). |
 
@@ -89,17 +89,21 @@ The engine stores runs, transition events and inbox messages with EF Core InMemo
 
 ```
 Directory.Build.props, Directory.Packages.props, .editorconfig   # shared build settings (repository root)
-backend/
-├── Flowgent.slnx                   # one solution: platform, modules, tests
-├── host/                           # Flowgent.AppHost (Aspire)
+backend/                            # the core platform (builds and tests without samples/)
+├── Flowgent.Core.slnx              # core solution: platform, template, tests
+├── host/                           # Flowgent.AppHost (Aspire): engine, gateway, dashboard, template
+├── hosting/                        # Flowgent.Hosting: AppHost wiring shared by both AppHosts
 ├── engine/                         # Flowgent.Engine.Service, .Engine.Core, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
 ├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests
-├── shared/                         # Flowgent.Contracts, .Definitions (Schemas/: JSON Schemas of module.yaml and samples), .Module.Sdk, .ServiceDefaults
-├── tests/                          # Architecture, Integration tests, Flowgent.Testing (in-process harness), Fixtures/ (test-only module)
-└── modules/
-    ├── _template/                  # minimal module to copy
-    ├── jokes/                      # tiny example module
-    └── support/                    # support-email module (reference implementation) + mcp/ (Flowgent.Mcp.Support)
+├── shared/                         # Flowgent.Contracts, .Definitions (Schemas/: JSON Schemas of module.yaml, samples and demo files), .Module.Sdk, .ServiceDefaults
+├── template/                       # minimal module to copy
+└── tests/                          # Architecture, Integration tests, Flowgent.Testing (in-process harness), Fixtures/ (test-only module)
+samples/                            # example modules, not part of the product
+├── Flowgent.Samples.slnx           # core projects + samples
+├── host/                           # Flowgent.Samples.AppHost
+├── jokes/                          # tiny example module
+├── support/                        # support-email module (reference implementation) + mcp/ (Flowgent.Mcp.Support)
+└── tests/                          # samples dependency rules and multi-module tests
 dashboard/                          # generic monitoring console
 docs/                               # platform documentation
 nuget.config, global.json           # package source and SDK / test runner (repository root)
@@ -124,7 +128,7 @@ graph TD
 `Flowgent.Architecture.Tests` enforces the rules:
 
 - `Contracts` has no project references; `Definitions` references only `Contracts`.
-- Engine projects and the gateway never reference `backend/modules/` or `Fixtures/` and contain no `Flowgent.Modules.*` types.
+- Engine projects and the gateway never reference the template, `samples/` or `Fixtures/` and contain no `Flowgent.Modules.*` types; no core project references `samples/` (the samples check their own rules in `samples/tests`).
 - Module services reference only `Flowgent.Module.Sdk`, `Flowgent.Contracts`, `Flowgent.Definitions` and `Flowgent.ServiceDefaults`.
 - `Flowgent.Mcp.Support` references only `Flowgent.ServiceDefaults` and the MCP package.
 - `Definitions` and `Engine.Core` do not depend on ASP.NET Core.

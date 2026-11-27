@@ -11,10 +11,10 @@ COPY nuget.config ./
 
 COPY Directory.Build.props Directory.Packages.props ./
 COPY backend/shared/ ./backend/shared/
-COPY backend/modules/support/mcp/ ./backend/modules/support/mcp/
+COPY samples/support/mcp/ ./samples/support/mcp/
 
-RUN dotnet restore backend/modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj
-RUN dotnet publish backend/modules/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj \
+RUN dotnet restore samples/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj
+RUN dotnet publish samples/support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj \
     -c Release -o /app/publish --no-restore
 
 # ---- runtime stage ----
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY --from=build /app/publish ./
 
 # The locateComponent demo tool searches the example dummy-apps tree.
-COPY backend/modules/support/dummy-apps /app/dummy-apps
+COPY samples/support/dummy-apps /app/dummy-apps
 ENV SUPPORT_DUMMYAPPS_ROOT=/app/dummy-apps
 
 ENV ASPNETCORE_HTTP_PORTS=8080

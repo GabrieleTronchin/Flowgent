@@ -1,20 +1,21 @@
 # Module authoring
 
-[← README](../README.md) · [Workflow reference](workflow-reference.md) · [Template module](../backend/modules/_template/README.md)
+[← README](../README.md) · [Workflow reference](workflow-reference.md) · [Template module](../backend/template/README.md)
 
 A module is one business domain: its workflow definitions plus a small ASP.NET Core service built on `Flowgent.Module.Sdk`. Adding a module needs no change to the engine, the gateway code or the dashboard.
 
-Start from [`backend/modules/_template`](../backend/modules/_template/README.md): it is a minimal, valid module (a MAF declarative workflow that calls an LLM, invokes one tool and ends; one tool; one sample; tests) and its README lists the copy-and-rename steps.
+Start from [`backend/template`](../backend/template/README.md): it is a minimal, valid module (a MAF declarative workflow that calls an LLM, invokes one tool and ends; one tool; one sample; tests) and its README lists the copy-and-rename steps.
 
 Workflows are **Microsoft Agent Framework declarative** documents (`kind: Workflow`, a `trigger` with ordered `actions`, [PowerFx](expressions.md) expressions). See the [Workflow reference](workflow-reference.md) for the action kinds. The engine trial-builds each workflow with the declarative builder; there is no custom step format.
 
 ## Layout
 
 ```
-backend/modules/<id>/
+samples/<id>/             # in this repository; a module can also live in its own repository
 ├── definition/           # published to the engine (GET /_module/package)
 │   ├── module.yaml
 │   ├── workflows/
+│   ├── demo/             # optional Demo-mode answers (see Demo mode)
 │   ├── prompts/
 │   ├── schemas/
 │   └── samples/
@@ -99,11 +100,11 @@ A workflow invokes a tool with the declarative `InvokeMcpTool` action, where `to
 
 > Tool results must be a non-numeric JSON string or object — a bare top-level number crashes the PowerFx binding. The handler wraps a bare number automatically, but prefer returning an object.
 
-The engine also exposes two reserved built-in tools under `serverLabel: flowgent`, since PowerFx has no `ParseJSON`: `flowgent.input` returns the run's intake input as a record, and `flowgent.parse` turns a JSON string (e.g. an agent's structured answer) into a record — both read with `First(Local.x).<field>`. See [`backend/modules/_template/definition/workflows/template-hello.yaml`](../backend/modules/_template/definition/workflows/template-hello.yaml) for all three in use.
+The engine also exposes two reserved built-in tools under `serverLabel: flowgent`, since PowerFx has no `ParseJSON`: `flowgent.input` returns the run's intake input as a record, and `flowgent.parse` turns a JSON string (e.g. an agent's structured answer) into a record — both read with `First(Local.x).<field>`. See [`backend/template/definition/workflows/template-hello.yaml`](../backend/template/definition/workflows/template-hello.yaml) for all three in use.
 
 ### Serving tools from a standalone MCP server
 
-A tool does not have to live in the module service. The engine can call a separate MCP server over Streamable HTTP; the support demo does this with `backend/modules/support/mcp/Flowgent.Mcp.Support`, which serves `locateComponent`. Prefer this route for new domain tools: the tool is an ordinary web project with no dependency on the module SDK.
+A tool does not have to live in the module service. The engine can call a separate MCP server over Streamable HTTP; the support demo does this with `samples/support/mcp/Flowgent.Mcp.Support`, which serves `locateComponent`. Prefer this route for new domain tools: the tool is an ordinary web project with no dependency on the module SDK.
 
 1. Create a web project that references only `ModelContextProtocol.AspNetCore` and `Flowgent.ServiceDefaults`, and expose the tools with `AddMcpServer().WithHttpTransport().WithTools<...>()` and `MapMcp()`.
 2. Register each tool under its **bare** name (`locateComponent`). Keep declaring the qualified name (`support.locateComponent`) and its input/output schemas in `module.yaml`: the engine strips the `<label>.` prefix on the wire and validates input and output against the declared schemas.
@@ -136,20 +137,21 @@ The gateway routes `/api/modules/<id>/**` to the module automatically; other pub
 
 With the AppHost (recommended):
 
-1. Add the service and test projects to `backend/Flowgent.slnx`.
-2. Add a `ProjectReference` to the service in `backend/host/Flowgent.AppHost.csproj`.
-3. In `AppHost.cs`: `modules.Add<Projects.Flowgent_Modules_Notes>("notes");` (extra gateway routes as further arguments). The module is enabled unless `AppHost:Modules:notes:Enabled` is `false`.
+1. Add the service and test projects to `samples/Flowgent.Samples.slnx`.
+2. Add a `ProjectReference` to the service in `samples/host/Flowgent.Samples.AppHost.csproj`.
+3. In `samples/host/AppHost.cs`: `platform.AddModule<Projects.Flowgent_Modules_Notes>("notes");` (extra gateway routes as further arguments). The module is enabled unless `AppHost:Modules:notes:Enabled` is `false`. A domain MCP server is added with `platform.AddMcpServer<TProject>("<serverLabel>")`.
 
-`ModuleWiring` then configures the engine (`Flowgent:Modules`), the gateway (`Gateway:Modules`) and the module (`Flowgent:Module:EngineUrl`).
+`FlowgentPlatform` (`Flowgent.Hosting`) then configures the engine (`Flowgent:Modules`, `Flowgent:McpServers`), the gateway (`Gateway:Modules`) and the module (`Flowgent:Module:EngineUrl`).
 
-Without the AppHost, add the module to the engine and gateway `appsettings.json`:
+Without an AppHost, register the module on the engine and the gateway with environment variables (for example in their launch profiles; the images list no modules):
 
-```jsonc
-// backend/engine/Flowgent.Engine.Service/appsettings.json
-"Flowgent": { "Modules": [ { "Id": "notes", "Url": "http://localhost:5084" } ] }
-
-// backend/gateway/Flowgent.Gateway/appsettings.json
-"Gateway": { "Modules": [ { "Id": "notes", "Address": "http://localhost:5084" } ] }
+```bash
+# engine
+Flowgent__Modules__0__Id=notes
+Flowgent__Modules__0__Url=http://localhost:5086
+# gateway
+Gateway__Modules__0__Id=notes
+Gateway__Modules__0__Address=http://localhost:5086
 ```
 
 Engine options per module: `Enabled` (true), `RefreshSeconds` (5), `TimeoutSeconds` (30), `Retries` (2, transient failures only), `RetryDelayMilliseconds` (500).
@@ -165,7 +167,7 @@ The service reads its definition folder once at startup. After editing YAML, pro
 
 ```csharp
 await using var platform = await PlatformHarness.StartAsync(options => options
-    .AddModule(NotesHost.ModuleId, NotesHost.Create, Path.Combine("modules", "notes", "service"))
+    .AddModule(NotesHost.ModuleId, NotesHost.Create, notesServiceFolder) // absolute path, or relative to backend/
     .WithGateway());
 
 var accepted = await platform.SubmitAsync("notes-summary", new { text = "Hello" });
@@ -173,6 +175,6 @@ var run = await platform.WaitForTerminalAsync(accepted.RunId);
 Assert.Equal(RunStatus.Completed, run.Status);
 ```
 
-The harness also offers `WaitForHumanInputAsync`, `ApproveAsync`, `RejectAsync`, `AbortAsync`, `GetEventsAsync`, `StopModuleAsync`, `StartModuleAsync` and `RestartModuleAsync`. See `backend/modules/_template/tests/TemplateModuleTests.cs` for a complete example.
+The harness also offers `WaitForHumanInputAsync`, `ApproveAsync`, `RejectAsync`, `AbortAsync`, `GetEventsAsync`, `StopModuleAsync`, `StartModuleAsync` and `RestartModuleAsync`. See `backend/template/tests/TemplateModuleTests.cs` for a complete example.
 
-Run them with `dotnet test --project backend/modules/<id>/tests` or the whole solution with `dotnet test --solution backend/Flowgent.slnx`.
+Run them with `dotnet test --project samples/<id>/tests` or the whole samples solution with `dotnet test --solution samples/Flowgent.Samples.slnx`.

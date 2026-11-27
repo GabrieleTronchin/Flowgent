@@ -1,5 +1,5 @@
 {
-  "dotnet.defaultSolution": "backend/Flowgent.slnx",
+  "dotnet.defaultSolution": "backend/Flowgent.Core.slnx",
   "dotnet.testWindow.useTestingPlatformProtocol": true,
   "files.exclude": {
     "**/bin": true,

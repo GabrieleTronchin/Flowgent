@@ -57,6 +57,7 @@
        Aspire, service discovery, gateway
        ═══════════════════════════════════════════════════════════════════ -->
   <ItemGroup Label="Aspire">
+    <PackageVersion Include="Aspire.Hosting" Version="13.6.5" />
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery.Yarp" Version="10.11.0" />

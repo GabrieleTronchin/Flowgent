@@ -2,13 +2,14 @@
 
 [← README](../README.md) · [Architecture](architecture.md) · [Debugging](debugging.md)
 
-## One command: the AppHost
+## One command: the AppHosts
 
-`Flowgent.AppHost` is a .NET Aspire host that starts the engine, every enabled module service, the gateway and the dashboard, and wires their addresses.
+Two .NET Aspire hosts start the platform and wire the addresses:
 
-```bash
-dotnet run --project backend/host
-```
+| AppHost | Starts | Command |
+|---------|--------|---------|
+| `backend/host` (`Flowgent.AppHost`) | engine, gateway, dashboard and the module template | `dotnet run --project backend/host` |
+| `samples/host` (`Flowgent.Samples.AppHost`) | the same plus the example modules: support (with its MCP server) and jokes | `dotnet run --project samples/host` |
 
 | Resource | Address |
 |----------|---------|
@@ -16,55 +17,61 @@ dotnet run --project backend/host
 | Gateway | http://localhost:5080 |
 | Monitoring dashboard | http://localhost:5173 |
 | Engine | http://localhost:5081 |
-| Support module | http://localhost:5082 |
-| Template module (when enabled) | http://localhost:5083 |
-| Jokes module | http://localhost:5084 |
+| Support module (samples) | http://localhost:5082 |
+| Template module | http://localhost:5083 |
+| Jokes module (samples) | http://localhost:5084 |
 
-Requirements: the .NET 10 SDK and Node.js 20.19+ (the AppHost runs `npm run dev` for the dashboard; run `npm install` in `dashboard/` once). The `http` launch profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`, so no development certificate is needed. Aspire packages come from NuGet; no Aspire CLI or workload is required.
+Requirements: the .NET 10 SDK and Node.js 20.19+ (the AppHost starts the dashboard's Vite dev server; run `npm install` in `dashboard/` once). The `http` launch profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`, so no development certificate is needed. Aspire packages come from NuGet; no Aspire CLI or workload is required.
 
 ### Wiring
 
-`AppHost.cs` registers modules through `ModuleWiring.Add<TProject>(id, extraGatewayRoutes...)`, which for each module:
+Both AppHosts use `FlowgentPlatform` from `backend/hosting/Flowgent.Hosting`:
 
-- sets `Flowgent__Module__EngineUrl=http://engine` on the module,
-- adds `Flowgent__Modules__<n>__Id/Url` to the engine,
-- adds `Gateway__Modules__<n>__Id/Address` (and `ExtraRoutes`) to the gateway.
+```csharp
+var platform = FlowgentPlatform.Add<Projects.Flowgent_Engine_Service, Projects.Flowgent_Gateway>(builder, "../../dashboard");
+platform.AddMcpServer<Projects.Flowgent_Mcp_Support>("support");    // maps serverLabel "support"
+platform.AddModule<Projects.Flowgent_Modules_Support>("support", "/api/support/{**catch-all}");
+```
 
-Services find each other by resource name (`http://engine`, `http://support`) through service discovery. The engine does not wait for modules: it starts first and retries them. The dashboard waits for the gateway and receives `GATEWAY_URL`.
+- `Add` starts the engine, the gateway (`Gateway__Engine__Address=http://engine`) and the dashboard (waits for the gateway, receives `GATEWAY_URL`).
+- `AddModule` sets `Flowgent__Module__EngineUrl=http://engine` on the module, adds `Flowgent__Modules__<n>__Id/Url` to the engine and `Gateway__Modules__<n>__Id/Address` (and `ExtraRoutes`) to the gateway.
+- `AddMcpServer` starts the server as `<label>-mcp` and adds `Flowgent__McpServers__<n>__Label/Url` to the engine.
+
+Services find each other by resource name (`http://engine`, `http://support`) through service discovery. The engine does not wait for modules: it starts first and retries them.
 
 ### Switches
 
 | Setting | Effect |
 |---------|--------|
-| `AppHost:Modules:<id>:Enabled` | Enables or disables a module (in `backend/host/appsettings.json`: `support` on, `template` off). |
+| `AppHost:Modules:<id>:Enabled` | Enables or disables a module (core AppHost: `template` on; samples AppHost: `support` and `jokes` on, `template` off). |
 | `AppHost:LlmProvider` | Overrides `Flowgent:Llm:Provider` of the engine. |
 
 Both can be passed on the command line:
 
 ```bash
-dotnet run --project backend/host -- --AppHost:Modules:template:Enabled=true --AppHost:LlmProvider=Demo
+dotnet run --project samples/host -- --AppHost:Modules:template:Enabled=true --AppHost:LlmProvider=Demo
 ```
 
 ## Without the AppHost
 
-Each service also runs on its own with the ports of its `http` launch profile and the addresses in its `appsettings.json`:
+Each service also runs on its own with the port of its `http` launch profile. The engine and gateway profiles register the template module (`:5083`); other modules are added with environment variables (`Flowgent__Modules__<n>__*`, `Gateway__Modules__<n>__*`):
 
 ```bash
 dotnet run --project backend/engine/Flowgent.Engine.Service    # :5081
-dotnet run --project backend/modules/support/service                          # :5082
-dotnet run --project backend/gateway/Flowgent.Gateway           # :5080
-cd dashboard && npm run dev                                           # :5173
+dotnet run --project backend/template/service                  # :5083
+dotnet run --project backend/gateway/Flowgent.Gateway          # :5080
+cd dashboard && npm run dev                                    # :5173
 ```
 
 Start them in any order: the engine retries the modules, the gateway answers `503` while a target is down.
 
-### Support MCP server
+### Support MCP server (samples)
 
-The support workflow calls `support.locateComponent` on the standalone MCP server `Flowgent.Mcp.Support` (see [Module authoring](module-authoring.md#serving-tools-from-a-standalone-mcp-server)). **The AppHost does not start this server yet and the engine's default configuration does not map it**, so a support run fails at its `locate_component` step unless you start and map the server yourself:
+The support workflow calls `support.locateComponent` on the standalone MCP server `Flowgent.Mcp.Support` (see [Module authoring](module-authoring.md#serving-tools-from-a-standalone-mcp-server)). The samples AppHost starts and maps it. Without the AppHost, start it and map it yourself:
 
 ```bash
-# set SUPPORT_DUMMYAPPS_ROOT to the absolute path of backend/modules/support/dummy-apps first
-dotnet run --project backend/modules/support/mcp/Flowgent.Mcp.Support --urls http://localhost:5085   # example port
+# set SUPPORT_DUMMYAPPS_ROOT to the absolute path of samples/support/dummy-apps first
+dotnet run --project samples/support/mcp/Flowgent.Mcp.Support    # :5085
 ```
 
 Then give the engine `Flowgent__McpServers__0__Label=support` and `Flowgent__McpServers__0__Url=http://localhost:5085`. The container image `flowgent-support-mcp` already sets `SUPPORT_DUMMYAPPS_ROOT` for you.

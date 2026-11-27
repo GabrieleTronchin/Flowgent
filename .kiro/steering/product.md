@@ -10,9 +10,9 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 
 - **Gateway** (`Flowgent.Gateway`, :5080): the only entry point for the dashboard and clients. Config-driven YARP routes: `/api/engine/**` and the gRPC-Web stream `/flowgent.RunMonitor/**` to the engine, `/api/modules/{id}/**` (plus per-module extra routes) to module services. Correlation id, `503` problem details when a target is down.
 - **Engine** (`Flowgent.Engine.Service`, :5081): pulls module packages, validates and compiles workflows, runs them. Owns runs, transition events, the inbox, human input, LLM access (Demo default, OpenAI-compatible), telemetry, the `/api/engine` API and the gRPC `RunMonitor` stream. Contains no domain code.
-- **Module services** (`backend/modules/<id>/service`, on `Flowgent.Module.Sdk`): publish `definition/` at `GET /_module/package`, expose domain endpoints and submit inputs through `IEngineClient`. Domain tools are served by **MCP servers** (Streamable HTTP), reached by the engine via `Flowgent:McpServers[]` (label → URL); the support demo's `locateComponent` ships as the standalone `Flowgent.Mcp.Support` server. The legacy in-process `POST /_module/tools/{name}` path remains as the fallback for labels not mapped to an MCP server.
+- **Module services** (`<module>/service`, on `Flowgent.Module.Sdk`; the template is `backend/template`, the examples are under `samples/`): publish `definition/` at `GET /_module/package`, expose domain endpoints and submit inputs through `IEngineClient`. Domain tools are served by **MCP servers** (Streamable HTTP), reached by the engine via `Flowgent:McpServers[]` (label → URL); the support demo's `locateComponent` ships as the standalone `Flowgent.Mcp.Support` server. The legacy in-process `POST /_module/tools/{name}` path remains as the fallback for labels not mapped to an MCP server.
 - **Dashboard** (`dashboard/`, :5173): generic React console; graph, forms, filters and badges come from the workflow definitions.
-- **AppHost** (`Flowgent.AppHost`): starts engine, enabled modules, gateway and dashboard; Aspire dashboard at :15080.
+- **AppHosts**: `backend/host` (`Flowgent.AppHost`) starts engine, gateway, dashboard and the template; `samples/host` (`Flowgent.Samples.AppHost`) adds the example modules. Both use `Flowgent.Hosting` (`FlowgentPlatform`); Aspire dashboard at :15080.
 
 ## Workflow model
 
@@ -33,10 +33,12 @@ Flowgent is a reusable base for building LLM workflows. Workflows are defined in
 
 ## Modules in the repository
 
-- `backend/modules/support`: reference module and regression suite (support-email triage with human approval). Domain details live in `backend/modules/support/README.md` and `backend/modules/support/docs/`; do not describe them in platform documentation.
-- `backend/modules/support/mcp/Flowgent.Mcp.Support`: standalone MCP server that serves support's `locateComponent` tool (example of a domain MCP server).
-- `backend/modules/jokes`: tiny example module (one agent step), enabled in the AppHost.
-- `backend/modules/_template`: minimal module to copy (`template-hello`), disabled in the AppHost by default.
+The core (`backend/`, `backend/Flowgent.Core.slnx`) is the product. The example modules under `samples/` (`samples/Flowgent.Samples.slnx`) show how to use it and may move to their own repository: no core project references them.
+
+- `samples/support`: reference module and regression suite (support-email triage with human approval). Domain details live in `samples/support/README.md` and `samples/support/docs/`; do not describe them in platform documentation.
+- `samples/support/mcp/Flowgent.Mcp.Support`: standalone MCP server that serves support's `locateComponent` tool (example of a domain MCP server).
+- `samples/jokes`: tiny example module (one agent step), enabled in the samples AppHost.
+- `backend/template`: minimal module to copy (`template-hello`, with a commented demo file); part of the core, enabled in the core AppHost and off by default in the samples AppHost.
 - `backend/tests/Fixtures/Flowgent.Fixtures.Module`: test-only module used by the integration tests (agent, tool, routing and human-approval flows).
 
 ## Container images

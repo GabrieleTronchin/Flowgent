@@ -115,7 +115,7 @@ docker run --rm -p 5173:80 -e GATEWAY_URL=http://host.docker.internal:5080 flowg
 - Port: `8080`.
 - Key env vars:
   - `SUPPORT_DUMMYAPPS_ROOT=/app/dummy-apps` — root the `locateComponent` tool
-    searches. The runtime image already copies `backend/modules/support/dummy-apps`
+    searches. The runtime image already copies `samples/support/dummy-apps`
     there and sets this default.
 
 ```bash

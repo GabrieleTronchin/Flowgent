@@ -107,7 +107,8 @@ public sealed class PlatformHarness : IAsyncDisposable
         GatewayClient = gateway?.GetTestClient();
     }
 
-    /// <summary>Repository root (folder containing <c>Flowgent.slnx</c>).</summary>
+    /// <summary>The backend folder (containing <c>Flowgent.Core.slnx</c>); relative content roots are resolved against it.
+    /// Absolute content roots (e.g. a sample's folder) are used as they are.</summary>
     public static string RepositoryRoot => Root.Value;
 
     public HostRoutingHandler Router { get; }
@@ -389,16 +390,28 @@ public sealed class PlatformHarness : IAsyncDisposable
     /// <summary>The in-process MCP URL (and router host) for a server id: distinct from the module host of the same id.</summary>
     private static string McpHost(string id) => $"http://{id}-mcp";
 
+    // Walks up from the test output folder to the backend folder (the one holding Flowgent.Core.slnx). Tests outside
+    // backend/ (samples) pass a sibling "backend" folder on the way up.
     private static string FindRepositoryRoot()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Flowgent.slnx")))
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            directory = directory.Parent;
+            if (File.Exists(Path.Combine(directory.FullName, CoreSolution)))
+            {
+                return directory.FullName;
+            }
+
+            var backend = Path.Combine(directory.FullName, "backend");
+            if (File.Exists(Path.Combine(backend, CoreSolution)))
+            {
+                return backend;
+            }
         }
 
-        return directory?.FullName ?? throw new InvalidOperationException("Repository root (folder containing Flowgent.slnx) not found.");
+        throw new InvalidOperationException($"Backend folder (containing {CoreSolution}) not found.");
     }
+
+    private const string CoreSolution = "Flowgent.Core.slnx";
 
     internal static string Invariant(int value) => value.ToString(CultureInfo.InvariantCulture);
 }

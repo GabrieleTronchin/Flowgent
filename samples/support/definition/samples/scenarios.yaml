@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=../../../../backend/shared/Flowgent.Definitions/Schemas/samples.schema.json
+#
+# Single source of the support scenarios. The dashboard templates come from these samples (engine API) and
+# samples/support/service/support.http is generated from them (see SupportHttpFileTests).
+# Scenarios A1–A3 and B1–B3 are described in dummy-apps/application-a|b/BugScenarios.md.
+samples:
+  # Application A
+  - id: scenario-a1
+    name: "A1: NullReferenceException"
+    group: Application A
+    workflow: support-email
+    description: Backend bug (BugScenarios.md A1) - expected agent TeamA_BackendDeveloper.
+    input:
+      sender: dev.team@company.com
+      subject: NullReferenceException in OrderController - Application A
+      body: We are seeing a NullReferenceException in Application A when calling the GetOrderSummary endpoint. The crash occurs at OrderController.cs line 27 where order.Items.Sum() is called. Orders created via CreateOrder start with Items = null because items are added later through a separate endpoint. Any call to GetOrderSummary before items are added crashes the API with a null reference on the Items collection.
+
+  - id: scenario-a2
+    name: "A2: Blank total price"
+    group: Application A
+    workflow: support-email
+    description: Frontend bug (BugScenarios.md A2) - expected agent TeamA_FrontendDeveloper.
+    input:
+      sender: qa.engineer@company.com
+      subject: Blank total price displayed in OrderSummary component - Application A
+      body: The OrderSummary.razor component in Application A is rendering a blank value for the total price field. After investigation, it appears the component binds to Order?.TotalCost but the OrderSummaryDto model defines the property as TotalPrice. The mismatch causes the total to never render. This is a frontend data binding bug in the Blazor component.
+
+  - id: scenario-a3
+    name: "A3: Missing test coverage"
+    group: Application A
+    workflow: support-email
+    description: Quality/test issue (BugScenarios.md A3) - expected agent TeamA_QAEngineer.
+    input:
+      sender: test.lead@company.com
+      subject: Missing test for empty order edge case in Application A
+      body: The OrderServiceTests class in Application A has tests for orders with items but is missing a test for the edge case where an order has no items (Items is null or empty). This gap means the null reference bug in OrderController.GetOrderSummary goes undetected by the test suite. We need a test that verifies GetOrderSummary handles empty orders gracefully.
+
+  # Application B
+  - id: scenario-b1
+    name: "B1: SQL Injection"
+    group: Application B
+    workflow: support-email
+    description: Backend bug (BugScenarios.md B1) - expected agent TeamB_BackendDeveloper.
+    input:
+      sender: security.team@company.com
+      subject: SQL Injection vulnerability in UserController - Application B
+      body: "A critical SQL injection vulnerability has been identified in Application B. The SearchUsers endpoint in UserController.cs concatenates user input directly into a SQL query string without parameterization. An attacker can inject arbitrary SQL such as \"'; DROP TABLE Users; --\" to read, modify, or delete data. The vulnerable code is at line 27 where the query variable is built using string concatenation."
+
+  - id: scenario-b2
+    name: "B2: Missing null check"
+    group: Application B
+    workflow: support-email
+    description: Frontend bug (BugScenarios.md B2) - expected agent TeamB_FrontendDeveloper.
+    input:
+      sender: frontend.dev@company.com
+      subject: Missing null check on AvatarUrl in UserProfile - Application B
+      body: "The UserProfile.razor component in Application B renders an img tag with src=\"@User.AvatarUrl\" without checking for null. When AvatarUrl is null, the browser renders a broken image icon and makes a spurious HTTP request to the current page URL. This is a frontend bug that needs a null check with a fallback to a default avatar image."
+
+  - id: scenario-b3
+    name: "B3: Flaky test"
+    group: Application B
+    workflow: support-email
+    description: Quality/test issue (BugScenarios.md B3) - expected agent TeamB_QAEngineer.
+    input:
+      sender: ci.admin@company.com
+      subject: Flaky test due to hardcoded date in Application B
+      body: The CreateUser_WithValidData_SetsCreatedDate test in Application B UserServiceTests asserts that the user CreatedAt.Date equals new DateTime(2024, 1, 15). This hardcoded date was valid only on the day the test was written. The test fails on every other day, making it flaky and unreliable in CI. It should compare against DateTime.UtcNow.Date instead.
+
+  # Edge cases
+  - id: edge-out-of-scope
+    name: Out-of-Scope
+    group: Edge Cases
+    workflow: support-email
+    description: Not a code defect - ends at classified_out_of_scope.
+    input:
+      sender: end.user@external.com
+      subject: How do I reset my password?
+      body: Hi support, I forgot my password and cannot log into my account. Can you please help me reset it? I have tried the forgot password link but it does not seem to be working. My username is john.doe and I registered with this email address. Thank you for your help.
+
+  - id: edge-ambiguous-routing
+    name: Ambiguous Routing
+    group: Edge Cases
+    workflow: support-email
+    description: Mentions both applications - fails at route_team.
+    input:
+      sender: project.manager@company.com
+      subject: Bug affecting both Application A and Application B
+      body: We have discovered an issue that seems to affect both Application A and Application B. The shared authentication module is returning 401 errors intermittently. Users of Application A report login failures and users of Application B see session timeouts. We need both teams to investigate this cross-application issue.
+
+  - id: edge-failed-routing
+    name: Failed Routing
+    group: Edge Cases
+    workflow: support-email
+    description: Mentions neither application - fails at route_team.
+    input:
+      sender: developer@company.com
+      subject: Performance degradation in the payment service
+      body: The payment processing service has been experiencing significant latency spikes over the past 24 hours. Response times have increased from 200ms to over 3 seconds. The database connection pool appears to be exhausted during peak hours. We need to investigate the root cause and implement a fix before it impacts more customers.
+
+  - id: edge-empty-input
+    name: Empty Input (tests validation)
+    group: Edge Cases
+    workflow: support-email
+    description: Blank subject and body - rejected with 400 "Subject and Body are required."
+    expectInvalid: true
+    input:
+      sender: tester@company.com
+      subject: "   "
+      body: "   "

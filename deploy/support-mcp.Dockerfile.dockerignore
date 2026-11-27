@@ -27,10 +27,12 @@ artifacts/
 # Test projects (not needed to publish the services or build the SPA)
 backend/tests/
 **/*.Tests/
-backend/modules/**/tests/
+backend/template/tests/
+samples/*/tests/
+samples/tests/
 # ...but keep the support demo's dummy-apps fixtures: the support-mcp tool ships
 # and searches them (incl. their tests/ dirs, which encode "missing test" scenarios).
-!backend/modules/support/dummy-apps/**
+!samples/support/dummy-apps/**
 
 # Local dev secrets
 **/appsettings.Development.json

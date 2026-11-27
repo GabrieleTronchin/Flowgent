@@ -9,8 +9,8 @@ Requests go through the gateway (`http://localhost:5080`). Open them in Visual S
 | File | Content |
 |------|---------|
 | [`backend/engine/Flowgent.Engine.Service/engine.http`](../backend/engine/Flowgent.Engine.Service/engine.http) | Every `/api/engine` route: config, modules, workflows, schemas, submit, runs, abort, human input, events, agents, telemetry, inbox |
-| [`backend/modules/_template/service/template.http`](../backend/modules/_template/service/template.http) | Template module summary and a `template-hello` run |
-| Each module's `service/<id>.http` | Module requests (e.g. [support](../backend/modules/support/README.md)) |
+| [`backend/template/service/template.http`](../backend/template/service/template.http) | Template module summary and a `template-hello` run |
+| Each module's `service/<id>.http` | Module requests (e.g. [support](../samples/support/README.md)) |
 
 ## Where to look
 
@@ -40,7 +40,7 @@ For more detail, raise the log level of the `Flowgent` category in the service's
 Module tests call `ModuleDefinitionAssert.IsValid(path)`, which applies the engine's validation and lists every error with file, line and step:
 
 ```bash
-dotnet test --project backend/modules/_template/tests
+dotnet test --project backend/template/tests
 ```
 
 The YAML JSON Schemas in `backend/shared/Flowgent.Definitions/Schemas/` give editor validation and autocomplete while you type.

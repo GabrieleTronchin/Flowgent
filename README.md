@@ -73,8 +73,7 @@ The dashboard adapts to the selected workflow and streams the engine's state liv
 
 Flowgent is **beta / early**. What works today: the engine runs declarative workflows end-to-end in Demo mode, domain tools are reached over MCP-over-HTTP, the four images build locally and a GHCR publish workflow is in place (it runs on release tags; nothing is tagged yet), and the dashboard streams run state. Known rough edges and next steps:
 
-- A one-command `docker compose` example wiring all four images together (next round).
-- The AppHost does not start the support MCP server yet (see [Orchestration](docs/orchestration.md)), and the dashboard image has no gateway proxy yet.
+- A reference `docker compose` stack is prepared in [`compose/`](compose/README.md) but not yet run end to end.
 - Expect changes to workflow formats, config keys and APIs before 1.0.
 - A couple of integration tests have documented timing flakiness, tracked separately.
 
@@ -113,7 +112,9 @@ git clone <repository-url> flowgent
 cd flowgent
 cd dashboard && npm install && cd ..
 
-# Engine, enabled modules, gateway and dashboard (.NET Aspire)
+# Engine, gateway, dashboard and the example modules (.NET Aspire)
+dotnet run --project samples/host
+# Core only (engine, gateway, dashboard, module template)
 dotnet run --project backend/host
 ```
 
@@ -128,8 +129,9 @@ Services can also be started one by one; see [Orchestration](docs/orchestration.
 ### Build and test
 
 ```bash
-dotnet build backend/Flowgent.slnx
-dotnet test --solution backend/Flowgent.slnx
+dotnet build backend/Flowgent.Core.slnx              # core platform
+dotnet test --solution backend/Flowgent.Core.slnx
+dotnet test --solution samples/Flowgent.Samples.slnx # example modules
 
 cd dashboard
 npm run typecheck
@@ -143,17 +145,21 @@ Tests run in-process (`Flowgent.Testing.PlatformHarness`): no ports, no Aspire, 
 
 ```
 Directory.Build.props, Directory.Packages.props, .editorconfig   # build settings and package versions (repository root)
-backend/
-├── Flowgent.slnx                   # single solution (platform and modules)
-├── host/                           # Flowgent.AppHost (Aspire)
+backend/                            # the core platform
+├── Flowgent.Core.slnx              # core solution (builds and tests without samples/)
+├── host/                           # Flowgent.AppHost (Aspire): engine, gateway, dashboard, template
+├── hosting/                        # Flowgent.Hosting: AppHost wiring shared by both AppHosts
 ├── engine/                         # Flowgent.Engine.Service, .Engine.Core, .Persistence, .Engine.Tests, protos/
 ├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests
 ├── shared/                         # Flowgent.Contracts, .Definitions (with Schemas/), .Module.Sdk, .ServiceDefaults
-├── tests/                          # Architecture, Integration tests, Flowgent.Testing, Fixtures/
-└── modules/
-    ├── _template/                  # module template
-    ├── jokes/                      # tiny example module (single llm step, no tools)
-    └── support/                    # support example module (definition, service, mcp, tests, dummy-apps, docs)
+├── template/                       # module template
+└── tests/                          # Architecture, Integration tests, Flowgent.Testing, Fixtures/
+samples/                            # example modules (not the product)
+├── Flowgent.Samples.slnx           # core projects + samples
+├── host/                           # Flowgent.Samples.AppHost
+├── jokes/                          # tiny example module (single agent step, no tools)
+├── support/                        # support example module (definition, service, mcp, tests, dummy-apps, docs)
+└── tests/                          # samples dependency rules and multi-module tests
 dashboard/                          # React control console
 deploy/                             # Dockerfiles + GHCR publish workflow
 docs/                               # platform documentation (how it works)
@@ -164,9 +170,9 @@ nuget.config, global.json           # package source and SDK / test runner (repo
 
 | Module | Folder | Description |
 |--------|--------|-------------|
-| Support | [`backend/modules/support`](backend/modules/support/README.md) | Example domain module: triages support emails and proposes code fixes after human approval. Its MCP tool ships as the `flowgent-support-mcp` image. |
-| Jokes | [`backend/modules/jokes`](backend/modules/jokes/definition/module.yaml) | Tiny example: one `llm` step turns a topic into a one-liner. A good starting point to read. |
-| Template | [`backend/modules/_template`](backend/modules/_template/README.md) | Minimal module to copy when creating a new one. |
+| Support | [`samples/support`](samples/support/README.md) | Example domain module: triages support emails and proposes code fixes after human approval. Its MCP tool ships as the `flowgent-support-mcp` image. |
+| Jokes | [`samples/jokes`](samples/jokes/definition/module.yaml) | Tiny example: one `llm` step turns a topic into a one-liner. A good starting point to read. |
+| Template | [`backend/template`](backend/template/README.md) | Minimal module to copy when creating a new one. |
 
 ### Documentation
 

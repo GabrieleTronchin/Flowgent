@@ -2,13 +2,24 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "AppHost (whole platform)",
+      "name": "AppHost (core platform + template)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${workspaceFolder}/backend/host/bin/Debug/net10.0/Flowgent.AppHost.dll",
       "cwd": "${workspaceFolder}/backend/host",
       "launchSettingsFilePath": "${workspaceFolder}/backend/host/Properties/launchSettings.json",
+      "console": "integratedTerminal",
+      "launchSettingsProfile": "http"
+    },
+    {
+      "name": "AppHost (platform + samples)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/samples/host/bin/Debug/net10.0/Flowgent.Samples.AppHost.dll",
+      "cwd": "${workspaceFolder}/samples/host",
+      "launchSettingsFilePath": "${workspaceFolder}/samples/host/Properties/launchSettings.json",
       "console": "integratedTerminal",
       "launchSettingsProfile": "http"
     },
@@ -39,9 +50,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/backend/modules/support/service/bin/Debug/net10.0/Flowgent.Modules.Support.dll",
-      "cwd": "${workspaceFolder}/backend/modules/support/service",
-      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/support/service/Properties/launchSettings.json",
+      "program": "${workspaceFolder}/samples/support/service/bin/Debug/net10.0/Flowgent.Modules.Support.dll",
+      "cwd": "${workspaceFolder}/samples/support/service",
+      "launchSettingsFilePath": "${workspaceFolder}/samples/support/service/Properties/launchSettings.json",
       "launchSettingsProfile": "http",
       "console": "integratedTerminal"
     },
@@ -50,9 +61,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/backend/modules/_template/service/bin/Debug/net10.0/Flowgent.Modules.Template.dll",
-      "cwd": "${workspaceFolder}/backend/modules/_template/service",
-      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/_template/service/Properties/launchSettings.json",
+      "program": "${workspaceFolder}/backend/template/service/bin/Debug/net10.0/Flowgent.Modules.Template.dll",
+      "cwd": "${workspaceFolder}/backend/template/service",
+      "launchSettingsFilePath": "${workspaceFolder}/backend/template/service/Properties/launchSettings.json",
       "launchSettingsProfile": "http",
       "console": "integratedTerminal"
     },
@@ -61,9 +72,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/backend/modules/jokes/service/bin/Debug/net10.0/Flowgent.Modules.Jokes.dll",
-      "cwd": "${workspaceFolder}/backend/modules/jokes/service",
-      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/jokes/service/Properties/launchSettings.json",
+      "program": "${workspaceFolder}/samples/jokes/service/bin/Debug/net10.0/Flowgent.Modules.Jokes.dll",
+      "cwd": "${workspaceFolder}/samples/jokes/service",
+      "launchSettingsFilePath": "${workspaceFolder}/samples/jokes/service/Properties/launchSettings.json",
       "launchSettingsProfile": "http",
       "console": "integratedTerminal"
     },
@@ -72,9 +83,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/backend/modules/support/mcp/Flowgent.Mcp.Support/bin/Debug/net10.0/Flowgent.Mcp.Support.dll",
-      "cwd": "${workspaceFolder}/backend/modules/support/mcp/Flowgent.Mcp.Support",
-      "launchSettingsFilePath": "${workspaceFolder}/backend/modules/support/mcp/Flowgent.Mcp.Support/Properties/launchSettings.json",
+      "program": "${workspaceFolder}/samples/support/mcp/Flowgent.Mcp.Support/bin/Debug/net10.0/Flowgent.Mcp.Support.dll",
+      "cwd": "${workspaceFolder}/samples/support/mcp/Flowgent.Mcp.Support",
+      "launchSettingsFilePath": "${workspaceFolder}/samples/support/mcp/Flowgent.Mcp.Support/Properties/launchSettings.json",
       "launchSettingsProfile": "http",
       "console": "integratedTerminal"
     },
@@ -88,11 +99,10 @@
   ],
   "compounds": [
     {
-      "name": "Standalone: engine + support + support MCP + gateway",
+      "name": "Standalone: engine + template + gateway",
       "configurations": [
         "Engine :5081",
-        "Support module :5082",
-        "Support MCP :5085",
+        "Template module :5083",
         "Gateway :5080"
       ],
       "stopAll": true
