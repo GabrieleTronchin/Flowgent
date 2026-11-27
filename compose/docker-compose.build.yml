@@ -1,0 +1,21 @@
+# Builds the platform images from this repository instead of pulling them from GHCR.
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up --build
+# For the support sample also add samples/support.build.yml.
+services:
+  engine:
+    image: flowgent-engine:local
+    build:
+      context: ..
+      dockerfile: deploy/engine.Dockerfile
+
+  gateway:
+    image: flowgent-gateway:local
+    build:
+      context: ..
+      dockerfile: deploy/gateway.Dockerfile
+
+  dashboard:
+    image: flowgent-dashboard:local
+    build:
+      context: ..
+      dockerfile: deploy/dashboard.Dockerfile

@@ -23,7 +23,9 @@ Each PR ends with a green build and the relevant tests. Show the diff before eve
   update `images.yml`, Dockerfile paths, `.dockerignore`, schema comments in `module.yaml`, `.http`
   files, steering and docs.
   Check: core solution builds and passes alone; samples solution passes; `docker compose config`.
-- [ ] **PR 4 — generic compose and sample overlays.** `compose/docker-compose.yml` with engine, gateway
+- [x] **PR 4 — generic compose and sample overlays.** Done on `feat/compose-generic-stack`: `docker compose config`
+  passes for the base file, each overlay, the combination and the build overrides; not run (no Docker).
+  Overlays use fixed indexes (jokes module 0, support module 1 + MCP server 0); index gaps bind (`VolumeDefinitionTests`). `compose/docker-compose.yml` with engine, gateway
   and dashboard and an empty `definitions/` folder; `compose/samples/jokes.yml` and `support.yml`
   overlays; compose uses `ghcr.io/...:alpha` images with a build override for local builds.
   Not runnable until Docker is available; the pipeline checks the image builds.

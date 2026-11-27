@@ -1,0 +1,7 @@
+# Builds the support MCP server image from this repository (use with samples/support.yml and docker-compose.build.yml).
+services:
+  support-mcp:
+    image: flowgent-support-mcp:local
+    build:
+      context: ..
+      dockerfile: deploy/support-mcp.Dockerfile
