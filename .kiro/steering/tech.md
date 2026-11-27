@@ -3,7 +3,7 @@
 ## Runtime & Language
 
 - .NET 10.0 (`net10.0`), C# `LangVersion: latest`, nullable and implicit usings enabled
-- Central package management (`backend/Directory.Packages.props`, transitive pinning; one `backend/Directory.Build.props`); single package source nuget.org (root `nuget.config`)
+- Central package management (root `Directory.Packages.props`, transitive pinning; one root `Directory.Build.props`); single package source nuget.org (root `nuget.config`)
 - Tests run on Microsoft.Testing.Platform (root `global.json`)
 
 ## Key Libraries — Backend
@@ -81,7 +81,7 @@ docker build -f deploy/support-mcp.Dockerfile -t flowgent-support-mcp:local .
 - Ports (launch profiles, also used by Aspire): gateway 5080, engine 5081, support 5082, template 5083, jokes 5084, support MCP 5085, dashboard 5173.
 - The engine and gateway `appsettings.json` list no modules or MCP servers (generic images). The `support` entries for standalone `dotnet run` live in the `http` launch profiles of `Flowgent.Engine.Service` and `Flowgent.Gateway`; the AppHost and compose set them through environment variables.
 
-## Code Style (`backend/.editorconfig` enforced)
+## Code Style (root `.editorconfig` enforced)
 
 - File-scoped namespaces (enforced as error)
 - 4-space indentation, LF line endings, final newline required

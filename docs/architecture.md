@@ -88,9 +88,9 @@ The engine stores runs, transition events and inbox messages with EF Core InMemo
 ## Repository layout
 
 ```
+Directory.Build.props, Directory.Packages.props, .editorconfig   # shared build settings (repository root)
 backend/
 ├── Flowgent.slnx                   # one solution: platform, modules, tests
-├── Directory.Build.props, Directory.Packages.props, .editorconfig   # shared build settings
 ├── host/                           # Flowgent.AppHost (Aspire)
 ├── engine/                         # Flowgent.Engine.Service, .Engine.Core, .Persistence, .Engine.Tests, protos/run_monitor.proto (gRPC contract)
 ├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests

@@ -17,9 +17,9 @@ Service-to-service calls go directly (service discovery under Aspire), never thr
 
 ```
 .gitattributes, .gitignore, global.json, nuget.config   # repo-wide (global.json: test runner, read from the working directory; nuget.config: nuget.org-only feed)
+Directory.Build.props, Directory.Packages.props, .editorconfig   # one set at the root, applies to every .NET project
 backend/
 ├── Flowgent.slnx                    # single solution (platform + modules); solution folders mirror the physical ones, no "backend" folder
-├── Directory.Build.props, Directory.Packages.props, .editorconfig   # one set, applies to every backend project
 ├── host/                            # Flowgent.AppHost: Aspire AppHost, ModuleWiring, AppHost:Modules toggles
 ├── engine/
 │   ├── Flowgent.Engine.Service/     # EngineHost, endpoints/ (one IEndpoint class per resource), RunMonitorService (gRPC), engine.http

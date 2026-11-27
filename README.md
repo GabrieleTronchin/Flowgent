@@ -142,9 +142,9 @@ Tests run in-process (`Flowgent.Testing.PlatformHarness`): no ports, no Aspire, 
 ### Repository structure
 
 ```
+Directory.Build.props, Directory.Packages.props, .editorconfig   # build settings and package versions (repository root)
 backend/
 ├── Flowgent.slnx                   # single solution (platform and modules)
-├── Directory.Build.props, Directory.Packages.props, .editorconfig   # build settings and package versions
 ├── host/                           # Flowgent.AppHost (Aspire)
 ├── engine/                         # Flowgent.Engine.Service, .Engine.Core, .Persistence, .Engine.Tests, protos/
 ├── gateway/                        # Flowgent.Gateway, Flowgent.Gateway.Tests

@@ -9,7 +9,7 @@ WORKDIR /src
 # Copy the nuget.org-only feed config FIRST so restore is deterministic.
 COPY nuget.config ./
 
-COPY backend/Directory.Build.props backend/Directory.Packages.props ./backend/
+COPY Directory.Build.props Directory.Packages.props ./
 COPY backend/shared/ ./backend/shared/
 COPY backend/gateway/ ./backend/gateway/
 

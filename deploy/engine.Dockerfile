@@ -10,12 +10,12 @@ WORKDIR /src
 # probes the authenticated user-level feed.
 COPY nuget.config ./
 
-# Central package management lives in backend/ (Directory.Build.props,
-# Directory.Packages.props). Keep the same backend/ layout inside the image and copy
-# it with the source trees the engine needs (bin/obj/tests are excluded by the
-# Dockerfile-specific .dockerignore) so transitive project references resolve, then
-# restore + publish the target service.
-COPY backend/Directory.Build.props backend/Directory.Packages.props ./backend/
+# Build settings and central package management live at the repository root
+# (Directory.Build.props, Directory.Packages.props). Copy them next to nuget.config,
+# keep the backend/ layout for the source trees the engine needs (bin/obj/tests are
+# excluded by the Dockerfile-specific .dockerignore) so transitive project references
+# resolve, then restore + publish the target service.
+COPY Directory.Build.props Directory.Packages.props ./
 COPY backend/shared/ ./backend/shared/
 COPY backend/engine/ ./backend/engine/
 

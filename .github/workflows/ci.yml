@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches: [master]
-    paths: ['backend/**', 'nuget.config', 'global.json']
+    paths: ['backend/**', 'nuget.config', 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig']
   pull_request:
     branches: [master]
-    paths: ['backend/**', 'nuget.config', 'global.json']
+    paths: ['backend/**', 'nuget.config', 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig']
 
 jobs:
   build-and-test:
