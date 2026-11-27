@@ -59,7 +59,7 @@ The example uses the id `notes` and the name `Notes`; replace them with yours. I
    - Register one handler per tool declared in `module.yaml`: `builder.Services.AddModuleTool<MyTool>("notes.myTool")`. The service logs an error at startup for a declared tool without a handler.
    - Pick a free port in `Properties/launchSettings.json` and update `template.http`.
 4. Tests (`tests/`): rename the project and its references, then adapt `TemplateModuleTests`: its module folder and content root are relative to the backend folder (`PlatformHarness.RepositoryRoot`); for a module outside `backend/` pass absolute paths.
-5. Demo mode (optional): rename `definition/demo/template-hello.yaml` and write the demo answer of each agent step (see [Demo mode](../../docs/demo-mode.md#declaring-demo-responses)), or remove the file and the `demo:` line from `module.yaml`.
+5. Demo mode (optional): rename `definition/demo/template-hello.yaml` and write the demo answer of each agent step (see [Demo mode](../../docs/guides/demo-mode.md#declaring-demo-responses)), or remove the file and the `demo:` line from `module.yaml`.
 6. Register the module:
    - `samples/Flowgent.Samples.slnx`: add the service and test projects.
    - Samples AppHost: add a `ProjectReference` to the service in `samples/host/Flowgent.Samples.AppHost.csproj` and `platform.AddModule<Projects.Flowgent_Modules_Notes>("notes");` in `samples/host/AppHost.cs` (add extra gateway routes as further arguments if the module keeps legacy URLs).

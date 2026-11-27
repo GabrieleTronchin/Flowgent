@@ -29,7 +29,10 @@ Each PR ends with a green build and the relevant tests. Show the diff before eve
   and dashboard and an empty `definitions/` folder; `compose/samples/jokes.yml` and `support.yml`
   overlays; compose uses `ghcr.io/...:alpha` images with a build override for local builds.
   Not runnable until Docker is available; the pipeline checks the image builds.
-- [ ] **PR 5 — documentation restructure (last).**
+- [x] **PR 5 — documentation restructure (last).** Done on `docs/restructure`: user README, getting started,
+  examples page, guides/, reference/ (new configuration page), contributing/, CONTRIBUTING.md, Flowgent.Hosting README.
+  The `notes` example of Writing modules was run on the engine (module Available, run Completed in Demo mode).
+  Workflow snippets moved to block style: the declarative reader rejects inline mappings. Project READMEs kept (already uniform).
   - Root `README.md` for users: what it is, three key ideas, quick start with the images and the
     `jokes` sample, where to go next; short beta notice; link to `CONTRIBUTING.md`.
   - `CONTRIBUTING.md` and contributor docs: open the core solution in Visual Studio, run the AppHost,

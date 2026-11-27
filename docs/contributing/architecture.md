@@ -1,6 +1,6 @@
 # Architecture
 
-[← README](../README.md) · [Workflow reference](workflow-reference.md) · [Engine API](engine-api.md) · [Gateway](gateway.md)
+[← README](../../README.md) · [Writing workflows](../guides/writing-workflows.md) · [Engine API](../reference/engine-api.md) · [Gateway](gateway.md)
 
 Flowgent is a small distributed platform that runs LLM workflows described in YAML. The engine knows nothing about business domains: every domain lives in a **module service** that owns its definitions and custom code.
 
@@ -78,7 +78,7 @@ Each submitted input becomes a **run** of one workflow. A run has a current step
 - `MafWorkflowFactory` builds a fresh MAF **declarative** workflow **per run** from the workflow's YAML (`DeclarativeWorkflowBuilder.Build<JsonObject>`), bound to the run's `RunContext`. Concurrent runs never share state. All declarative types are confined to the `Flowgent.Engine.Core.Maf` folder.
 - `MafRunDriver` runs the workflow with JSON checkpointing and translates the declarative event stream into neutral records: per-step `StepStarted`/`StepCompleted` read from `Global.<stepId>` run-state variables, HITL via `RequestInfoEvent`↔`HumanInputRegistry`, and one terminal transition whose outcome comes from the manifest `terminals[]`.
 - A step that fails (agent/LLM error, tool error, PowerFx error) ends the run as `Failed` with a descriptive reason; an expected module-tool failure surfaces its `StepFailedException` message (e.g. `Module '<id>' is unavailable…`).
-- The run path (intake, inbox, orchestrator, MAF factory and run driver) and the folder layout of Flowgent.Engine.Core are described in its [README](../backend/engine/Flowgent.Engine.Core/README.md); each main project has one.
+- The run path (intake, inbox, orchestrator, MAF factory and run driver) and the folder layout of Flowgent.Engine.Core are described in its [README](../../backend/engine/Flowgent.Engine.Core/README.md); each main project has one.
 - Each agent call emits an OpenTelemetry activity (`ActivitySource` `Flowgent.Engine.Core`) tagged with run, module, workflow and step.
 
 ### Persistence
@@ -138,4 +138,4 @@ graph TD
 
 - There is no end-user or service-to-service authentication. The gateway is the only intended public entry point; engine and module ports, including `/_module/*`, must stay on a private network.
 - Secrets (`Flowgent:Llm:ApiKey`) are read from configuration only and never returned by any endpoint. Keep them in user secrets, environment variables or the git-ignored `appsettings.Development.json`.
-- Workflow expressions are PowerFx evaluated by the MAF declarative builder (see [Expressions](expressions.md)); module-tool calls validate input/output against the declared schemas.
+- Workflow expressions are PowerFx evaluated by the MAF declarative builder (see [Expressions](../guides/expressions.md)); module-tool calls validate input/output against the declared schemas.

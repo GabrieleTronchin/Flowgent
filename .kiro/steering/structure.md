@@ -54,7 +54,9 @@ samples/                             # example modules (not the product); may mo
 └── tests/Flowgent.Samples.Tests/    # samples dependency rules + multi-module isolation (support + fixture)
 dashboard/                           # React console: api/, gen/, hooks/, components/, pages/, utils/, types/, __tests__/
 deploy/                              # Dockerfiles + GHCR publish workflow
-docs/                                # platform documentation (engine, not domain)
+compose/                             # generic Docker Compose stack + samples/ overlays + definitions/ for user modules
+docs/                                # README.md (index), getting-started.md, examples.md, guides/, reference/ (users), contributing/ (contributors)
+CONTRIBUTING.md                      # contributor entry point (solutions, run, test, rules)
 ```
 
 ## Module folder layout
@@ -71,7 +73,7 @@ Every module follows the same layout (`backend/template`, `samples/<id>`); nothi
 └── assets        # e.g. support's dummy-apps/
 ```
 
-New modules start from `backend/template` (see its README and `docs/module-authoring.md`). Support domain details: `samples/support/README.md`.
+New modules start from `docs/guides/writing-modules.md` (definition folder + MCP server) or, for a module service, from `backend/template` (see its README). Support domain details: `samples/support/README.md`.
 
 ## Dependency rules (Flowgent.Architecture.Tests)
 

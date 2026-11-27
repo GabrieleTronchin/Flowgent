@@ -1,6 +1,6 @@
 # Expressions
 
-[← README](../README.md) · [Workflow reference](workflow-reference.md)
+[← README](../../README.md) · [Writing workflows](writing-workflows.md)
 
 Workflows are MAF declarative documents, so expressions inside them are **PowerFx** (the declarative workflow builder's expression language), not Scriban. An expression is written `=Expr` as an action value (e.g. a `SetVariable` `value`, an `InvokeMcpTool` argument, a `ConditionGroup` `condition`). `SendActivity`/`Question` text uses `{expr}` interpolation inside a string, not a bare `=expr`.
 
@@ -17,8 +17,10 @@ The run's intake input arrives as the trigger message text (a JSON string). Powe
   serverLabel: flowgent
   toolName: flowgent.input          # echoes the run input as a JSON-object string
   requireApproval: false
-  arguments: { payload: =System.LastMessage.Text }
-  output: { result: Local.intake }
+  arguments:
+    payload: =System.LastMessage.Text
+  output:
+    result: Local.intake
 # then: =First(Local.intake).subject  /  =First(Local.intake).body
 ```
 
@@ -55,10 +57,17 @@ The run's intake input arrives as the trigger message text (a JSON string). Powe
     - condition: =First(Local.classifyObj).isCodeRelated = true
       id: is_code
       actions:
-        - { kind: GotoAction, id: goto_route, actionId: rt_text }
+        - kind: GotoAction
+          id: goto_route
+          actionId: rt_text
   elseActions:
-    - { kind: GotoAction, id: goto_oos, actionId: classified_out_of_scope_message }
+    - kind: GotoAction
+      id: goto_oos
+      actionId: classified_out_of_scope_message
 ```
+
+> Write workflow files in block style, as above. The declarative workflow reader does not accept inline YAML
+> mappings (`{ key: value }`) or inline lists of mappings. `module.yaml`, samples and demo files accept both.
 
 ## Crossing the MAF boundary
 
@@ -67,4 +76,4 @@ Values cross between the engine and PowerFx as JSON strings. Two invariants to r
 - A module tool result is returned as exactly one non-numeric JSON string; a bare top-level number is wrapped (a bare number crashes the `InvokeMcpTool` PowerFx binding).
 - Each step writes its output to `Global.<stepId>` (snapshot) so the engine can surface it as `steps.<stepId>`; terminals write `Global.__terminalId` / `Global.__message` / `Global.__finalOutput`.
 
-See the [workflow reference](workflow-reference.md) for the full run contract, and [`samples/support/definition/workflows/support-email.yaml`](../samples/support/definition/workflows/support-email.yaml) for a worked example.
+See [Writing workflows](writing-workflows.md) for the full run contract, and [Examples](../examples.md) for complete workflows that use these expressions.

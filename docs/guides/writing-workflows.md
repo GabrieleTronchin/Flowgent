@@ -1,6 +1,6 @@
-# Workflow and module reference
+# Writing workflows
 
-[← README](../README.md) · [Expressions](expressions.md) · [Module authoring](module-authoring.md) · [Demo mode](demo-mode.md)
+[← README](../../README.md) · [Expressions](expressions.md) · [Writing modules](writing-modules.md) · [Demo mode](demo-mode.md)
 
 A module definition is a folder of YAML, Markdown and JSON files (`<module>/definition/`, e.g. `backend/template/definition/`) published by the module service. Workflows are **Microsoft Agent Framework (MAF) declarative workflows**: the engine feeds each workflow's YAML to the declarative workflow builder and runs it, so the workflow format is MAF's, not a Flowgent-specific one. Flowgent owns only the **module envelope** (the manifest and samples) and the **run contract** the workflow follows (how it reads intake input, snapshots step outputs, and marks terminals).
 
@@ -15,7 +15,7 @@ Three envelope formats have a JSON Schema in `backend/shared/Flowgent.Definition
 
 > The old custom workflow format (`workflow.schema.json`, `kind: llm/rule/map/tool/http/human-input/terminal`, Scriban `{{ … }}` templates) was removed when the engine moved to MAF declarative. `/api/engine/schemas/workflow` no longer exists.
 
-The complete, runnable example is the template module: [`backend/template/definition`](../backend/template/definition). The support module ([`samples/support/definition`](../samples/support/definition)) exercises every action kind.
+A complete module written step by step is in [Writing modules](writing-modules.md#a-complete-module). The module template ([`backend/template/definition`](../../backend/template/definition)) and the [Examples](../examples.md) are complete and runnable; one of the examples uses every action kind.
 
 ## Module manifest (`module.yaml`)
 
@@ -78,8 +78,10 @@ trigger:
       serverLabel: flowgent
       toolName: flowgent.input
       requireApproval: false
-      arguments: { payload: =System.LastMessage.Text }
-      output: { result: Local.intake }
+      arguments:
+        payload: =System.LastMessage.Text
+      output:
+        result: Local.intake
     # … agent / tool / branch / terminal actions …
 ```
 

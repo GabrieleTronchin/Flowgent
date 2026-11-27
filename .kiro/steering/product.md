@@ -43,11 +43,16 @@ The core (`backend/`, `backend/Flowgent.Core.slnx`) is the product. The example 
 
 ## Container images
 
-`deploy/` has four Dockerfiles (engine, gateway, dashboard, support-mcp; the last is an example module, not core) and `.github/workflows/images.yml`, which publishes them to GHCR on `v*` tags (a floating `edge` tag on master). The first release, `v0.1.0-alpha.1`, is not tagged yet. Product maturity is **beta**; the release channel is **alpha**. There is no `docker compose` yet, and the dashboard image does not proxy to the gateway yet.
+`deploy/` has four Dockerfiles (engine, gateway, dashboard, support-mcp; the last is an example module, not core) and `.github/workflows/images.yml`, which publishes them to GHCR on `v*` tags (a floating `edge` tag on master). The first release, `v0.1.0-alpha.1`, is not tagged yet. Product maturity is **beta**; the release channel is **alpha**. `compose/` has the generic stack (engine, gateway, dashboard, empty `definitions/`) and overlays for the samples; it is prepared but not yet run end to end. The dashboard image proxies `/api` and the run stream to `GATEWAY_URL`.
 
 ## Documentation
 
-Platform docs are in `docs/` (architecture, workflow reference, expressions, module authoring, gateway, engine API, demo mode, inbox, human input, dashboard, orchestration, debugging). Platform docs use generic or template examples; module docs live in the module folder.
+Two audiences, two sets of docs, all in English and without images:
+
+- **Users** (container images + their own definition folders and MCP servers): root `README.md` (what it is, quick start with compose and the jokes sample, where to go next), `docs/getting-started.md`, `docs/guides/` (writing workflows, expressions, writing modules, human input, demo mode, deployment), `docs/reference/` (configuration, engine API), `docs/examples.md`. The Module SDK is presented as advanced.
+- **Contributors** (Visual Studio + source): `CONTRIBUTING.md`, `docs/contributing/` (architecture, orchestration, gateway, inbox, dashboard, debugging), the short README of each main project.
+
+`docs/README.md` is the index. The example modules are listed only in `docs/examples.md` (the quick start in `README.md` and `docs/getting-started.md` also uses them) and documented in their own folders; other pages use generic examples (`notes`) or the template. Workflow YAML snippets use block style (the declarative reader rejects inline mappings).
 
 ## Constraints
 

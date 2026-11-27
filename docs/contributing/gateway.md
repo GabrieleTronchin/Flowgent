@@ -1,6 +1,6 @@
 # Gateway
 
-[← README](../README.md) · [Architecture](architecture.md) · [Engine API](engine-api.md)
+[← README](../../README.md) · [Architecture](architecture.md) · [Engine API](../reference/engine-api.md)
 
 `Flowgent.Gateway` is a YARP reverse proxy and the only component the dashboard and external clients call. It listens on `http://localhost:5080` (launch profile `http`, also used under the AppHost).
 

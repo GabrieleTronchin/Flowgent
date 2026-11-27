@@ -1,6 +1,6 @@
 # Local orchestration and observability
 
-[← README](../README.md) · [Architecture](architecture.md) · [Debugging](debugging.md)
+[← README](../../README.md) · [Architecture](architecture.md) · [Debugging](debugging.md)
 
 ## One command: the AppHosts
 
@@ -67,7 +67,7 @@ Start them in any order: the engine retries the modules, the gateway answers `50
 
 ### Support MCP server (samples)
 
-The support workflow calls `support.locateComponent` on the standalone MCP server `Flowgent.Mcp.Support` (see [Module authoring](module-authoring.md#serving-tools-from-a-standalone-mcp-server)). The samples AppHost starts and maps it. Without the AppHost, start it and map it yourself:
+The support workflow calls `support.locateComponent` on the standalone MCP server `Flowgent.Mcp.Support` (see [Writing modules](../guides/writing-modules.md#domain-tools-on-an-mcp-server)). The samples AppHost starts and maps it. Without the AppHost, start it and map it yourself:
 
 ```bash
 # set SUPPORT_DUMMYAPPS_ROOT to the absolute path of samples/support/dummy-apps first

@@ -1,8 +1,8 @@
 # Engine API
 
-[← README](../README.md) · [Gateway](gateway.md) · [Human input](human-input.md) · [Inbox](inbox.md)
+[← README](../../README.md) · [Gateway](../contributing/gateway.md) · [Human input](../guides/human-input.md) · [Inbox](../contributing/inbox.md)
 
-The engine exposes a module-agnostic API under `/api/engine`, reached through the gateway (`http://localhost:5080`). JSON is camelCase with string enums. Errors are problem details (`title`, `detail`, optional `errors`). Ready-made requests: [`engine.http`](../backend/engine/Flowgent.Engine.Service/engine.http).
+The engine exposes a module-agnostic API under `/api/engine`, reached through the gateway (`http://localhost:5080`). JSON is camelCase with string enums. Errors are problem details (`title`, `detail`, optional `errors`). Ready-made requests: [`engine.http`](../../backend/engine/Flowgent.Engine.Service/engine.http).
 
 No endpoint returns secrets: API keys and LLM endpoint URLs stay in configuration.
 
@@ -50,7 +50,7 @@ Abort ends the run in `Failed` with detail `Aborted by user` (a single transitio
 | POST | `/api/engine/human-inputs/{runId}/approve` | `204`; `404` unknown run; `409` not awaiting input or already terminal |
 | POST | `/api/engine/human-inputs/{runId}/reject` | Body `{ "reason": "..." }` (optional). `204` / `404` / `409` |
 
-See [Human input](human-input.md).
+See [Human input](../guides/human-input.md).
 
 ## Monitoring
 
@@ -87,16 +87,8 @@ message RunUpdate {
 
 Every transition (including `Queued`) is published. The stream returns `Unavailable` when visualization is disabled and `InvalidArgument` when `run_id` is not a GUID. Each subscriber has its own bounded buffer, so a slow client does not slow down the others.
 
-## Engine configuration (`Flowgent`)
+## Engine configuration
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `EnableVisualization` | `true` | Enables the gRPC stream and the agents endpoint. |
-| `SequentialProcessing` | `false` | Start a run only when no other run is running or awaiting input. See [Inbox](inbox.md). |
-| `InboxPollingIntervalSeconds` | `5` (`1` in `appsettings.json`) | Inbox polling interval. |
-| `DefaultToolTimeoutSeconds` | `30` | Tool timeout when neither the tool nor the module sets one. |
-| `Modules[]` | — | `{ Id, Url, Enabled, RefreshSeconds, TimeoutSeconds, Retries, RetryDelayMilliseconds }`; see [Module authoring](module-authoring.md#registering-the-module). |
-| `McpServers[]` | `[]` | `{ Label, Url }`: maps a workflow `serverLabel` to an MCP server (Streamable HTTP). Labels that are not listed use the module's `/_module/tools` route; `flowgent` is reserved. See [Module authoring](module-authoring.md#serving-tools-from-a-standalone-mcp-server). |
-| `Definitions.Path` | — | Folder of mounted module definitions, one sub-folder per module id (`<Path>/<moduleId>/`). A module whose folder exists there is loaded from disk; otherwise the engine fetches `GET /_module/package`. |
-| `Llm` | — | LLM provider; see [Demo mode](demo-mode.md). |
+Every engine setting (`Flowgent`, `Flowgent:Modules[]`, `Flowgent:McpServers[]`, `Flowgent:Definitions`,
+`Flowgent:Llm`) is listed in [Configuration](configuration.md#engine-flowgent-engine).
 

@@ -1,6 +1,6 @@
 # Inbox
 
-[← README](../README.md) · [Engine API](engine-api.md) · [Architecture](architecture.md)
+[← README](../../README.md) · [Engine API](../reference/engine-api.md) · [Architecture](architecture.md)
 
 Every workflow uses the same asynchronous intake (transactional inbox pattern): the request is persisted and acknowledged immediately, and a background processor starts the run.
 

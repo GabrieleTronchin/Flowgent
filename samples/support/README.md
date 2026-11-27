@@ -59,13 +59,13 @@ The `approval` step pauses the run in `AwaitingInput` with the review title `Pro
 |-------|---------|-------|
 | `definition/module.yaml` | `config.dummyAppsRoot` | `dummy-apps`: folder of the sample applications, relative to `samples/support`. Kept as module metadata: the `locateComponent` tool itself reads `SUPPORT_DUMMYAPPS_ROOT` (below). |
 | `Flowgent.Mcp.Support` (environment) | `SUPPORT_DUMMYAPPS_ROOT` | Absolute path of the dummy apps that `locateComponent` searches. The container image `flowgent-support-mcp` sets `/app/dummy-apps`. |
-| Engine | `Flowgent:McpServers[]` | `{ Label: "support", Url: <MCP server address> }` maps the workflow's `serverLabel: support` to the MCP server. The samples AppHost starts the server and maps it; see [Orchestration](../../docs/orchestration.md). |
+| Engine | `Flowgent:McpServers[]` | `{ Label: "support", Url: <MCP server address> }` maps the workflow's `serverLabel: support` to the MCP server. The samples AppHost starts the server and maps it; see [Orchestration](../../docs/contributing/orchestration.md). |
 | `service/appsettings.json` | `Flowgent:Module:DefinitionPath` | `../definition` |
 | `service/appsettings.json` | `Flowgent:Module:EngineUrl` | `http://localhost:5081` (the AppHost sets `http://engine`) |
 | `service/Properties/launchSettings.json` | port | `5082` |
 | Samples AppHost (`samples/host`) | `AppHost:Modules:support:Enabled` | `true`; the gateway also routes `/api/support/{**catch-all}` to this module |
 
-The LLM provider is an engine setting (`Flowgent:Llm`): see the platform's [Demo mode](../../docs/demo-mode.md).
+The LLM provider is an engine setting (`Flowgent:Llm`): see the platform's [Demo mode](../../docs/guides/demo-mode.md).
 
 ## Demo responses
 
@@ -113,4 +113,4 @@ samples/support/
 └── docs/                                 # this module's documentation
 ```
 
-Platform documentation: [workflow reference](../../docs/workflow-reference.md), [module authoring](../../docs/module-authoring.md), [engine API](../../docs/engine-api.md), [human input](../../docs/human-input.md).
+Platform documentation: [workflow reference](../../docs/guides/writing-workflows.md), [module authoring](../../docs/guides/writing-modules.md), [engine API](../../docs/reference/engine-api.md), [human input](../../docs/guides/human-input.md).

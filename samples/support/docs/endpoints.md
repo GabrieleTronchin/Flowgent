@@ -1,6 +1,6 @@
 # Support endpoints
 
-[← Support module](../README.md) · [Scenarios](scenarios.md) · [Platform: Engine API](../../../docs/engine-api.md)
+[← Support module](../README.md) · [Scenarios](scenarios.md) · [Platform: Engine API](../../../docs/reference/engine-api.md)
 
 All requests go through the gateway (`http://localhost:5080`). The gateway routes `/api/modules/support/**` and `/api/support/**` to the support service (port 5082).
 
@@ -30,7 +30,7 @@ Property names are case-insensitive (`Subject` works too). The service validates
 
 ## Following a run
 
-The support module has no read endpoints of its own: runs, approvals, events and agents come from the generic [engine API](../../../docs/engine-api.md).
+The support module has no read endpoints of its own: runs, approvals, events and agents come from the generic [engine API](../../../docs/reference/engine-api.md).
 
 | Need | Request |
 |------|---------|

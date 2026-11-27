@@ -1,6 +1,6 @@
 # Human input
 
-[← README](../README.md) · [Workflow reference](workflow-reference.md#action-kinds) · [Engine API](engine-api.md#human-input)
+[← README](../../README.md) · [Writing workflows](writing-workflows.md#action-kinds) · [Engine API](../reference/engine-api.md#human-input)
 
 A human-input gate pauses a run until someone approves or rejects it. The engine handles it generically, so every workflow uses the same endpoints and the same dashboard page.
 
@@ -16,23 +16,35 @@ A gate is a MAF `Question` action followed by a `ConditionGroup` on the resumed 
 - kind: Question
   id: review
   property: Local.approvalRaw
-  prompt: { kind: Message, text: [ "{Local.reviewJson}" ] }
-  entity: { kind: StringPrebuiltEntity }
+  prompt:
+    kind: Message
+    text:
+      - "{Local.reviewJson}"
+  entity:
+    kind: StringPrebuiltEntity
 - kind: InvokeMcpTool
   id: parse_review
   serverUrl: inproc://flowgent
   serverLabel: flowgent
   toolName: flowgent.parse
   requireApproval: false
-  arguments: { payload: =Local.approvalRaw }
-  output: { result: Local.approvalObj }
+  arguments:
+    payload: =Local.approvalRaw
+  output:
+    result: Local.approvalObj
 - kind: ConditionGroup
   id: after_review
   conditions:
     - condition: =Find("approved", Local.approvalRaw) > 0
       id: approved
-      actions: [ { kind: GotoAction, id: goto_publish, actionId: publish } ]
-  elseActions: [ { kind: GotoAction, id: goto_declined, actionId: declined_message } ]
+      actions:
+        - kind: GotoAction
+          id: goto_publish
+          actionId: publish
+  elseActions:
+    - kind: GotoAction
+      id: goto_declined
+      actionId: declined_message
 ```
 
 The engine:

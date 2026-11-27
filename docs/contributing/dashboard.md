@@ -1,6 +1,6 @@
 # Dashboard
 
-[← README](../README.md) · [Engine API](engine-api.md) · [Human input](human-input.md)
+[← README](../../README.md) · [Engine API](../reference/engine-api.md) · [Human input](../guides/human-input.md)
 
 `dashboard/` is a generic React console for every module. It contains no step names or module-specific code: pages, graph, forms, filters and badges come from the workflow definitions and run statuses returned by the engine.
 
