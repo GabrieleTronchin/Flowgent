@@ -29,8 +29,8 @@ Stop with `docker compose down`.
   with `Flowgent__McpServers__0__*`.
 - The gateway forwards to `http://engine:8080`; the dashboard forwards to
   `http://gateway:8080` (`GATEWAY_URL`).
-- The images ship an `appsettings.json` that already lists `support` at index 0, so the compose
-  file overrides index 0 instead of adding a new entry.
+- The images list no modules and no MCP servers: everything the engine and gateway know about
+  `support` comes from the environment variables in this file.
 
 ## Using a real model
 
@@ -50,6 +50,4 @@ To use another OpenAI-compatible server, also set `Flowgent__Llm__Endpoint` and
 
 ## Known limits
 
-- The gateway image still lists a `support` module at `localhost:5082`. There is no module
-  service in this stack, so `/api/modules/support/**` answers `503`. The dashboard does not use it.
 - Engine state (runs, events, inbox) is in memory and is lost on restart.

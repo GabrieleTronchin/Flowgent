@@ -22,7 +22,7 @@ var gateway = builder.AddProject<Projects.Flowgent_Gateway>("gateway")
 
 var modules = new ModuleWiring(builder, engine, gateway);
 
-// The support module is the reference module: keep it first (index 0 matches the standalone appsettings).
+// The support module is the reference module: keep it first (index 0 matches the launch profiles of the engine and gateway).
 modules.Add<Projects.Flowgent_Modules_Support>("support", "/api/support/{**catch-all}");
 
 // Example module (modules/_template), disabled by default: --AppHost:Modules:template:Enabled=true turns it on.

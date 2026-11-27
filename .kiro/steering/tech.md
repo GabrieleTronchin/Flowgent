@@ -78,7 +78,8 @@ docker build -f deploy/support-mcp.Dockerfile -t flowgent-support-mcp:local .
 - Module SDK (`Flowgent:Module`): `DefinitionPath` (`../definition`), `EngineUrl` (`http://localhost:5081`), `FailOnInvalidDefinition` (false).
 - Gateway (`Gateway`): `Engine:Address`, `Modules[] { Id, Address, ExtraRoutes[] }`, `StreamActivityTimeout`.
 - AppHost: `AppHost:Modules:<id>:Enabled`, `AppHost:LlmProvider`.
-- Ports (launch profiles, also used by Aspire): gateway 5080, engine 5081, support 5082, template 5083, jokes 5084, dashboard 5173. The support MCP server has no fixed port yet.
+- Ports (launch profiles, also used by Aspire): gateway 5080, engine 5081, support 5082, template 5083, jokes 5084, support MCP 5085, dashboard 5173.
+- The engine and gateway `appsettings.json` list no modules or MCP servers (generic images). The `support` entries for standalone `dotnet run` live in the `http` launch profiles of `Flowgent.Engine.Service` and `Flowgent.Gateway`; the AppHost and compose set them through environment variables.
 
 ## Code Style (`backend/.editorconfig` enforced)
 
