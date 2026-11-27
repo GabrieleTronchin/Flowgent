@@ -1,0 +1,19 @@
+# Sample overlay: the support module and its MCP server (locateComponent). Needs this repository for the
+# definition folder.
+#   docker compose -f docker-compose.yml -f samples/support.yml up
+# Combine with samples/jokes.yml freely: support uses module index 1, jokes index 0.
+# Paths are relative to the compose folder (the folder of the first -f file).
+services:
+  engine:
+    environment:
+      Flowgent__Modules__1__Id: support
+      # Workflow serverLabel "support" -> the MCP server container.
+      Flowgent__McpServers__0__Label: support
+      Flowgent__McpServers__0__Url: http://support-mcp:8080
+    volumes:
+      - ../samples/support/definition:/definitions/support:ro
+    depends_on:
+      - support-mcp
+
+  support-mcp:
+    image: ghcr.io/gabrieletronchin/flowgent-support-mcp:${FLOWGENT_TAG:-alpha}

@@ -1,0 +1,42 @@
+<Solution>
+  <Project Path="host/Flowgent.Samples.AppHost.csproj" />
+  <Folder Name="/jokes/">
+    <Project Path="jokes/service/Flowgent.Modules.Jokes.csproj" />
+  </Folder>
+  <Folder Name="/support/">
+    <Project Path="support/service/Flowgent.Modules.Support.csproj" />
+    <Project Path="support/tests/Flowgent.Modules.Support.Tests.csproj" />
+  </Folder>
+  <Folder Name="/support/mcp/">
+    <Project Path="support/mcp/Flowgent.Mcp.Support/Flowgent.Mcp.Support.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Flowgent.Samples.Tests/Flowgent.Samples.Tests.csproj" />
+  </Folder>
+  <!-- The core platform (backend/Flowgent.Core.slnx), referenced by the samples. -->
+  <Folder Name="/core/" />
+  <Folder Name="/core/engine/">
+    <Project Path="../backend/engine/Flowgent.Engine.Service/Flowgent.Engine.Service.csproj" />
+    <Project Path="../backend/engine/Flowgent.Persistence/Flowgent.Persistence.csproj" />
+    <Project Path="../backend/engine/Flowgent.Engine.Core/Flowgent.Engine.Core.csproj" />
+  </Folder>
+  <Folder Name="/core/gateway/">
+    <Project Path="../backend/gateway/Flowgent.Gateway/Flowgent.Gateway.csproj" />
+  </Folder>
+  <Folder Name="/core/hosting/">
+    <Project Path="../backend/hosting/Flowgent.Hosting/Flowgent.Hosting.csproj" />
+  </Folder>
+  <Folder Name="/core/shared/">
+    <Project Path="../backend/shared/Flowgent.Contracts/Flowgent.Contracts.csproj" />
+    <Project Path="../backend/shared/Flowgent.Definitions/Flowgent.Definitions.csproj" />
+    <Project Path="../backend/shared/Flowgent.Module.Sdk/Flowgent.Module.Sdk.csproj" />
+    <Project Path="../backend/shared/Flowgent.ServiceDefaults/Flowgent.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/core/template/">
+    <Project Path="../backend/template/service/Flowgent.Modules.Template.csproj" />
+  </Folder>
+  <Folder Name="/core/tests/">
+    <Project Path="../backend/tests/Flowgent.Testing/Flowgent.Testing.csproj" />
+    <Project Path="../backend/tests/Fixtures/Flowgent.Fixtures.Module/Flowgent.Fixtures.Module.csproj" />
+  </Folder>
+</Solution>

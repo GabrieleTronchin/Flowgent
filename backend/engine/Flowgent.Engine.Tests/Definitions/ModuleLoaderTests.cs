@@ -206,6 +206,77 @@ public class ModuleLoaderTests
         Assert.Equal(JsonValue.Create(false)!.ToJsonString(), module.GetSchemaNode(input)["additionalProperties"]!.ToJsonString());
     }
 
+    // ── Demo responses file (workflows[].demo) ───────────────────────
+
+    private const string DemoFile = "demo/hello.yaml";
+
+    [Fact]
+    public void DemoFile_IsLoadedOntoTheWorkflow()
+    {
+        var module = TestModules.LoadValid();
+
+        var step = module.FindWorkflow("hello")!.Demo!.Steps["summarize"];
+        Assert.Equal(@"Summarise\s*(.+)", step.Extract["text"].Pattern);
+        Assert.Equal("[Demo] {text}", step.Output!["summary"]!.GetValue<string>());
+        Assert.Empty(module.Warnings);
+    }
+
+    [Fact]
+    public void DemoFile_IsOptional()
+    {
+        var module = TestModules.LoadValid(f =>
+        {
+            f.Remove(DemoFile);
+            f.Replace(ManifestFile, "    demo: demo/hello.yaml\n", "");
+        });
+
+        Assert.Null(module.FindWorkflow("hello")!.Demo);
+    }
+
+    [Fact]
+    public void MissingDemoFile_IsReported()
+    {
+        var result = TestModules.Load(f => f.Remove(DemoFile));
+
+        AssertError(result, ManifestFile, null, "The demo file 'demo/hello.yaml' does not exist");
+    }
+
+    [Fact]
+    public void DemoFileFormatViolation_IsReportedWithTheStepId()
+    {
+        // A step needs an output or rules.
+        var result = TestModules.Load(f => f[DemoFile] = "steps:\n  summarize:\n    extract:\n      text: { field: Text }\n");
+
+        AssertError(result, DemoFile, "summarize", "");
+    }
+
+    [Fact]
+    public void InvalidDemoRegex_IsReported()
+    {
+        var result = TestModules.Load(f => f.Replace(DemoFile, @"'Summarise\s*(.+)'", "'Summarise ((('"));
+
+        AssertError(result, DemoFile, "summarize", "Invalid regex in extract 'text'");
+    }
+
+    [Fact]
+    public void UnknownDemoPlaceholder_IsReported()
+    {
+        var result = TestModules.Load(f => f.Replace(DemoFile, "\"[Demo] {text}\"", "\"[Demo] {ghost}\""));
+
+        AssertError(result, DemoFile, "summarize", "Unknown placeholder {ghost}");
+    }
+
+    [Fact]
+    public void DemoStepWithoutAgentStep_IsAWarningOnly()
+    {
+        var module = TestModules.LoadValid(f => f.Replace(DemoFile, "  summarize:", "  ghost_step:"));
+
+        var warning = Assert.Single(module.Warnings);
+        Assert.Equal(DemoFile, warning.File);
+        Assert.Equal("ghost_step", warning.StepId);
+        Assert.Contains("No agent step", warning.Message);
+    }
+
     private static DefinitionErrorInfo AssertError(LoadResult result, string file, string? stepId, string messagePart)
     {
         Assert.False(result.IsValid, "Expected the module to be invalid.");

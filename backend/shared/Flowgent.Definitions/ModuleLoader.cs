@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Flowgent.Contracts.Modules;
 using Flowgent.Definitions.Model;
 using Flowgent.Definitions.Schemas;
@@ -127,6 +128,7 @@ public static class ModuleLoader
             }
 
             var normalized = DefinitionPaths.Normalize(reference.File);
+            var demo = ReadDemo(reference, files[normalized], files, errors);
             workflows.Add(new WorkflowDescriptor
             {
                 Id = reference.Id,
@@ -139,11 +141,86 @@ public static class ModuleLoader
                 Yaml = files[normalized],
                 File = normalized,
                 Graph = projector.Project(reference, files[normalized]),
+                Demo = demo,
             });
         }
 
         return workflows;
     }
+
+    /// <summary>
+    /// Reads and checks the optional demo responses file of a workflow: format schema, regexes, placeholders, and a
+    /// warning for a step id that no agent step of the workflow uses.
+    /// </summary>
+    private static DemoFile? ReadDemo(WorkflowRef reference, string workflowYaml, Dictionary<string, string> files, DefinitionErrors errors)
+    {
+        if (reference.Demo is null || !CheckReference(files, reference.Demo, ModuleManifest.FileName, "demo", errors))
+        {
+            return null;
+        }
+
+        var path = DefinitionPaths.Normalize(reference.Demo);
+        if (ReadDocument<DemoFile>(files, path, FormatSchemas.Demo, errors) is not { } doc)
+        {
+            return null;
+        }
+
+        foreach (var (stepId, step) in doc.Model.Steps)
+        {
+            var known = new HashSet<string>(step.Extract.Keys, StringComparer.Ordinal) { DemoTemplate.PromptPlaceholder };
+            foreach (var (name, extract) in step.Extract)
+            {
+                if (extract.Pattern is { } pattern)
+                {
+                    CheckRegex(pattern, p => DemoTemplate.Pattern(p), path, stepId, $"extract '{name}'", errors);
+                }
+
+                foreach (var placeholder in DemoTemplate.Placeholders(extract.Default ?? "").Where(p => p != DemoTemplate.PromptPlaceholder))
+                {
+                    errors.Add(path, stepId, null, $"The default of extract '{name}' can only use {{{DemoTemplate.PromptPlaceholder}}}, not {{{placeholder}}}.");
+                }
+            }
+
+            for (var i = 0; i < step.Rules.Count; i++)
+            {
+                CheckRegex(step.Rules[i].When, p => DemoTemplate.When(p), path, stepId, $"rule {i + 1}", errors);
+            }
+
+            var outputs = step.Rules.Select(r => r.Output).Append(step.Output);
+            foreach (var placeholder in outputs.SelectMany(o => DemoTemplate.Placeholders(o)).Distinct().Where(p => !known.Contains(p)))
+            {
+                errors.Add(path, stepId, null, $"Unknown placeholder {{{placeholder}}}: declare it under 'extract' or use {{{DemoTemplate.PromptPlaceholder}}}.");
+            }
+
+            if (!UsesAgentStep(workflowYaml, stepId))
+            {
+                errors.Warn(path, stepId, null, $"No agent step of '{reference.File}' is named '{stepId}' (agent name '{stepId}' or '{stepId}|<agentId>').");
+            }
+        }
+
+        return doc.Model;
+    }
+
+    private static void CheckRegex(string pattern, Action<string> compile, string path, string stepId, string where, DefinitionErrors errors)
+    {
+        try
+        {
+            compile(pattern);
+        }
+        catch (ArgumentException ex)
+        {
+            errors.Add(path, stepId, null, $"Invalid regex in {where}: {ex.Message}");
+        }
+    }
+
+    // The declarative YAML is not parsed here (its PowerFx values are not plain YAML), so the check is textual: the step
+    // id appears as an agent name prefix ("<stepId>|", also inside an expression) or as a whole agent name.
+    private static bool UsesAgentStep(string workflowYaml, string stepId) =>
+        workflowYaml.Contains(stepId + "|", StringComparison.Ordinal)
+        || Regex.IsMatch(
+            workflowYaml,
+            $@"^\s*name:\s*[""']?{Regex.Escape(stepId)}[""']?\s*$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
 
     private static List<SampleDocument> ReadSamples(ModuleManifest manifest, Dictionary<string, string> files, DefinitionErrors errors)
     {
@@ -222,7 +299,7 @@ public static class ModuleLoader
         }
     }
 
-    /// <summary>Step id for errors located under <c>/steps/{index}</c>.</summary>
+    /// <summary>Step id for errors located under <c>/steps/{index}</c> (array of steps) or <c>/steps/{id}</c> (demo file).</summary>
     private static string? StepIdAt(JsonNode? root, string pointer)
     {
         if (!pointer.StartsWith("/steps/", StringComparison.Ordinal))
@@ -231,9 +308,12 @@ public static class ModuleLoader
         }
 
         var segment = pointer["/steps/".Length..].Split('/')[0];
-        return int.TryParse(segment, out var index) && root?["steps"] is JsonArray steps && index < steps.Count
-            ? steps[index]?["id"]?.GetValue<string>()
-            : null;
+        return root?["steps"] switch
+        {
+            JsonArray steps when int.TryParse(segment, out var index) && index < steps.Count => steps[index]?["id"]?.GetValue<string>(),
+            JsonObject steps when steps.ContainsKey(segment) => segment,
+            _ => null,
+        };
     }
 
     private static string? TryReadModuleId(IReadOnlyDictionary<string, string> files) =>

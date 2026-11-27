@@ -19,7 +19,7 @@ public static class ProjectGraph
         ["Flowgent.Engine.Service"] = "engine",
         ["Flowgent.Gateway"] = "gateway",
         ["Flowgent.Testing"] = "tests",
-        ["Flowgent.Mcp.Support"] = Path.Combine("modules", "support", "mcp"),
+        ["Flowgent.Hosting"] = "hosting",
         ["Flowgent.Fixtures.Module"] = Path.Combine("tests", "Fixtures"),
     };
 
@@ -33,9 +33,11 @@ public static class ProjectGraph
 
     public static string ServiceDefaults => Project("Flowgent.ServiceDefaults");
 
-    public static string McpSupport => Project("Flowgent.Mcp.Support");
-
     public static string FixtureModule => Project("Flowgent.Fixtures.Module");
+
+    /// <summary>The module template service (<c>template/service</c>).</summary>
+    public static string TemplateModule => Path.Combine(Root, "template", "service", "Flowgent.Modules.Template.csproj");
+
     /// <summary>Engine projects: libraries and the engine service.</summary>
     public static IReadOnlyList<string> EngineProjects =>
     [
@@ -46,15 +48,15 @@ public static class ProjectGraph
         Service("Flowgent.Engine.Service"),
     ];
 
-    /// <summary>Every module service (<c>modules/*/service/*.csproj</c>) plus the test fixture module.</summary>
-    public static IReadOnlyList<string> ModuleServiceProjects =>
+    /// <summary>The module services of the core: the template and the test fixture module (samples have their own rules).</summary>
+    public static IReadOnlyList<string> ModuleServiceProjects => [TemplateModule, FixtureModule];
+
+    /// <summary>Every project file under the backend folder (bin/obj excluded).</summary>
+    public static IReadOnlyList<string> AllProjects =>
     [
-        .. Directory.GetDirectories(Path.Combine(Root, "modules"))
-            .Select(module => Path.Combine(module, "service"))
-            .Where(Directory.Exists)
-            .SelectMany(service => Directory.GetFiles(service, "*.csproj"))
+        .. Directory.EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)
+            .Where(p => !System.Text.RegularExpressions.Regex.IsMatch(p, @"[\\/](bin|obj)[\\/]"))
             .Order(StringComparer.Ordinal),
-        FixtureModule,
     ];
 
     /// <summary>The NuGet package ids referenced directly by <paramref name="project"/> (<c>PackageReference</c> includes).</summary>
@@ -96,11 +98,11 @@ public static class ProjectGraph
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Flowgent.slnx")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Flowgent.Core.slnx")))
         {
             directory = directory.Parent;
         }
 
-        return directory?.FullName ?? throw new InvalidOperationException("Repository root (folder containing Flowgent.slnx) not found.");
+        return directory?.FullName ?? throw new InvalidOperationException("Backend folder (containing Flowgent.Core.slnx) not found.");
     }
 }

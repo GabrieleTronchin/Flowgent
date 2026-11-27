@@ -1,9 +1,8 @@
 # Engine API requests (module-agnostic). They go through the gateway: start everything with the AppHost
-#   dotnet run --project Flowgent.AppHost
+#   dotnet run --project backend/host
 # To call the engine service directly (no gateway), use http://localhost:5081.
 #
-# The run examples use the template module (modules/_template), disabled by default:
-#   dotnet run --project Flowgent.AppHost -- --AppHost:Modules:template:Enabled=true
+# The run examples use the template module (backend/template), which the core AppHost starts.
 # Any workflow listed by GET /api/engine/workflows works: change @WorkflowId and the request body.
 # Paste a run id returned by "Submit an input" into @RunId.
 

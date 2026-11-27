@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../../shared/Flowgent.Definitions/Schemas/demo.schema.json
+#
+# Demo-mode answers of the template-hello workflow (optional file, referenced by workflows[].demo in module.yaml).
+# In Demo mode the engine answers each agent step with the output declared here instead of calling a model.
+#
+# Per step (the key is the step id, the left part of the agent name "<stepId>|<agentId>"):
+#   extract  values read from the rendered prompt: { field: Label } takes the text after "Label:",
+#            { pattern: regex } takes the first capture group; optional default, may use {prompt}
+#   rules    optional, ordered: the first whose "when" regex matches the prompt (case-insensitive) wins
+#   output   used when no rule matches; strings accept {name} placeholders from extract, and {prompt}
+steps:
+  summarize:
+    extract:
+      # The prompt is "Text: <text>".
+      text: { field: Text }
+    rules:
+      - when: '\burgent\b'
+        output:
+          summary: "[Demo] URGENT: {text}"
+    output:
+      summary: "[Demo] {text}"

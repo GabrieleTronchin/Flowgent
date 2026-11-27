@@ -24,9 +24,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Flowgent.Testing\Flowgent.Testing.csproj" />
-    <ProjectReference Include="..\..\modules\support\mcp\Flowgent.Mcp.Support\Flowgent.Mcp.Support.csproj" />
     <ProjectReference Include="..\Fixtures\Flowgent.Fixtures.Module\Flowgent.Fixtures.Module.csproj" />
-    <ProjectReference Include="..\..\modules\support\service\Flowgent.Modules.Support.csproj" />
+    <ProjectReference Include="..\..\template\service\Flowgent.Modules.Template.csproj" />
   </ItemGroup>
 
   <ItemGroup>

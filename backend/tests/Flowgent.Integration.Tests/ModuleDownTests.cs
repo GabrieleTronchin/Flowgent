@@ -7,12 +7,13 @@ using Flowgent.Contracts.Api;
 using Flowgent.Contracts.Runs;
 using Flowgent.Engine.Core.Runs.Execution;
 using Flowgent.Fixtures.Module;
+using Flowgent.Modules.Template;
 using Flowgent.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// The fixture service stops: the engine reports it unavailable, rejects its new inputs, fails its in-flight tool
-/// steps with a descriptive reason and keeps the support module working.
+/// steps with a descriptive reason and keeps the other module (the template) working.
 /// </summary>
 public class ModuleDownTests
 {
@@ -27,7 +28,7 @@ public class ModuleDownTests
         var fixture = modules.Single(m => m.Id == FixtureHost.ModuleId);
         Assert.Equal(ModuleStatus.Unavailable, fixture.Status);
         Assert.Contains("fixture", fixture.LastError);
-        Assert.Equal(ModuleStatus.Available, modules.Single(m => m.Id == "support").Status);
+        Assert.Equal(ModuleStatus.Available, modules.Single(m => m.Id == TemplateHost.ModuleId).Status);
 
         var workflow = await platform.GetAsync<WorkflowInfo>($"/api/engine/workflows/{FixtureHost.FlowWorkflowId}");
         Assert.False(workflow.Available);
@@ -42,12 +43,9 @@ public class ModuleDownTests
         using var problem = JsonDocument.Parse(await routed.Content.ReadAsStringAsync());
         Assert.Equal(FixtureHost.ModuleId, problem.RootElement.GetProperty("service").GetString());
 
-        // The support module keeps working end-to-end.
-        var supportRun = await platform.SubmitSupportEmailAsync("scenario-a2");
-        await platform.WaitForHumanInputAsync(supportRun);
-        await platform.ApproveAsync(supportRun);
-        var support = await platform.WaitForTerminalAsync(supportRun);
-        Assert.Equal((RunStatus.Completed, "code_change_generated"), (support.Status, support.CurrentStepId));
+        // The other module keeps working end-to-end.
+        var templateRun = await platform.WaitForTerminalAsync(await platform.SubmitTemplateAsync("the other module still works"));
+        Assert.Equal((RunStatus.Completed, "done"), (templateRun.Status, templateRun.CurrentStepId));
     }
 
     [Fact]

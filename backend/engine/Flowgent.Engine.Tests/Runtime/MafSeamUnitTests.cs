@@ -5,44 +5,71 @@ using Flowgent.Definitions.Model;
 using Flowgent.Engine.Core.Llm;
 using Flowgent.Engine.Core.Maf.Building;
 using Flowgent.Engine.Core.Maf.Execution;
+using Flowgent.Engine.Core.Runs.Execution;
+using Flowgent.Engine.Tests.Helpers;
 
 /// <summary>
-/// Unit tests for the pure, host-independent seam pieces: the Demo response provider's
-/// topic/rule/severity logic, the graph projector's nodes/edges/outcomes, the PowerFx JSON-string round-trip, and the
-/// checkpoint <c>@Global</c> value extraction.
+/// Unit tests for the pure, host-independent seam pieces: the Demo response provider over module-declared demo files
+/// (extract, rules, placeholders, missing step), the graph projector's nodes/edges/outcomes, the PowerFx JSON-string
+/// round-trip, and the checkpoint <c>@Global</c> value extraction.
 /// </summary>
 public sealed class MafSeamUnitTests
 {
-    [Theory]
-    [InlineData("Tell a joke about: cats", "cats")]
-    [InlineData("please... Tell a joke about: tax season", "tax season")]
-    public void DemoResponseProvider_JokeTopic_IsInterpolatedByteIdentically(string prompt, string topic)
-    {
-        var result = new DemoResponseProvider().Resolve("joke", "tell", prompt, RunStub());
+    // ── Demo responses declared by the module (demo/hello.yaml, demo/review.yaml of the test module) ──
 
-        Assert.Equal($"[Demo] Why did the {topic} cross the road? To get to the other side.", result["joke"]?.GetValue<string>());
+    [Theory]
+    [InlineData("Summarise the release notes", "[Demo] the release notes")]
+    [InlineData("no marker here", "[Demo] no marker here")]
+    public void DemoResponse_PatternExtract_FallsBackToTheWholePrompt(string prompt, string summary)
+    {
+        var module = TestModules.LoadValid();
+
+        var result = new DemoResponseProvider().Resolve(module.Id, module.FindWorkflow("hello")!, "summarize", prompt);
+
+        Assert.Equal(summary, result["summary"]?.GetValue<string>());
     }
 
     [Theory]
-    [InlineData("the tests are flaky", "QualityTestIssue")]
-    [InlineData("the razor component won't render", "FrontendBug")]
-    [InlineData("a null reference exception in the api", "BackendBug")]
-    [InlineData("please change my billing address", "OutOfScope")]
-    public void DemoResponseProvider_Classify_SelectsFirstMatchingRuleOrDefault(string prompt, string category)
+    [InlineData("Subject: an URGENT fix\n\nWrite for Beta", "URGENT Beta")]
+    [InlineData("Subject: a small fix\n\nWrite for Alpha", "normal Alpha")]
+    public void DemoResponse_FirstMatchingRuleWins_ElseTheDefaultOutput(string prompt, string summary)
     {
-        var result = new DemoResponseProvider().Resolve("support-email", "classify", prompt, RunStub());
+        var module = TestModules.LoadValid(TestModules.AddReviewWorkflow);
 
-        Assert.Equal(category, result["category"]?.GetValue<string>());
+        var result = new DemoResponseProvider().Resolve(module.Id, module.FindWorkflow("review")!, "write", prompt);
+
+        Assert.Equal(summary, result["summary"]?.GetValue<string>());
     }
 
-    [Theory]
-    [InlineData("possible sql injection", "Critical")]
-    [InlineData("a security hole", "Critical")]
-    [InlineData("unhandled exception on checkout", "High")]
-    [InlineData("the app will crash", "High")]
-    [InlineData("the button is the wrong colour", "Medium")]
-    public void DemoResponseProvider_Severity_FollowsTheKeywordLadder(string text, string severity) =>
-        Assert.Equal(severity, DemoResponseProvider.AssessSeverity(text));
+    [Fact]
+    public void DemoResponse_UnknownStep_FailsWithWhereToAddIt()
+    {
+        var module = TestModules.LoadValid();
+
+        var ex = Assert.Throws<StepFailedException>(() => new DemoResponseProvider().Resolve(module.Id, module.FindWorkflow("hello")!, "ghost", "x"));
+
+        Assert.Equal("ghost", ex.StepId);
+        Assert.Contains("No demo response is defined for step 'ghost' of workflow 'hello'", ex.Message);
+        Assert.Contains("Add step 'ghost' to the demo file", ex.Message);
+    }
+
+    [Fact]
+    public void DemoResponse_WorkflowWithoutDemoFile_FailsWithWhereToAddIt()
+    {
+        var module = TestModules.LoadValid(f =>
+        {
+            f.Remove("demo/hello.yaml");
+            f.Replace("module.yaml", "    demo: demo/hello.yaml\n", "");
+        });
+
+        var ex = Assert.Throws<StepFailedException>(() => new DemoResponseProvider().Resolve(module.Id, module.FindWorkflow("hello")!, "summarize", "Summarise x"));
+
+        Assert.Contains("Add a demo file to workflow 'hello'", ex.Message);
+    }
+
+    [Fact]
+    public void DemoResponse_FieldExtract_ReadsALabelledValueUpToTheNextBlankLine() =>
+        Assert.Equal("line one\nline two", DemoResponseProvider.Field("Subject: s\n\nBody: line one\nline two\n\nComponent: X", "Body"));
 
     [Fact]
     public void PowerFxConversion_RoundTripsNodesAsJsonStrings()
@@ -114,48 +141,4 @@ public sealed class MafSeamUnitTests
         Assert.Equal("src/X.cs", globals["produce"]);
     }
 
-    private static Flowgent.Engine.Core.Runs.Execution.RunContext RunStub()
-    {
-        var descriptor = new WorkflowDescriptor
-        {
-            Id = "stub",
-            Version = 1,
-            Name = "Stub",
-            InputSchema = new SchemaSource(new JsonObject { ["type"] = "object" }, null),
-            Yaml = "kind: Workflow",
-            File = "f.yaml",
-            Graph = new WorkflowGraphModel("x", [], []),
-        };
-        // ModuleDefinition is only needed for cross-step reads this stub does not exercise; use a loaded module.
-        return new Flowgent.Engine.Core.Runs.Execution.RunContext(Guid.NewGuid(), LoadStubModule(), descriptor, [], null, CancellationToken.None);
-    }
-
-    private static Flowgent.Definitions.ModuleDefinition LoadStubModule()
-    {
-        var files = new Dictionary<string, string>
-        {
-            ["module.yaml"] = """
-                id: demo
-                name: Demo
-                workflows:
-                  - id: seam
-                    file: workflows/seam.yaml
-                    version: 1
-                    name: Seam
-                    input: { schema: { type: object } }
-                    terminals:
-                      - { id: done, outcome: success }
-                """,
-            ["workflows/seam.yaml"] = """
-                kind: Workflow
-                trigger:
-                  kind: OnConversationStart
-                  id: seam
-                  actions:
-                    - { kind: SendActivity, id: done, activity: { text: [ "ok" ] } }
-                """,
-        };
-        var package = new Flowgent.Contracts.Modules.ModulePackage("demo", Flowgent.Definitions.ModuleLoader.ComputeVersion(files), files);
-        return Flowgent.Definitions.ModuleLoader.Load(package, new WorkflowProjector()).Module!;
-    }
 }

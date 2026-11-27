@@ -3,22 +3,39 @@ name: CI
 on:
   push:
     branches: [master]
-    paths: ['backend/**', 'nuget.config', 'global.json']
+    paths: ['backend/**', 'samples/**', 'nuget.config', 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig']
   pull_request:
     branches: [master]
-    paths: ['backend/**', 'nuget.config', 'global.json']
+    paths: ['backend/**', 'samples/**', 'nuget.config', 'global.json', 'Directory.Build.props', 'Directory.Packages.props', '.editorconfig']
 
 jobs:
-  build-and-test:
+  # The core platform alone: proves it builds and passes its tests without the samples folder.
+  core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Only backend/ plus the root files (build props, nuget.config, global.json): samples/ is not checked out.
+          sparse-checkout: backend
+          sparse-checkout-cone-mode: true
       - uses: actions/setup-dotnet@v4
         with:
           # Install the SDK pinned in global.json (.NET 10), so the runner's preinstalled
           # .NET 11 preview — which has a StaticWebAssets build bug with Web SDK test
           # projects — is never selected.
           global-json-file: global.json
-      - run: dotnet restore backend/Flowgent.slnx
-      - run: dotnet build backend/Flowgent.slnx --no-restore
-      - run: dotnet test --solution backend/Flowgent.slnx --no-build
+      - run: dotnet restore backend/Flowgent.Core.slnx
+      - run: dotnet build backend/Flowgent.Core.slnx --no-restore
+      - run: dotnet test --solution backend/Flowgent.Core.slnx --no-build
+
+  # The example modules on top of the core.
+  samples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore samples/Flowgent.Samples.slnx
+      - run: dotnet build samples/Flowgent.Samples.slnx --no-restore
+      - run: dotnet test --solution samples/Flowgent.Samples.slnx --no-build

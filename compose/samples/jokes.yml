@@ -1,0 +1,9 @@
+# Sample overlay: the jokes module (one agent step, no tools). Needs this repository for the definition folder.
+#   docker compose -f docker-compose.yml -f samples/jokes.yml up
+# Paths are relative to the compose folder (the folder of the first -f file).
+services:
+  engine:
+    environment:
+      Flowgent__Modules__0__Id: jokes
+    volumes:
+      - ../samples/jokes/definition:/definitions/jokes:ro

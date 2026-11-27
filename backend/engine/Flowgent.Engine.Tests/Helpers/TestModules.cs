@@ -37,6 +37,7 @@ public static class TestModules
                 properties:
                   text: { type: string, minLength: 1 }
             errorMessage: Text is required.
+            demo: demo/hello.yaml
             terminals:
               - { id: long, outcome: success }
               - { id: short, outcome: failure }
@@ -45,7 +46,7 @@ public static class TestModules
         """;
 
     // MAF declarative hello workflow: summarize (agent) -> count (demo.count tool) -> long|short terminal.
-    // Demo output for (hello, summarize) is "[Demo] <text>" via DemoResponseProvider; count classifies on word count.
+    // Demo output for (hello, summarize) is "[Demo] <text>" from demo/hello.yaml; count classifies on word count.
     public const string Workflow = """
         kind: Workflow
         trigger:
@@ -182,7 +183,7 @@ public static class TestModules
     /// </summary>
     // MAF declarative review workflow: route (rule->PowerFx) -> assign (map, assigns demo_writer) ->
     // approval (Question+ConditionGroup) -> write (agent) -> done|declined. Routing: alpha->Alpha, beta->Beta,
-    // both->fail_ambiguous, none->fail_no_team. Demo (review, write) via DemoResponseProvider (urgent/normal).
+    // both->fail_ambiguous, none->fail_no_team. Demo (review, write) from demo/review.yaml (urgent/normal).
     public const string ReviewWorkflow = """"
         kind: Workflow
         trigger:
@@ -406,6 +407,7 @@ public static class TestModules
                 required: [subject]
                 properties:
                   subject: { type: string, minLength: 1 }
+            demo: demo/review.yaml
             terminals:
               - { id: done, outcome: success }
               - { id: declined, outcome: failure }
@@ -413,10 +415,34 @@ public static class TestModules
               - { id: fail_no_team, outcome: failure }
         """;
 
+    /// <summary>Demo answers of the hello workflow: summarize returns "[Demo] &lt;text&gt;" from the prompt "Summarise &lt;text&gt;".</summary>
+    public const string HelloDemo = """
+        steps:
+          summarize:
+            extract:
+              text: { pattern: 'Summarise\s*(.+)', default: "{prompt}" }
+            output:
+              summary: "[Demo] {text}"
+        """;
+
+    /// <summary>Demo answers of the review workflow: write returns "URGENT &lt;team&gt;" when the prompt mentions urgent, else "normal &lt;team&gt;".</summary>
+    public const string ReviewDemo = """
+        steps:
+          write:
+            extract:
+              team: { pattern: 'Write for\s*(\S+)' }
+            rules:
+              - when: urgent
+                output: { summary: "URGENT {team}" }
+            output:
+              summary: "normal {team}"
+        """;
+
     /// <summary>Adds <see cref="ReviewWorkflow"/> to the module.</summary>
     public static void AddReviewWorkflow(Dictionary<string, string> files)
     {
         files["workflows/review.yaml"] = ReviewWorkflow;
+        files["demo/review.yaml"] = ReviewDemo;
         // Insert the review descriptor as the last workflows[] item, just before the samples: key.
         // Newline-agnostic: the fixture source may be stored with CRLF.
         var manifest = files["module.yaml"].Replace("\r\n", "\n");
@@ -428,6 +454,7 @@ public static class TestModules
     {
         ["module.yaml"] = Manifest,
         ["workflows/hello.yaml"] = Workflow,
+        ["demo/hello.yaml"] = HelloDemo,
         ["schemas/count.schema.json"] = CountSchema,
         ["prompts/summarize.md"] = "You are {{ agent.persona }}",
         ["samples/hello.yaml"] = Samples,

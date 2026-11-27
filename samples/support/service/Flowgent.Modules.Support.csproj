@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Flowgent.Modules.Support</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\shared\Flowgent.ServiceDefaults\Flowgent.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\Flowgent.Module.Sdk\Flowgent.Module.Sdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Flowgent.Modules.Support.Tests" />
+  </ItemGroup>
+
+</Project>

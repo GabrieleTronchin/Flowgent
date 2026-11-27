@@ -1,0 +1,98 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Transitive Pinning (vulnerability fixes)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="Transitive Overrides">
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.20.1" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Microsoft Agents AI
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="Microsoft.Agents">
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.27.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.27.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.27.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows.Declarative" Version="1.27.0" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Model Context Protocol (MCP)
+       Central versions of the MCP client (engine) and MCP server (Flowgent.Mcp.Support) packages.
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="MCP">
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.2" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.2" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       gRPC
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="gRPC">
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.85.0" />
+    <PackageVersion Include="Grpc.AspNetCore.Web" Version="2.85.0" />
+    <PackageVersion Include="Grpc.Net.Client.Web" Version="2.85.0" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Microsoft Extensions
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="Microsoft.Extensions">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Aspire, service discovery, gateway
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="Aspire">
+    <PackageVersion Include="Aspire.Hosting" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery.Yarp" Version="10.11.0" />
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       OpenTelemetry
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="OpenTelemetry">
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Workflow definitions (YAML, expressions, JSON Schema)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="Definitions">
+    <PackageVersion Include="JsonSchema.Net" Version="9.6.0" />
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Testing
+       ═══════════════════════════════════════════════════════════════════ -->
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="coverlet.MTP" Version="10.1.0" />
+    <PackageVersion Include="FsCheck.Xunit.v3" Version="3.6.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.14" />
+    <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
+    <PackageVersion Include="NSubstitute" Version="6.2.0" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+
+</Project>

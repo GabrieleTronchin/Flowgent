@@ -27,4 +27,7 @@ public sealed class WorkflowRef
 
     /// <summary>Terminal steps with their success/failure outcome, used by the graph projector.</summary>
     public List<TerminalRef> Terminals { get; init; } = [];
+
+    /// <summary>Optional demo responses file (e.g. <c>demo/joke.yaml</c>) used in Demo mode.</summary>
+    public string? Demo { get; init; }
 }

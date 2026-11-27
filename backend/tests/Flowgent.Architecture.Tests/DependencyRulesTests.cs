@@ -3,20 +3,24 @@ namespace Flowgent.Architecture.Tests;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Flowgent.Fixtures.Module;
-using Flowgent.Modules.Support;
 using Flowgent.Modules.Template;
 using NetArchTest.Rules;
 
 /// <summary>
-/// Dependency rules of the platform: the engine never depends on modules, modules depend only on the Module SDK
-/// and the contracts, and the definition/runtime libraries stay free of ASP.NET Core.
-/// Project files are inspected for references; compiled assemblies are inspected with NetArchTest.
+/// Dependency rules of the core platform: the engine never depends on modules or samples, modules depend only on the
+/// Module SDK and the contracts, the core never references the samples, and the definition/runtime libraries stay free
+/// of ASP.NET Core. Project files are inspected for references; compiled assemblies are inspected with NetArchTest.
+/// The samples check their own rules in samples/tests.
 /// </summary>
 public class DependencyRulesTests
 {
     private static readonly string[] EngineNamespaces = ["Flowgent.Engine.Core", "Flowgent.Persistence", "Flowgent.Engine.Service", "Flowgent.Gateway", "Flowgent.Testing"];
 
-    private static readonly string[] SupportDomainTerms = ["IncomingEmail", "IssueCategory", "TeamRouter", "/emails"];
+    // Domain terms and workflow ids of the samples and the template: the engine must stay generic.
+    private static readonly string[] SampleTerms =
+    [
+        "IncomingEmail", "IssueCategory", "TeamRouter", "/emails", "support-email", "template-hello", "fixture-flow", "\"joke\"",
+    ];
 
     public static TheoryData<string> EngineAndGatewayProjects =>
         [.. ProjectGraph.EngineProjects.Append(ProjectGraph.Service("Flowgent.Gateway")).Select(ProjectGraph.Relative)];
@@ -30,7 +34,7 @@ public class DependencyRulesTests
 
     public static TheoryData<string> ModuleAssemblies => [.. ModuleTypes.Select(t => t.Assembly.GetName().Name!)];
 
-    private static readonly Type[] ModuleTypes = [typeof(SupportHost), typeof(TemplateHost), typeof(FixtureHost)];
+    private static readonly Type[] ModuleTypes = [typeof(TemplateHost), typeof(FixtureHost)];
 
     // ── Project references ─────────────────────────────────────────────
 
@@ -50,14 +54,30 @@ public class DependencyRulesTests
     {
         var references = ProjectGraph.TransitiveReferences(Path.Combine(ProjectGraph.Root, project)).Select(ProjectGraph.Relative);
 
-        Assert.DoesNotContain(references, r => r.StartsWith("modules/", StringComparison.Ordinal) || r.Contains("/Fixtures/", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, r =>
+            r.StartsWith("template/", StringComparison.Ordinal)
+            || r.StartsWith("../", StringComparison.Ordinal)
+            || r.Contains("/Fixtures/", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void EveryModuleService_IsCovered() =>
-        Assert.Superset(
-            new HashSet<string>(["modules/support/service/Flowgent.Modules.Support.csproj", "modules/_template/service/Flowgent.Modules.Template.csproj"]),
-            ProjectGraph.ModuleServiceProjects.Select(ProjectGraph.Relative).ToHashSet());
+    public void CoreProjects_NeverReferenceTheSamples()
+    {
+        // The core solution must build and test without the samples folder.
+        var offending = ProjectGraph.AllProjects
+            .SelectMany(p => ProjectGraph.DirectReferences(p).Select(r => (Project: p, Reference: ProjectGraph.Relative(r))))
+            .Where(x => x.Reference.StartsWith("../", StringComparison.Ordinal))
+            .Select(x => $"{ProjectGraph.Relative(x.Project)} -> {x.Reference}")
+            .ToList();
+
+        Assert.Empty(offending);
+    }
+
+    [Fact]
+    public void EveryCoreModuleService_IsCovered() =>
+        Assert.Equal(
+            ["template/service/Flowgent.Modules.Template.csproj", "tests/Fixtures/Flowgent.Fixtures.Module/Flowgent.Fixtures.Module.csproj"],
+            ProjectGraph.ModuleServiceProjects.Select(ProjectGraph.Relative));
 
     [Theory]
     [MemberData(nameof(ModuleServiceProjects))]
@@ -85,29 +105,8 @@ public class DependencyRulesTests
     }
 
     [Fact]
-    public void SupportMcpServer_ReferencesOnlyServiceDefaultsAndTheMcpPackage()
-    {
-        // The standalone support MCP server is intentionally NOT a module service and NOT an engine project.
-        // Its only project reference is ServiceDefaults, and its only NuGet dependency is the MCP ASP.NET Core package;
-        // it must never reach the Module SDK, contracts, definitions, runtime or any engine/service project.
-        string[] forbidden =
-        [
-            ProjectGraph.Sdk("Flowgent.Module.Sdk"),
-            ProjectGraph.Engine("Flowgent.Contracts"),
-            ProjectGraph.Engine("Flowgent.Definitions"),
-            ProjectGraph.Engine("Flowgent.Engine.Core"),
-            ProjectGraph.Engine("Flowgent.Persistence"),
-            ProjectGraph.Service("Flowgent.Engine.Service"),
-            ProjectGraph.Service("Flowgent.Gateway"),
-            ProjectGraph.Sdk("Flowgent.Testing"),
-        ];
-
-        Assert.Equal(
-            [ProjectGraph.Relative(ProjectGraph.ServiceDefaults)],
-            ProjectGraph.DirectReferences(ProjectGraph.McpSupport).Select(ProjectGraph.Relative));
-        Assert.Empty(ProjectGraph.TransitiveReferences(ProjectGraph.McpSupport).Intersect(forbidden, StringComparer.OrdinalIgnoreCase));
-        Assert.Equal(["ModelContextProtocol.AspNetCore"], ProjectGraph.PackageReferences(ProjectGraph.McpSupport));
-    }
+    public void Hosting_ReferencesNoFlowgentProject() =>
+        Assert.Empty(ProjectGraph.DirectReferences(ProjectGraph.Engine("Flowgent.Hosting")));
 
     // ── Compiled assemblies (NetArchTest) ──────────────────────────────
 
@@ -176,9 +175,9 @@ public class DependencyRulesTests
     // ── Source files ───────────────────────────────────────────────────
 
     [Fact]
-    public void EngineSources_DoNotMentionSupportDomainTerms()
+    public void EngineSources_DoNotMentionSampleTermsOrWorkflowIds()
     {
-        var pattern = new Regex(string.Join('|', SupportDomainTerms.Select(Regex.Escape)), RegexOptions.CultureInvariant);
+        var pattern = new Regex(string.Join('|', SampleTerms.Select(Regex.Escape)), RegexOptions.CultureInvariant);
         var offending = ProjectGraph.EngineProjects
             .Select(Path.GetDirectoryName)
             .Append(Path.Combine(ProjectGraph.Root, "engine", "protos"))

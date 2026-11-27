@@ -309,11 +309,12 @@ public class EngineEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync($"/api/engine/inbox/{Guid.NewGuid()}")).StatusCode);
     }
 
-    // The custom 'workflow' schema is gone with the custom format (documented behavior change): /api/engine/schemas
-    // now serves only 'module' and 'samples'.
+    // /api/engine/schemas serves the envelope formats: 'module', 'samples' and 'demo' (the workflow itself is a MAF
+    // declarative document, so there is no 'workflow' schema).
     [Theory]
     [InlineData("module")]
     [InlineData("samples")]
+    [InlineData("demo")]
     public async Task Schemas_ArePublished(string name)
     {
         await using var host = await EngineTestHost.StartAsync();

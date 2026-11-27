@@ -13,12 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\hosting\Flowgent.Hosting\Flowgent.Hosting.csproj" IsAspireProjectResource="false" />
     <ProjectReference Include="..\engine\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
     <ProjectReference Include="..\gateway\Flowgent.Gateway\Flowgent.Gateway.csproj" />
-    <ProjectReference Include="..\modules\support\service\Flowgent.Modules.Support.csproj" />
-    <ProjectReference Include="..\modules\_template\service\Flowgent.Modules.Template.csproj" />
-    <ProjectReference Include="..\modules\jokes\service\Flowgent.Modules.Jokes.csproj" />
-    <ProjectReference Include="..\modules\support\mcp\Flowgent.Mcp.Support\Flowgent.Mcp.Support.csproj" />
+    <ProjectReference Include="..\template\service\Flowgent.Modules.Template.csproj" />
   </ItemGroup>
 
 </Project>

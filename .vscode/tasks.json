@@ -5,7 +5,7 @@
       "label": "build",
       "type": "process",
       "command": "dotnet",
-      "args": ["build", "backend/Flowgent.slnx", "-nodeReuse:false", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+      "args": ["build", "samples/Flowgent.Samples.slnx", "-nodeReuse:false", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": "$msCompile"
     },
@@ -13,8 +13,16 @@
       "label": "test",
       "type": "process",
       "command": "dotnet",
-      "args": ["test", "--solution", "backend/Flowgent.slnx"],
+      "args": ["test", "--solution", "backend/Flowgent.Core.slnx"],
       "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: samples",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "--solution", "samples/Flowgent.Samples.slnx"],
+      "group": "test",
       "problemMatcher": "$msCompile"
     },
     {

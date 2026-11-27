@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Aspire AppHost wiring for Flowgent: engine, gateway, dashboard, module services and MCP servers.</Description>
+    <IsPackable>true</IsPackable>
+    <PackageId>Flowgent.Hosting</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+  </ItemGroup>
+
+</Project>

@@ -10,8 +10,8 @@ using Microsoft.Extensions.AI;
 
 /// <summary>
 /// Answers the LLM steps (<c>InvokeAzureAgent</c> actions) of one run. Instead of calling Azure AI Foundry, it builds an
-/// agent on the engine chat client, tags the call for telemetry and, in Demo mode, returns the canned answer from
-/// <see cref="DemoResponseProvider"/>. Conversation messages are kept in an <see cref="IConversationStore"/>.
+/// agent on the engine chat client, tags the call for telemetry and, in Demo mode, returns the answer the module declares
+/// for the step (<see cref="DemoResponseProvider"/>). Conversation messages are kept in an <see cref="IConversationStore"/>.
 /// </summary>
 public sealed class MafAgentProvider : ResponseAgentProvider
 {
@@ -100,7 +100,7 @@ public sealed class MafAgentProvider : ResponseAgentProvider
 
         if (_llmOptions.IsDemo)
         {
-            var demo = _demo.Resolve(_run.Workflow.Id, stepId, renderedPrompt, _run);
+            var demo = _demo.Resolve(_run, stepId, renderedPrompt);
             options = LlmCallAttribution.WithDemoResponse(options, demo.ToJsonString());
         }
 

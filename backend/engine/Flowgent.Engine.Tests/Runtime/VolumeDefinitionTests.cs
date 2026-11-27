@@ -1,8 +1,10 @@
 namespace Flowgent.Engine.Tests.Runtime;
 
 using Flowgent.Contracts.Api;
+using Flowgent.Engine.Core.Configuration;
 using Flowgent.Engine.Core.Modules.Catalog;
 using Flowgent.Engine.Tests.Helpers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
@@ -70,6 +72,19 @@ public class VolumeDefinitionTests : IDisposable
         await engine.Services.GetRequiredService<ModuleCatalogService>().RefreshAllAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(ModuleStatus.Unavailable, catalog.FindModule("demo")!.Status);
+    }
+
+    [Fact]
+    public void ModuleIndexesWithGaps_AreBound()
+    {
+        // Compose overlays register modules at fixed indexes (jokes 0, support 1) and can be used alone.
+        var options = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Flowgent:Modules:1:Id"] = "support" })
+            .Build()
+            .GetSection("Flowgent")
+            .Get<EngineOptions>()!;
+
+        Assert.Equal("support", Assert.Single(options.Modules).Id);
     }
 
     private Dictionary<string, string?> VolumeConfig(string url) => new()

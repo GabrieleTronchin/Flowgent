@@ -9,7 +9,8 @@ Reads and checks a module definition folder (`module.yaml`, workflows, prompts, 
 | `ModuleLoader.cs`, `ModuleDefinition.cs` | **Core.** Load a module folder, validate it, and keep the result. |
 | `Model/` | **Core.** Records for the manifest: agents, tools, workflows, terminals, schemas. |
 | `Yaml/` | **Support.** YAML to JSON reading with line numbers for error messages. |
-| `Schemas/` | **Support.** JSON Schema validation and the embedded schemas for `module.yaml` and samples. |
+| `Schemas/` | **Support.** JSON Schema validation and the embedded schemas for `module.yaml`, samples and demo files. |
+| `DemoTemplate.cs` | **Support.** Regex options and `{name}` placeholders of demo files, shared by the loader and the engine. |
 | `IWorkflowGraphProjector.cs` | The interface that draws the workflow graph. The real implementation is in `Flowgent.Engine.Core`; `MinimalWorkflowGraphProjector` is the fallback. |
 
 ## Rules

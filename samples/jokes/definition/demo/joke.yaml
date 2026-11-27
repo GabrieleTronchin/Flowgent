@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../../../../backend/shared/Flowgent.Definitions/Schemas/demo.schema.json
+#
+# Demo-mode answers of the joke workflow: used instead of a model when Flowgent:Llm:Provider is Demo.
+steps:
+  tell:
+    extract:
+      # The prompt is "Tell a joke about: <topic>"; without that marker the whole prompt is the topic.
+      topic: { pattern: '[Tt]ell a joke about:\s*(.+)', default: "{prompt}" }
+    output:
+      joke: "[Demo] Why did the {topic} cross the road? To get to the other side."

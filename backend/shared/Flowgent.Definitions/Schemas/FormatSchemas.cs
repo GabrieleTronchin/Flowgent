@@ -8,19 +8,24 @@ public static class FormatSchemas
 {
     public const string ModuleName = "module";
     public const string SamplesName = "samples";
+    public const string DemoName = "demo";
 
+    private static readonly string[] AllNames = [ModuleName, SamplesName, DemoName];
     private static readonly Lazy<IReadOnlyDictionary<string, string>> Texts = new(LoadTexts);
     private static readonly Lazy<JsonSchema> ModuleSchema = new(() => Build(ModuleName));
     private static readonly Lazy<JsonSchema> SamplesSchema = new(() => Build(SamplesName));
+    private static readonly Lazy<JsonSchema> DemoSchema = new(() => Build(DemoName));
 
     public static JsonSchema Module => ModuleSchema.Value;
 
     public static JsonSchema Samples => SamplesSchema.Value;
 
-    public static IReadOnlyCollection<string> Names => [ModuleName, SamplesName];
+    public static JsonSchema Demo => DemoSchema.Value;
 
-    /// <summary>Raw schema text by name (<c>module</c>, <c>samples</c>), for publishing. The custom workflow
-    /// format is gone (MAF declarative replaces it), so there is no <c>workflow</c> schema.</summary>
+    public static IReadOnlyCollection<string> Names => AllNames;
+
+    /// <summary>Raw schema text by name (<c>module</c>, <c>samples</c>, <c>demo</c>), for publishing. The workflow
+    /// itself is a MAF declarative document, so there is no <c>workflow</c> schema.</summary>
     public static string? GetText(string name) => Texts.Value.GetValueOrDefault(name);
 
     private static JsonSchema Build(string name)
@@ -34,7 +39,7 @@ public static class FormatSchemas
     {
         var assembly = typeof(FormatSchemas).Assembly;
         var texts = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var name in new[] { ModuleName, SamplesName })
+        foreach (var name in AllNames)
         {
             using var stream = assembly.GetManifestResourceStream($"Flowgent.Schemas.{name}.schema.json")
                 ?? throw new InvalidOperationException($"Embedded schema '{name}' not found.");

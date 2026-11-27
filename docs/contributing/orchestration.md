@@ -1,0 +1,88 @@
+# Local orchestration and observability
+
+[← README](../../README.md) · [Architecture](architecture.md) · [Debugging](debugging.md)
+
+## One command: the AppHosts
+
+Two .NET Aspire hosts start the platform and wire the addresses:
+
+| AppHost | Starts | Command |
+|---------|--------|---------|
+| `backend/host` (`Flowgent.AppHost`) | engine, gateway, dashboard and the module template | `dotnet run --project backend/host` |
+| `samples/host` (`Flowgent.Samples.AppHost`) | the same plus the example modules: support (with its MCP server) and jokes | `dotnet run --project samples/host` |
+
+| Resource | Address |
+|----------|---------|
+| Aspire dashboard (status, logs, traces, metrics) | http://localhost:15080 (opens automatically) |
+| Gateway | http://localhost:5080 |
+| Monitoring dashboard | http://localhost:5173 |
+| Engine | http://localhost:5081 |
+| Support module (samples) | http://localhost:5082 |
+| Template module | http://localhost:5083 |
+| Jokes module (samples) | http://localhost:5084 |
+
+Requirements: the .NET 10 SDK and Node.js 20.19+ (the AppHost starts the dashboard's Vite dev server; run `npm install` in `dashboard/` once). The `http` launch profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`, so no development certificate is needed. Aspire packages come from NuGet; no Aspire CLI or workload is required.
+
+### Wiring
+
+Both AppHosts use `FlowgentPlatform` from `backend/hosting/Flowgent.Hosting`:
+
+```csharp
+var platform = FlowgentPlatform.Add<Projects.Flowgent_Engine_Service, Projects.Flowgent_Gateway>(builder, "../../dashboard");
+platform.AddMcpServer<Projects.Flowgent_Mcp_Support>("support");    // maps serverLabel "support"
+platform.AddModule<Projects.Flowgent_Modules_Support>("support", "/api/support/{**catch-all}");
+```
+
+- `Add` starts the engine, the gateway (`Gateway__Engine__Address=http://engine`) and the dashboard (waits for the gateway, receives `GATEWAY_URL`).
+- `AddModule` sets `Flowgent__Module__EngineUrl=http://engine` on the module, adds `Flowgent__Modules__<n>__Id/Url` to the engine and `Gateway__Modules__<n>__Id/Address` (and `ExtraRoutes`) to the gateway.
+- `AddMcpServer` starts the server as `<label>-mcp` and adds `Flowgent__McpServers__<n>__Label/Url` to the engine.
+
+Services find each other by resource name (`http://engine`, `http://support`) through service discovery. The engine does not wait for modules: it starts first and retries them.
+
+### Switches
+
+| Setting | Effect |
+|---------|--------|
+| `AppHost:Modules:<id>:Enabled` | Enables or disables a module (core AppHost: `template` on; samples AppHost: `support` and `jokes` on, `template` off). |
+| `AppHost:LlmProvider` | Overrides `Flowgent:Llm:Provider` of the engine. |
+
+Both can be passed on the command line:
+
+```bash
+dotnet run --project samples/host -- --AppHost:Modules:template:Enabled=true --AppHost:LlmProvider=Demo
+```
+
+## Without the AppHost
+
+Each service also runs on its own with the port of its `http` launch profile. The engine and gateway profiles register the template module (`:5083`); other modules are added with environment variables (`Flowgent__Modules__<n>__*`, `Gateway__Modules__<n>__*`):
+
+```bash
+dotnet run --project backend/engine/Flowgent.Engine.Service    # :5081
+dotnet run --project backend/template/service                  # :5083
+dotnet run --project backend/gateway/Flowgent.Gateway          # :5080
+cd dashboard && npm run dev                                    # :5173
+```
+
+Start them in any order: the engine retries the modules, the gateway answers `503` while a target is down.
+
+### Support MCP server (samples)
+
+The support workflow calls `support.locateComponent` on the standalone MCP server `Flowgent.Mcp.Support` (see [Writing modules](../guides/writing-modules.md#domain-tools-on-an-mcp-server)). The samples AppHost starts and maps it. Without the AppHost, start it and map it yourself:
+
+```bash
+# set SUPPORT_DUMMYAPPS_ROOT to the absolute path of samples/support/dummy-apps first
+dotnet run --project samples/support/mcp/Flowgent.Mcp.Support    # :5085
+```
+
+Then give the engine `Flowgent__McpServers__0__Label=support` and `Flowgent__McpServers__0__Url=http://localhost:5085`. The container image `flowgent-support-mcp` already sets `SUPPORT_DUMMYAPPS_ROOT` for you.
+
+## Observability
+
+`Flowgent.ServiceDefaults` is shared by all services:
+
+- **Health**: `/health` (all checks) and `/alive` (liveness) in every environment. Health probes are excluded from traces.
+- **Traces**: ASP.NET Core and HttpClient instrumentation plus the sources `Flowgent.*` (one activity per run step from `Flowgent.Engine.Core`, LLM calls from `Flowgent.Llm`), `Microsoft.Agents.AI*` and `Experimental.Microsoft.Extensions.AI*`. Trace context flows from the gateway through the engine to module tools.
+- **Metrics**: ASP.NET Core, HttpClient, runtime and the same `Flowgent.*` / Agent Framework meters.
+- **Logs**: OpenTelemetry logging with scopes and formatted messages.
+- **Export**: OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (the AppHost sets it, so everything shows up in the Aspire dashboard).
+- **Resilience and discovery**: every `HttpClient` gets the standard resilience handler and service discovery. Exceptions: the engine's module clients replace it with their per-module timeout and retries, and the SDK's engine client does not retry intake requests (a retried POST could create a duplicate run).

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Run the heavyweight in-process platform tests serially (see xunit.runner.json). -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.MTP" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\backend\tests\Flowgent.Testing\Flowgent.Testing.csproj" />
+    <ProjectReference Include="..\..\..\backend\tests\Fixtures\Flowgent.Fixtures.Module\Flowgent.Fixtures.Module.csproj" />
+    <ProjectReference Include="..\..\support\service\Flowgent.Modules.Support.csproj" />
+    <ProjectReference Include="..\..\support\mcp\Flowgent.Mcp.Support\Flowgent.Mcp.Support.csproj" />
+    <ProjectReference Include="..\..\jokes\service\Flowgent.Modules.Jokes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

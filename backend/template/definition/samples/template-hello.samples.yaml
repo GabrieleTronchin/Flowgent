@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../../shared/Flowgent.Definitions/Schemas/samples.schema.json
+#
+# Sample inputs shown by the dashboard for the template-hello workflow.
+samples:
+  - id: template-hello-short
+    name: Short text
+    group: Examples
+    workflow: template-hello
+    description: Summarises a short paragraph and counts the words of the summary.
+    input:
+      text: Flowgent runs workflows described in YAML. Each module publishes its definitions and tools, and the engine runs them.

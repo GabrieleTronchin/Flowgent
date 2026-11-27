@@ -43,7 +43,7 @@ public class GatewayStreamTests
         {
             while (!stopSubmitting.IsCancellationRequested)
             {
-                await platform.SubmitSupportEmailAsync("edge-out-of-scope");
+                await platform.SubmitTemplateAsync("another module's run");
                 fixtureRuns.Add((await platform.SubmitFixtureAsync(FixtureHost.RulesWorkflowId, new { text = "alpha" })).ToString());
                 await Task.Delay(100, CancellationToken.None);
             }

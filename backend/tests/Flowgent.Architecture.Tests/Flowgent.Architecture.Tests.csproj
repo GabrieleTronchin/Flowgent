@@ -25,8 +25,7 @@
     <ProjectReference Include="..\..\engine\Flowgent.Engine.Service\Flowgent.Engine.Service.csproj" />
     <ProjectReference Include="..\..\gateway\Flowgent.Gateway\Flowgent.Gateway.csproj" />
     <ProjectReference Include="..\..\shared\Flowgent.Module.Sdk\Flowgent.Module.Sdk.csproj" />
-    <ProjectReference Include="..\..\modules\support\service\Flowgent.Modules.Support.csproj" />
-    <ProjectReference Include="..\..\modules\_template\service\Flowgent.Modules.Template.csproj" />
+    <ProjectReference Include="..\..\template\service\Flowgent.Modules.Template.csproj" />
     <ProjectReference Include="..\Fixtures\Flowgent.Fixtures.Module\Flowgent.Fixtures.Module.csproj" />
   </ItemGroup>
 

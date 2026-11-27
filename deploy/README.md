@@ -115,7 +115,7 @@ docker run --rm -p 5173:80 -e GATEWAY_URL=http://host.docker.internal:5080 flowg
 - Port: `8080`.
 - Key env vars:
   - `SUPPORT_DUMMYAPPS_ROOT=/app/dummy-apps` — root the `locateComponent` tool
-    searches. The runtime image already copies `backend/modules/support/dummy-apps`
+    searches. The runtime image already copies `samples/support/dummy-apps`
     there and sets this default.
 
 ```bash
@@ -138,5 +138,7 @@ versioned images.
 
 ## Reference stack
 
-[`compose/`](../compose/README.md) runs all four images together in Demo mode with
-`docker compose up --build`. It is prepared but not yet run end to end.
+[`compose/`](../compose/README.md) runs the platform images (engine, gateway, dashboard) in Demo mode,
+with an empty `definitions/` folder for your modules and overlays that add the samples (`jokes`,
+`support` with `support-mcp`). It pulls the GHCR images or builds them with `docker-compose.build.yml`.
+It is prepared but not yet run end to end.

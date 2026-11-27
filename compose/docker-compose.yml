@@ -1,43 +1,30 @@
-# Reference stack: engine, gateway, dashboard and the example support MCP server, in Demo mode.
-# Run from this folder:  docker compose up --build   then open http://localhost:5173
+# Flowgent platform: engine, gateway and dashboard, in Demo mode (no API key). No module is included:
+# put your module definitions under ./definitions/<moduleId>/ and register them (see README.md), or add a
+# sample overlay from ./samples.
 #
-# Browser -> dashboard (nginx) -> gateway -> engine -> support-mcp
-# The engine reads the support module's workflow definitions from a mounted folder, so no module
-# service is needed. Only the dashboard and the gateway are published on the host.
+#   docker compose up                                        # the empty platform
+#   docker compose -f docker-compose.yml -f samples/jokes.yml up    # with the jokes sample
+#
+# Browser -> dashboard (nginx, :5173) -> gateway (:5080) -> engine
+# Images come from GHCR (FLOWGENT_TAG, default "alpha"); add -f docker-compose.build.yml to build them from source.
 name: flowgent
 
 services:
   engine:
-    build:
-      context: ..
-      dockerfile: deploy/engine.Dockerfile
-    image: flowgent-engine:local
+    image: ghcr.io/gabrieletronchin/flowgent-engine:${FLOWGENT_TAG:-alpha}
     environment:
-      # Demo answers agent steps without an API key. Set FLOWGENT_LLM_PROVIDER=OpenAI and
-      # FLOWGENT_LLM_APIKEY to use a real model (see compose/README.md).
+      # Demo answers agent steps from each module's demo file. Set FLOWGENT_LLM_PROVIDER=OpenAI and
+      # FLOWGENT_LLM_APIKEY to use a real model.
       Flowgent__Llm__Provider: ${FLOWGENT_LLM_PROVIDER:-Demo}
       Flowgent__Llm__ApiKey: ${FLOWGENT_LLM_APIKEY:-}
-      # Register the module by id; its definitions come from the mounted folder below.
-      Flowgent__Modules__0__Id: support
-      # Workflow serverLabel "support" -> the MCP server container.
-      Flowgent__McpServers__0__Label: support
-      Flowgent__McpServers__0__Url: http://support-mcp:8080
+      # Register modules by id here (or in an override file), e.g.:
+      #   Flowgent__Modules__0__Id: notes
     volumes:
-      - ../backend/modules/support/definition:/definitions/support:ro
-    depends_on:
-      - support-mcp
-
-  support-mcp:
-    build:
-      context: ..
-      dockerfile: deploy/support-mcp.Dockerfile
-    image: flowgent-support-mcp:local
+      # One sub-folder per module id. Not read-only, so sample overlays can mount their folders inside it.
+      - ./definitions:/definitions
 
   gateway:
-    build:
-      context: ..
-      dockerfile: deploy/gateway.Dockerfile
-    image: flowgent-gateway:local
+    image: ghcr.io/gabrieletronchin/flowgent-gateway:${FLOWGENT_TAG:-alpha}
     environment:
       Gateway__Engine__Address: http://engine:8080
     ports:
@@ -46,10 +33,7 @@ services:
       - engine
 
   dashboard:
-    build:
-      context: ..
-      dockerfile: deploy/dashboard.Dockerfile
-    image: flowgent-dashboard:local
+    image: ghcr.io/gabrieletronchin/flowgent-dashboard:${FLOWGENT_TAG:-alpha}
     environment:
       GATEWAY_URL: http://gateway:8080
     ports:
