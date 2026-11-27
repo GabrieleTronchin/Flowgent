@@ -31,6 +31,11 @@ COPY --from=build /app/publish ./
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 
+# Workflow definitions are not baked into the image: mount one folder per module under /definitions
+# (/definitions/<moduleId>/module.yaml, workflows/, ...). See deploy/README.md.
+RUN mkdir -p /definitions
+ENV Flowgent__Definitions__Path=/definitions
+
 LABEL org.opencontainers.image.title="Flowgent Engine" \
       org.opencontainers.image.description="Flowgent engine — domain-agnostic workflow runtime (MAF declarative) that runs YAML workflows and reaches domain tools over MCP." \
       org.opencontainers.image.source="https://github.com/GabrieleTronchin/Flowgent" \

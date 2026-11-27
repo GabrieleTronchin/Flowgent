@@ -44,12 +44,47 @@ server is shipped as such an example.
 - Port: `8080` (`ASPNETCORE_HTTP_PORTS=8080`).
 - Key env vars:
   - `Flowgent__Llm__Provider=Demo` — LLM provider (Demo needs no API key).
-  - `Flowgent__Definitions__Path` — where workflow definitions are loaded from.
+  - `Flowgent__Definitions__Path=/definitions` — where workflow definitions are loaded from (set by the image).
+  - `Flowgent__Modules__<n>__Id` — registers a module by id (see below).
   - `Flowgent__McpServers__*` — MCP server endpoints the engine reaches for domain tools.
 
 ```bash
 docker run --rm -p 8080:8080 -e Flowgent__Llm__Provider=Demo flowgent-engine:local
 ```
+
+#### Providing workflow definitions
+
+The image contains **no** workflow definitions and is never rebuilt per application.
+Mount one folder per module under `/definitions`; the folder name is the module id:
+
+```
+/definitions/<moduleId>/
+├── module.yaml
+├── workflows/    # MAF declarative YAML
+├── prompts/
+├── schemas/
+└── samples/
+```
+
+Register each module by id. A module read from the volume needs **no** `Url`
+(no module service is involved):
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e Flowgent__Llm__Provider=Demo \
+  -e Flowgent__Modules__0__Id=notes \
+  -v ./my-module/definition:/definitions/notes:ro \
+  flowgent-engine:local
+```
+
+- The engine checks the folder every `RefreshSeconds` (default 5); a changed file is loaded
+  without restarting, and runs already in progress keep the definition they started with.
+- If a module has no folder under `/definitions`, the engine falls back to pulling its package
+  from the module service (`Flowgent__Modules__<n>__Url`, `GET /_module/package`).
+- A module listed in `Flowgent__Modules__*` must be registered explicitly; folders under
+  `/definitions` that are not registered are ignored.
+- Domain tools are reached over MCP: map each `serverLabel` with
+  `Flowgent__McpServers__<n>__Label` and `__Url`.
 
 ### gateway (core platform)
 
