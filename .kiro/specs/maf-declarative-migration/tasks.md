@@ -73,6 +73,6 @@ Confirmed while authoring the real module YAMLs against the FEAT-003 seam; recor
 - [x] 5.4 README rewritten around the image-based usage model (product/usage front door, beta, GHCR images, core-vs-example); steering + `deploy/README.md` aligned.
 
 ## Housekeeping (carried over, independent)
-- [ ] H1 Fix dashboard tooltip text `LlmProvider:Provider` → `Flowgent:Llm:Provider`.
-- [ ] H2 After GitHub repo rename: update `origin` remote + README CI badge URLs; push local commits on `feature/llm-flows-platform`.
+- [x] H1 Fix dashboard tooltip text `LlmProvider:Provider` → `Flowgent:Llm:Provider` — DONE (`LlmModeBadge.tsx`).
+- [x] H2 After GitHub repo rename: update `origin` remote + README CI badge URLs — DONE (`origin` and badges point to `GabrieleTronchin/Flowgent`); `feature/llm-flows-platform` was already merged into `master`, nothing left to push.
 - [x] H3 Spike disposition — DONE: `spike/` deleted (still in git history). Its findings are recorded in this file and in `docs/` (`workflow-reference.md`, `expressions.md`, `human-input.md`, `module-authoring.md`, `demo-mode.md`). References to `spike/...` elsewhere in this spec are historical.
