@@ -1,0 +1,58 @@
+# Reference stack: engine, gateway, dashboard and the example support MCP server, in Demo mode.
+# Run from this folder:  docker compose up --build   then open http://localhost:5173
+#
+# Browser -> dashboard (nginx) -> gateway -> engine -> support-mcp
+# The engine reads the support module's workflow definitions from a mounted folder, so no module
+# service is needed. Only the dashboard and the gateway are published on the host.
+name: flowgent
+
+services:
+  engine:
+    build:
+      context: ..
+      dockerfile: deploy/engine.Dockerfile
+    image: flowgent-engine:local
+    environment:
+      # Demo answers agent steps without an API key. Set FLOWGENT_LLM_PROVIDER=OpenAI and
+      # FLOWGENT_LLM_APIKEY to use a real model (see compose/README.md).
+      Flowgent__Llm__Provider: ${FLOWGENT_LLM_PROVIDER:-Demo}
+      Flowgent__Llm__ApiKey: ${FLOWGENT_LLM_APIKEY:-}
+      # Register the module by id; its definitions come from the mounted folder below.
+      Flowgent__Modules__0__Id: support
+      # Workflow serverLabel "support" -> the MCP server container.
+      Flowgent__McpServers__0__Label: support
+      Flowgent__McpServers__0__Url: http://support-mcp:8080
+    volumes:
+      - ../backend/modules/support/definition:/definitions/support:ro
+    depends_on:
+      - support-mcp
+
+  support-mcp:
+    build:
+      context: ..
+      dockerfile: deploy/support-mcp.Dockerfile
+    image: flowgent-support-mcp:local
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/gateway.Dockerfile
+    image: flowgent-gateway:local
+    environment:
+      Gateway__Engine__Address: http://engine:8080
+    ports:
+      - "5080:8080"
+    depends_on:
+      - engine
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/dashboard.Dockerfile
+    image: flowgent-dashboard:local
+    environment:
+      GATEWAY_URL: http://gateway:8080
+    ports:
+      - "5173:80"
+    depends_on:
+      - gateway

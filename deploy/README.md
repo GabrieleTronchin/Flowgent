@@ -99,14 +99,15 @@ docker run --rm -p 8080:8080 -e Gateway__Engine__Address=http://engine:8080 flow
 ### dashboard (core platform)
 
 - Port: `80` (nginx serving the built SPA).
-- nginx uses a minimal SPA fallback (`try_files $uri /index.html`). The gateway
-  reverse-proxy block is intentionally **not** wired this round (no compose
-  networking yet). As a result the container cannot reach the gateway today: the SPA
-  calls same-origin `/api` and `/flowgent.RunMonitor/` paths that nginx does not
-  forward. A runtime-configurable proxy is still to do.
+- Key env vars:
+  - `GATEWAY_URL=http://gateway:8080` — where nginx forwards `/api/` and the
+    `/flowgent.RunMonitor/` run stream (the SPA calls these same-origin paths).
+  - `NGINX_RESOLVER=127.0.0.11` — DNS server used to find the gateway (Docker's embedded DNS).
+- The gateway address is resolved on each request, so the container starts even if the
+  gateway is not up yet.
 
 ```bash
-docker run --rm -p 8080:80 flowgent-dashboard:local
+docker run --rm -p 5173:80 -e GATEWAY_URL=http://host.docker.internal:5080 flowgent-dashboard:local
 ```
 
 ### support-mcp (example domain module — not part of the core platform)
@@ -135,8 +136,7 @@ The first intended release tag is **`v0.1.0-alpha.1`**. It has not been created 
 tag the release when ready and CI will publish the
 versioned images.
 
-## Scope / next round
+## Reference stack
 
-This round covers images and CI publishing only. Compose files, local
-end-to-end wiring, and a reverse-proxy block that puts the dashboard behind the
-gateway are deliberately deferred to a later round.
+[`compose/`](../compose/README.md) runs all four images together in Demo mode with
+`docker compose up --build`. It is prepared but not yet run end to end.

@@ -1,0 +1,45 @@
+# Flowgent dashboard: serves the SPA and forwards API calls to the gateway.
+#
+# The official nginx image renders this file with envsubst at start-up, replacing only the
+# variables defined in the container environment:
+#   GATEWAY_URL       where the gateway listens (default http://gateway:8080)
+#   NGINX_RESOLVER    DNS server used to find the gateway (default 127.0.0.11, Docker's embedded DNS)
+# The gateway address is resolved on each request (variable in proxy_pass), so the dashboard
+# starts even when the gateway is not up yet.
+server {
+    listen 80;
+    server_name _;
+
+    resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
+    set $gateway ${GATEWAY_URL};
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA fallback: serve index.html for any client-side route.
+    location / {
+        try_files $uri /index.html;
+    }
+
+    # Engine and module HTTP APIs, through the gateway.
+    location /api/ {
+        proxy_pass $gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # gRPC-Web server stream (live run updates): no buffering, long idle timeout.
+    location /flowgent.RunMonitor/ {
+        proxy_pass $gateway;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
